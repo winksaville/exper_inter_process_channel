@@ -1,5 +1,5 @@
-use msg1::Msg1;
-use msg2::Msg2;
+use msg1::{Msg1, MSG1_ID};
+use msg2::{Msg2, MSG2_ID};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -66,13 +66,13 @@ impl SmChannelToNetwork {
 
     pub fn state0(&mut self, msg: Box<MsgAny>) {
         if let Some(m) = msg.downcast_ref::<Msg1>() {
-            assert_eq!(m.header.id, 1);
-            println!("State0: {m:?}");
+            assert_eq!(m.header.id, MSG1_ID);
+            println!("{}:State0: {m:?}", self.name);
         } else if let Some(m) = msg.downcast_ref::<Msg2>() {
-            assert_eq!(m.header.id, 2);
-            println!("State0: {m:?}");
+            assert_eq!(m.header.id, MSG2_ID);
+            println!("{}:State0: {m:?}", self.name);
         } else {
-            println!("State0: Unknown msg={msg:?}");
+            println!("{}:State0: Unknown msg={msg:?}", self.name);
         }
 
         self.transition(SmChannelToNetwork::state1);
@@ -80,13 +80,13 @@ impl SmChannelToNetwork {
 
     pub fn state1(&mut self, msg: Box<MsgAny>) {
         if let Some(m) = msg.downcast_ref::<Msg1>() {
-            assert_eq!(m.header.id, 1);
-            println!("State1: {m:?}");
+            assert_eq!(m.header.id, MSG1_ID);
+            println!("{}:State1: {m:?}", self.name);
         } else if let Some(m) = msg.downcast_ref::<Msg2>() {
-            assert_eq!(m.header.id, 2);
-            println!("State1: {m:?}");
+            assert_eq!(m.header.id, MSG2_ID);
+            println!("{}:State1: {m:?}", self.name);
         } else {
-            println!("State1: Unknown msg={msg:?}");
+            println!("{}:State1: Unknown msg={msg:?}", self.name);
         }
 
         self.transition(SmChannelToNetwork::state0);

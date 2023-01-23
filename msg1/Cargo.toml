@@ -9,3 +9,4 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
+uuid = "1.2.2"

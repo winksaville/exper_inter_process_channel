@@ -14,6 +14,7 @@ msg2 = { path="msg2" }
 sm = { path="sm" }
 sm_channel_to_network = { path="sm_channel_to_network" }
 sm_network_to_channel = { path="sm_network_to_channel" }
+uuid = "1.2.2"
 
 [workspace]
 members = [

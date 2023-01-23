@@ -12,6 +12,7 @@ dependencies = [
  "sm",
  "sm_channel_to_network",
  "sm_network_to_channel",
+ "uuid",
 ]
 
 [[package]]
@@ -19,6 +20,7 @@ name = "msg1"
 version = "0.1.0"
 dependencies = [
  "msg_header",
+ "uuid",
 ]
 
 [[package]]
@@ -26,11 +28,15 @@ name = "msg2"
 version = "0.1.0"
 dependencies = [
  "msg_header",
+ "uuid",
 ]
 
 [[package]]
 name = "msg_header"
 version = "0.1.0"
+dependencies = [
+ "uuid",
+]
 
 [[package]]
 name = "sm"
@@ -55,3 +61,9 @@ dependencies = [
  "msg_header",
  "sm",
 ]
+
+[[package]]
+name = "uuid"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"

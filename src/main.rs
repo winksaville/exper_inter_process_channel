@@ -1,6 +1,5 @@
 use msg1::Msg1;
 use msg2::Msg2;
-use msg_header::MsgHeader;
 use sm::ProcessMsgAny;
 use sm_channel_to_network::SmChannelToNetwork;
 use sm_network_to_channel::SmNetworkToChannel;
@@ -13,17 +12,10 @@ fn main() {
     c2n.add_state(SmChannelToNetwork::state1, "state1");
     println!("c2n={c2n:?}");
 
-    let hdr = MsgHeader { id: 0 };
-    println!("hdr: {hdr:?}");
-
-    let msg1 = Box::new(Msg1 {
-        header: MsgHeader { id: 1 },
-    });
+    let msg1 = Box::<Msg1>::default();
     println!("msg1: {msg1:?}");
 
-    let msg2 = Box::new(Msg2 {
-        header: MsgHeader { id: 2 },
-    });
+    let msg2 = Box::<Msg2>::default();
     println!("msg1: {msg2:?}");
 
     c2n.process_msg_any(msg1.clone());
@@ -38,8 +30,10 @@ fn main() {
 
     n2c.process_msg_any(msg1.clone());
     n2c.process_msg_any(msg2.clone());
-    n2c.process_msg_any(msg2);
-    n2c.process_msg_any(msg1);
+    n2c.process_msg_any(msg2.clone());
+    n2c.process_msg_any(msg1.clone());
 
+    drop(msg1);
+    drop(msg2);
     println!("main:-");
 }
