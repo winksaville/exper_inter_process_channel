@@ -1,8 +1,16 @@
-use msg1::Msg1;
-use msg2::Msg2;
-use sm::ProcessMsgAny;
+use crossbeam_channel::{unbounded, Sender};
+use msg1::{Msg1, MSG1_ID};
+use msg2::{Msg2, MSG2_ID};
+use msg_header::MsgId;
+use sm::{MsgAny, ProcessMsgAny};
 use sm_channel_to_network::SmChannelToNetwork;
 use sm_network_to_channel::SmNetworkToChannel;
+
+fn inter_process_channel(_msg_list: Vec<MsgId>) -> Sender<Box<MsgAny>> {
+    let (tx, _rx) = unbounded::<Box<MsgAny>>();
+
+    tx
+}
 
 fn main() {
     println!("main:+");
@@ -32,6 +40,13 @@ fn main() {
     n2c.process_msg_any(msg2.clone());
     n2c.process_msg_any(msg2.clone());
     n2c.process_msg_any(msg1.clone());
+
+    let msg_ids = vec![MSG1_ID, MSG2_ID];
+    let tx = inter_process_channel(msg_ids);
+
+    // Send message, no receivers yet so ignore results
+    _ = tx.send(msg1.clone());
+    _ = tx.send(msg2.clone());
 
     drop(msg1);
     drop(msg2);
