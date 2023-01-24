@@ -9,4 +9,5 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
-uuid = "1.2.2"
+serde = { version = "1.0.152", features = ["derive"] }
+uuid = { version = "1.2.2", features = ["serde"] }

@@ -1,11 +1,12 @@
 use msg_header::{MsgHeader, MsgId};
+use serde::{Deserialize, Serialize};
 use uuid::uuid;
 
 // From: https://www.uuidgenerator.net/version4
 pub const MSG1_ID: MsgId = uuid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5");
 
 // Message 1
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[repr(C)]
 pub struct Msg1 {
     pub header: MsgHeader,
