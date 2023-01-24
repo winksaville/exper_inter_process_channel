@@ -5,9 +5,9 @@ use std::{
     fmt::{self, Debug},
 };
 
-use sm::{MsgAny, ProcessMsgAny};
+use sm::{BoxMsgAny, ProcessMsgAny};
 
-type ProcessMsgFn<SM> = fn(&mut SM, Box<MsgAny>);
+type ProcessMsgFn<SM> = fn(&mut SM, BoxMsgAny);
 
 // State information
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl SmNetworkToChannel {
         self.current_state = dest;
     }
 
-    pub fn state0(&mut self, msg: Box<MsgAny>) {
+    pub fn state0(&mut self, msg: BoxMsgAny) {
         if let Some(m) = msg.downcast_ref::<Msg1>() {
             assert_eq!(m.header.id, MSG1_ID);
             println!("{}:State0: {m:?}", self.name);
@@ -78,7 +78,7 @@ impl SmNetworkToChannel {
         self.transition(SmNetworkToChannel::state1);
     }
 
-    pub fn state1(&mut self, msg: Box<MsgAny>) {
+    pub fn state1(&mut self, msg: BoxMsgAny) {
         if let Some(m) = msg.downcast_ref::<Msg1>() {
             assert_eq!(m.header.id, MSG1_ID);
             println!("{}:State1: {m:?}", self.name);
@@ -94,7 +94,7 @@ impl SmNetworkToChannel {
 }
 
 impl ProcessMsgAny for SmNetworkToChannel {
-    fn process_msg_any(&mut self, msg: Box<MsgAny>) {
+    fn process_msg_any(&mut self, msg: BoxMsgAny) {
         (self.current_state)(self, msg);
     }
 }

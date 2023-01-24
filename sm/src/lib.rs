@@ -2,7 +2,7 @@ use std::any::Any;
 
 // Messages are things that implement trait std::any::Any
 // which is most anything
-pub type MsgAny = dyn Any;
+pub type BoxMsgAny = Box<dyn Any + Send>;
 
 // This type alias is generic and apparently can't be exported
 // but Message can, oh well.
@@ -10,10 +10,5 @@ pub type MsgAny = dyn Any;
 
 // Dispatch a message
 pub trait ProcessMsgAny {
-    fn process_msg_any(&mut self, msg: Box<MsgAny>);
+    fn process_msg_any(&mut self, msg: BoxMsgAny);
 }
-
-//pub mod msg1;
-//pub mod msg2;
-//pub mod msg_header;
-//pub mod sm_channel_to_network;
