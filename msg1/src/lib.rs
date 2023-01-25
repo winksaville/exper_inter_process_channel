@@ -1,4 +1,4 @@
-use std::str::from_utf8;
+use std::{error::Error, result::Result, str::from_utf8};
 
 use msg_header::{MsgHeader, MsgId};
 use serde::{Deserialize, Serialize};
@@ -32,24 +32,25 @@ impl Msg1 {
         self.header.id
     }
 
-    pub fn from_serde_json_str(s: &str) -> std::result::Result<Self, &'static str> {
+    pub fn from_serde_json_str(s: &str) -> Result<Self, Box<dyn Error>> {
         if MsgHeader::cmp_str_id_and_serde_json_msg_header(MSG1_ID_STR, s) {
             match serde_json::from_str::<Self>(s) {
                 Ok(msg) => Ok(msg),
-                //Err(why) => Err(format!("{why}").into()),
-                Err(_) => Err("from_serde_json_buf: serde_json::from_str::<Msg2>() failed"),
+                Err(why) => Err(format!("Msg1::from_serde_json_str: {why}").into()),
             }
         } else {
-            //Err(format!("from_serde_json_buf: wrong id string is not {MSG2_ID_STR}").into())
-            Err("from_serde_json_buf: wrong id string")
+            Err(
+                format!("Msg1::from_serde_json_str: wrong id in {s}, expecting {MSG1_ID_STR}")
+                    .into(),
+            )
         }
     }
 
-    pub fn from_serde_json_buf(buf: &[u8]) -> std::result::Result<Self, &'static str> {
+    pub fn from_serde_json_buf(buf: &[u8]) -> Result<Self, Box<dyn Error>> {
         if let Ok(s) = from_utf8(buf) {
             Self::from_serde_json_str(s)
         } else {
-            Err("from_serde_json_buf: Not UTF8")
+            Err("Msg1::from_serde_json_buf: Not UTF8".into())
         }
     }
 }
