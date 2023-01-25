@@ -29,3 +29,28 @@ impl Msg1 {
         self.header.id
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::any::{Any, TypeId};
+
+    use super::*;
+
+    #[test]
+    fn test_msg1_serde() {
+        let msg1 = Box::<Msg1>::default();
+        println!("test_msg1_serde: msg1: {msg1:?}");
+        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        println!("test_msg1_serde: ser_msg1={ser_msg1}");
+        let deser_msg1: Box<Msg1> = serde_json::from_str(&ser_msg1).unwrap();
+        println!("test_msg1_serde: deser_msg1={deser_msg1:?}");
+        assert_eq!(msg1.header.id, MSG1_ID);
+        assert_eq!(msg1.header.id, deser_msg1.header.id);
+        println!(
+            "test_msg1_serde: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
+            TypeId::of::<Msg1>(),
+            (*deser_msg1).type_id()
+        );
+        assert_eq!(TypeId::of::<Msg1>(), (*deser_msg1).type_id());
+    }
+}

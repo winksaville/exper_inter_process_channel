@@ -55,6 +55,7 @@ version = "0.1.0"
 dependencies = [
  "msg_header",
  "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -64,6 +65,7 @@ version = "0.1.0"
 dependencies = [
  "msg_header",
  "serde",
+ "serde_json",
  "uuid",
 ]
 
