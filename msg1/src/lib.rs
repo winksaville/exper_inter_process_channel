@@ -1,12 +1,15 @@
+use std::str::from_utf8;
+
 use msg_header::{MsgHeader, MsgId};
 use serde::{Deserialize, Serialize};
 use uuid::uuid;
 
 // From: https://www.uuidgenerator.net/version4
+pub const MSG1_ID_STR: &str = "a88ba7e7-0930-4df6-bb24-240338bf8eb5";
 pub const MSG1_ID: MsgId = uuid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5");
 
 // Message 1
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub struct Msg1 {
     pub header: MsgHeader,
@@ -27,6 +30,27 @@ impl Msg1 {
 
     pub fn id(&self) -> MsgId {
         self.header.id
+    }
+
+    pub fn from_serde_json_str(s: &str) -> std::result::Result<Self, &'static str> {
+        if MsgHeader::cmp_str_id_and_serde_json_msg_header(MSG1_ID_STR, s) {
+            match serde_json::from_str::<Self>(s) {
+                Ok(msg) => Ok(msg),
+                //Err(why) => Err(format!("{why}").into()),
+                Err(_) => Err("from_serde_json_buf: serde_json::from_str::<Msg2>() failed"),
+            }
+        } else {
+            //Err(format!("from_serde_json_buf: wrong id string is not {MSG2_ID_STR}").into())
+            Err("from_serde_json_buf: wrong id string")
+        }
+    }
+
+    pub fn from_serde_json_buf(buf: &[u8]) -> std::result::Result<Self, &'static str> {
+        if let Ok(s) = from_utf8(buf) {
+            Self::from_serde_json_str(s)
+        } else {
+            Err("from_serde_json_buf: Not UTF8")
+        }
     }
 }
 
@@ -52,5 +76,21 @@ mod test {
             (*deser_msg1).type_id()
         );
         assert_eq!(TypeId::of::<Msg1>(), (*deser_msg1).type_id());
+    }
+
+    #[test]
+    fn test_msg1_from_json_str() {
+        let msg1 = Box::<Msg1>::default();
+        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        let msg1_from_serde_json_str = Msg1::from_serde_json_str(ser_msg1.as_str()).unwrap();
+        assert_eq!(*msg1, msg1_from_serde_json_str);
+    }
+
+    #[test]
+    fn test_msg1_from_json_buf() {
+        let msg1 = Box::<Msg1>::default();
+        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        let msg1_from_serde_json_str = Msg1::from_serde_json_buf(ser_msg1.as_bytes()).unwrap();
+        assert_eq!(*msg1, msg1_from_serde_json_str);
     }
 }

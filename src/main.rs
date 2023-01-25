@@ -24,6 +24,17 @@ fn u16_to_buf_u8_le(v: u16) -> Vec<u8> {
     vec![b0, b1]
 }
 
+fn write_msg_str_to_tcp_stream(stream: &mut TcpStream, msg_str: &str) {
+    let buf_len_data = u16_to_buf_u8_le(msg_str.len() as u16);
+
+    stream
+        .write_all(buf_len_data.as_ref())
+        .expect("tickle_ipchnlr: Couldn't write length");
+    stream
+        .write_all(msg_str.as_bytes())
+        .expect("tickle_ipchnlr: Couldn't write data");
+}
+
 // Return string representing the remote "ip_address:port"
 fn ipchnlr() -> (String, Receiver<String>) {
     let ip_address_port = "127.0.0.1:54321";
@@ -73,6 +84,14 @@ fn ipchnlr() -> (String, Receiver<String>) {
                                 println!("{msg_buf_str}");
                             } else {
                                 println!("{msg_buf:x?}");
+                            }
+
+                            if let Ok(msg1) = Msg1::from_serde_json_buf(&msg_buf) {
+                                println!("msg1={msg1:?}");
+                            } else if let Ok(msg2) = Msg2::from_serde_json_buf(&msg_buf) {
+                                println!("msg2={msg2:?}");
+                            } else {
+                                println!("Error converting serde_json");
                             }
 
                             stream_status_tx.clone().send("completed".to_owned()).expect("inter_process_channel_receiver: Unable to indicate we're completed");
@@ -158,31 +177,33 @@ fn tickle_ipchnl() {
 
 fn tickle_ipchnlr() {
     println!("tickle_ipchnlr:+");
-    let msg1 = Box::<Msg1>::default();
 
     // Start inter_process_channel_receiver
     let (ip_address_port, status_rx) = ipchnlr();
     let msg = status_rx
         .recv()
-        .expect("tickle_ipchnlr: Error waiting for inter_process_channel_receiver to be ready");
+        .expect("tickle_ipchnlr: Error waiting for ipchnlr to be ready");
     assert_eq!("ready", msg.as_str());
 
-    let mut stream = TcpStream::connect(ip_address_port)
-        .expect("tickle_ipchnlr: Could not connect to inter_process_channel_receiver");
-    //let msg1x = msg1.clone();
-    let msg1x_string =
-        serde_json::to_string(&msg1).expect("tickle_ipchnlr: Could not serialize msg1x");
-    let buf_len_data = u16_to_buf_u8_le(msg1x_string.len() as u16);
-    stream
-        .write_all(buf_len_data.as_ref())
-        .expect("tickle_ipchnlr: Couldn't write length");
-    stream
-        .write_all(msg1x_string.as_bytes())
-        .expect("tickle_ipchnlr: Couldn't write data");
+    let mut stream =
+        TcpStream::connect(ip_address_port).expect("tickle_ipchnlr: Could not connect to ipchnlr");
 
-    let msg = status_rx.recv().expect(
-        "tickle_ipchnlr: Error waiting for inter_process_channel_receiver to receive the msg",
-    );
+    let msg1 = Box::<Msg1>::default();
+    let msg_str = serde_json::to_string(&msg1).expect("tickle_ipchnlr: Could not serialize msg1");
+    write_msg_str_to_tcp_stream(&mut stream, &msg_str);
+
+    let msg = status_rx
+        .recv()
+        .expect("tickle_ipchnlr: Error waiting for ipchnlr to receive the msg");
+    assert_eq!("completed", msg.as_str());
+
+    let msg2 = Box::<Msg2>::default();
+    let msg_str = serde_json::to_string(&msg2).expect("tickle_ipchnlr: Could not serialize msg2");
+    write_msg_str_to_tcp_stream(&mut stream, &msg_str);
+
+    let msg = status_rx
+        .recv()
+        .expect("tickle_ipchnlr: Error waiting for ipchnlr to receive the msg");
     assert_eq!("completed", msg.as_str());
 
     drop(msg1);
