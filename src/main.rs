@@ -1,6 +1,7 @@
 use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
+    str::from_utf8,
     thread,
 };
 
@@ -24,13 +25,13 @@ fn u16_to_buf_u8_le(v: u16) -> Vec<u8> {
 }
 
 // Return string representing the remote "ip_address:port"
-fn inter_process_channel_reciver() -> (String, Receiver<String>) {
+fn ipchnlr() -> (String, Receiver<String>) {
     let ip_address_port = "127.0.0.1:54321";
 
     let (status_tx, status_rx) = bounded(1);
 
     thread::spawn(move || {
-        println!("inter_process_channel_reciver:+");
+        println!("ipchnlr:+");
 
         // Ignore errors for the moment
         let listener = TcpListener::bind(ip_address_port).unwrap();
@@ -47,49 +48,51 @@ fn inter_process_channel_reciver() -> (String, Receiver<String>) {
                     // ALTHOUGH, there is only one connection ATM
                     let stream_status_tx = status_tx.clone();
                     thread::spawn(move || {
-                        println!("inter_process_channel_reciver stream:+");
+                        println!("ipchnlr stream:+");
 
                         loop {
                             // TODO: Probably need a signature and version indicator too.
                             let mut msg_len_buf = [0u8; 2];
                             if tcp_stream.read_exact(&mut msg_len_buf).is_err() {
-                                println!("inter_process_channel_reciver stream: stream closed reading msg_len, stopping");
+                                println!("ipchnlr stream: stream closed reading msg_len, stopping");
                                 break;
                             }
-                            println!("inter_process_channel_reciver stream: msg_len_buf={msg_len_buf:x?}");
 
                             let msg_len = buf_u8_le_to_u16(&msg_len_buf) as usize;
-                            println!("inter_process_channel_reciver stream: msg_len={msg_len}");
+                            println!("ipchnlr stream: msg_len={msg_len}");
 
                             // We need to initialize the Vec so read_exact knows how much to read.
                             // TODO: Consider using [read_buf_exact](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_buf_exact).
                             let mut msg_buf = vec![0; msg_len];
                             if tcp_stream.read_exact(msg_buf.as_mut_slice()).is_err() {
-                                println!("inter_process_channel_reciver stream: stream close reading msg_buf, stopping");
+                                println!("ipchnlr stream: stream close reading msg_buf, stopping");
                                 break;
                             }
-                            println!("inter_process_channel_reciver stream: msg_buf={msg_buf:?}");
+                            print!("ipchnlr stream: msg_buf=");
+                            if let Ok(msg_buf_str) = from_utf8(&msg_buf) {
+                                println!("{msg_buf_str}");
+                            } else {
+                                println!("{msg_buf:x?}");
+                            }
 
                             stream_status_tx.clone().send("completed".to_owned()).expect("inter_process_channel_receiver: Unable to indicate we're completed");
                         }
-                        println!("inter_process_channel_reciver stream:-");
+                        println!("ipchnlr stream:-");
                     });
                 }
                 Err(why) => {
-                    println!(
-                        "inter_process_channel_reciver stream: Error accepting connection: {why}"
-                    );
+                    println!("ipchnlr stream: Error accepting connection: {why}");
                 }
             }
         }
 
-        println!("inter_process_channel_reciver:-");
+        println!("ipchnlr:-");
     });
 
     (ip_address_port.to_owned(), status_rx)
 }
 
-fn inter_process_channel(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<String>) {
+fn ipchnl(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<String>) {
     let (tx, rx) = unbounded::<BoxMsgAny>();
 
     let (complete_tx, status_rx) = bounded(1);
@@ -100,7 +103,7 @@ fn inter_process_channel(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<
         // Indicate we're ready
         complete_tx
             .send("ready".to_owned())
-            .expect("inter_process_channel: Unable to indicate we're ready");
+            .expect("c2n_ipchnl: Unable to indicate we're ready");
 
         println!("c2n_ipchnl: Waiting  msg");
         while let Ok(msg) = rx.recv() {
@@ -109,7 +112,7 @@ fn inter_process_channel(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<
             println!("c2n_ipchnl: Waiting  msg");
             complete_tx
                 .send("completed".to_owned())
-                .expect("inter_process_channel: Unable to indicate we're completed processing");
+                .expect("c2n_ipchnl: Unable to indicate we're completed processing");
         }
         println!("c2n_ipchnl:-");
     });
@@ -117,66 +120,81 @@ fn inter_process_channel(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<
     (tx, status_rx)
 }
 
-fn main() {
-    println!("main:+");
-
+fn tickle_ipchnl() {
+    println!("tickle_ipchnl:+");
     let msg1 = Box::<Msg1>::default();
     let msg2 = Box::<Msg2>::default();
 
     // Start inter_process_channel
     let msg_ids = vec![MSG1_ID, MSG2_ID];
-    let (tx, status_rx) = inter_process_channel(msg_ids);
+    let (tx, status_rx) = ipchnl(msg_ids);
 
     let msg = status_rx
         .recv()
-        .expect("main: Error waiting for inter_process_channel to be ready");
+        .expect("tickle_ipchnl: Error waiting for inter_process_channel to be ready");
     assert_eq!("ready", msg.as_str());
-    println!("main: inter_process_channel is READY");
+    println!("tickle_ipchnl: inter_process_channel is READY");
 
     // Send msg1 wait for it to be processed
     _ = tx.send(msg1.clone());
     let msg = status_rx
         .recv()
-        .expect("main: Error waiting for inter_process_channel to be ready");
+        .expect("tickle_ipchnl: Error waiting for inter_process_channel to be ready");
     assert_eq!("completed", msg.as_str());
-    println!("main: completed msg1");
+    println!("tickle_ipchnl: completed msg1");
 
     // Send msg2 wait for it to be processed
     _ = tx.send(msg2.clone());
     status_rx
         .recv()
-        .expect("main: Error waiting for inter_process_channel to be ready");
+        .expect("tickle_ipchnl: Error waiting for inter_process_channel to be ready");
     assert_eq!("completed", msg.as_str());
-    println!("main: completed msg2");
-
-    // Start inter_process_channel_receiver
-    let (ip_address_port, status_rx) = inter_process_channel_reciver();
-    let msg = status_rx
-        .recv()
-        .expect("main: Error waiting for inter_process_channel_receiver to be ready");
-    assert_eq!("ready", msg.as_str());
-
-    let mut stream = TcpStream::connect(ip_address_port)
-        .expect("main: Could not connect to inter_process_channel_receiver");
-    let data: Vec<u8> = vec![1, 2, 3, 4];
-    let buf_len_data = u16_to_buf_u8_le(data.len() as u16);
-    stream
-        .write_all(buf_len_data.as_ref())
-        .expect("main: Couldn't write length");
-    stream
-        .write_all(data.as_ref())
-        .expect("main: Couldn't write data");
-
-    let msg = status_rx
-        .recv()
-        .expect("main: Error waiting for inter_process_channel_receiver to receive the msg");
-    assert_eq!("completed", msg.as_str());
-
-    //println!("\nmain: Type Ctrl-C to stop\n");
-    //ctrlc_channel().recv().expect("main: Could not receive from ctrl_channel");
-    //println!();
+    println!("tickle_ipchnl: completed msg2");
 
     drop(msg1);
     drop(msg2);
+    println!("tickle_ipchnl:-");
+}
+
+fn tickle_ipchnlr() {
+    println!("tickle_ipchnlr:+");
+    let msg1 = Box::<Msg1>::default();
+
+    // Start inter_process_channel_receiver
+    let (ip_address_port, status_rx) = ipchnlr();
+    let msg = status_rx
+        .recv()
+        .expect("tickle_ipchnlr: Error waiting for inter_process_channel_receiver to be ready");
+    assert_eq!("ready", msg.as_str());
+
+    let mut stream = TcpStream::connect(ip_address_port)
+        .expect("tickle_ipchnlr: Could not connect to inter_process_channel_receiver");
+    //let msg1x = msg1.clone();
+    let msg1x_string =
+        serde_json::to_string(&msg1).expect("tickle_ipchnlr: Could not serialize msg1x");
+    let buf_len_data = u16_to_buf_u8_le(msg1x_string.len() as u16);
+    stream
+        .write_all(buf_len_data.as_ref())
+        .expect("tickle_ipchnlr: Couldn't write length");
+    stream
+        .write_all(msg1x_string.as_bytes())
+        .expect("tickle_ipchnlr: Couldn't write data");
+
+    let msg = status_rx.recv().expect(
+        "tickle_ipchnlr: Error waiting for inter_process_channel_receiver to receive the msg",
+    );
+    assert_eq!("completed", msg.as_str());
+
+    drop(msg1);
+    println!("tickle_ipchnlr:-");
+}
+
+fn main() {
+    println!("main:+");
+
+    tickle_ipchnl();
+
+    tickle_ipchnlr();
+
     println!("main:-");
 }
