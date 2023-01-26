@@ -64,6 +64,7 @@ name = "msg2"
 version = "0.1.0"
 dependencies = [
  "msg_header",
+ "msg_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -76,6 +77,23 @@ dependencies = [
  "serde",
  "uuid",
 ]
+
+[[package]]
+name = "msg_macro"
+version = "0.1.0"
+dependencies = [
+ "msg_header",
+ "paste",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "paste"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d01a5bd0424d00070b0098dd17ebca6f961a959dead1dbcbbbc1d1cd8d3deeba"
 
 [[package]]
 name = "proc-macro2"

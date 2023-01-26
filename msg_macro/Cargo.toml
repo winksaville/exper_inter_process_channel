@@ -1,5 +1,5 @@
 [package]
-name = "msg2"
+name = "msg_macro"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,8 +8,8 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-msg_header = { path = "../msg_header" }
-msg_macro = { path = "../msg_macro" }
+msg_header = { path="../msg_header" }
+paste = "1.0.11"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
 uuid = { version = "1.2.2", features = ["serde"] }

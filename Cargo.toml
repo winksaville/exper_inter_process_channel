@@ -24,6 +24,7 @@ members = [
     "msg_header",
     "msg1",
     "msg2",
+    "msg_macro",
     "sm",
     "sm_channel_to_network",
     "sm_network_to_channel",

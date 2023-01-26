@@ -32,6 +32,12 @@ impl Msg1 {
         self.header.id
     }
 
+    pub fn to_serde_json_string(&self) -> std::result::Result<String, Box<dyn std::error::Error>> {
+        let r = serde_json::to_string(self);
+
+        r.map_err(|why| format!("{why}").into())
+    }
+
     pub fn from_serde_json_str(s: &str) -> Result<Self, Box<dyn Error>> {
         if MsgHeader::cmp_str_id_and_serde_json_msg_header(MSG1_ID_STR, s) {
             match serde_json::from_str::<Self>(s) {
@@ -65,24 +71,24 @@ mod test {
     fn test_msg1_serde() {
         let msg1 = Box::<Msg1>::default();
         println!("test_msg1_serde: msg1: {msg1:?}");
-        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        let ser_msg1 = msg1.to_serde_json_string().unwrap();
         println!("test_msg1_serde: ser_msg1={ser_msg1}");
-        let deser_msg1: Box<Msg1> = serde_json::from_str(&ser_msg1).unwrap();
+        let deser_msg1: Msg1 = Msg1::from_serde_json_str(&ser_msg1).unwrap();
         println!("test_msg1_serde: deser_msg1={deser_msg1:?}");
         assert_eq!(msg1.header.id, MSG1_ID);
         assert_eq!(msg1.header.id, deser_msg1.header.id);
         println!(
             "test_msg1_serde: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
             TypeId::of::<Msg1>(),
-            (*deser_msg1).type_id()
+            deser_msg1.type_id()
         );
-        assert_eq!(TypeId::of::<Msg1>(), (*deser_msg1).type_id());
+        assert_eq!(TypeId::of::<Msg1>(), deser_msg1.type_id());
     }
 
     #[test]
     fn test_msg1_from_json_str() {
         let msg1 = Box::<Msg1>::default();
-        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        let ser_msg1 = msg1.to_serde_json_string().unwrap();
         let msg1_from_serde_json_str = Msg1::from_serde_json_str(ser_msg1.as_str()).unwrap();
         assert_eq!(*msg1, msg1_from_serde_json_str);
     }
@@ -90,7 +96,7 @@ mod test {
     #[test]
     fn test_msg1_from_json_buf() {
         let msg1 = Box::<Msg1>::default();
-        let ser_msg1 = serde_json::to_string(&msg1).unwrap();
+        let ser_msg1 = msg1.to_serde_json_string().unwrap();
         let msg1_from_serde_json_str = Msg1::from_serde_json_buf(ser_msg1.as_bytes()).unwrap();
         assert_eq!(*msg1, msg1_from_serde_json_str);
     }
