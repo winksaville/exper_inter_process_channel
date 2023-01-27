@@ -86,9 +86,9 @@ fn ipchnlr() -> (String, Receiver<String>) {
                                 println!("{msg_buf:x?}");
                             }
 
-                            if let Ok(msg1) = Msg1::from_serde_json_buf(&msg_buf) {
+                            if let Some(msg1) = Msg1::from_serde_json_buf(&msg_buf) {
                                 println!("msg1={msg1:?}");
-                            } else if let Ok(msg2) = Msg2::from_serde_json_buf(&msg_buf) {
+                            } else if let Some(msg2) = Msg2::from_serde_json_buf(&msg_buf) {
                                 println!("msg2={msg2:?}");
                             } else {
                                 println!("Error converting serde_json");

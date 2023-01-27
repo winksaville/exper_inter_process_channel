@@ -13,9 +13,9 @@ fn test_identical_json() {
     // Deserialize to Msg1, this should fail
     let deser_bad_msg2 = Msg1::from_serde_json_str(&ser_msg2);
     match deser_bad_msg2 {
-        Ok(_) => {
-            println!("test test_identical_json: Unexpected success `Msg1::from_serde_json_str(&ser_msg2)` should fail as id is MSG2_ID not MSG1_ID");
+        Some(_) => {
+            println!("test test_identical_json: Unexpected success, `Msg1::from_serde_json_str(&ser_msg2)` should fail as id is MSG2_ID not MSG1_ID");
         }
-        Err(_) => panic!("This is expected"),
+        None => panic!("This is expected"),
     }
 }

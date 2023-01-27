@@ -39,41 +39,41 @@ macro_rules! msg_macro {
                 self.header.id
             }
 
-            pub fn to_serde_json_string(
-                &self,
-            ) -> std::result::Result<String, Box<dyn std::error::Error>> {
-                let r = serde_json::to_string(self);
-
-                r.map_err(|why| format!("{why}").into())
-            }
-
-            pub fn from_serde_json_str(
-                s: &str,
-            ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
-                if msg_header::MsgHeader::cmp_str_id_and_serde_json_msg_header($id_str, s) {
-                    match serde_json::from_str::<Self>(s) {
-                        Ok(msg) => Ok(msg),
-                        Err(why) => {
-                            Err(format!("{}::from_serde_json_str: {why}", stringify!($name)).into())
-                        }
+            pub fn to_serde_json_string(&self) -> std::option::Option<String> {
+                match serde_json::to_string(self) {
+                    Ok(v) => Some(v),
+                    Err(why) => {
+                        println!("{}.to_serde_json_string: Error {}", stringify!($name), why);
+                        None
                     }
-                } else {
-                    Err(format!(
-                        "{}::from_serde_json_str: wrong id in {s}, expecting {}",
-                        stringify!($name),
-                        $id_str
-                    )
-                    .into())
                 }
             }
 
-            pub fn from_serde_json_buf(
-                buf: &[u8],
-            ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+            pub fn from_serde_json_str(s: &str) -> std::option::Option<Self> {
+                if msg_header::MsgHeader::cmp_str_id_and_serde_json_msg_header($id_str, s) {
+                    match serde_json::from_str::<Self>(s) {
+                        Ok(msg) => Some(msg),
+                        Err(why) => {
+                            println!("{}::from_serde_json_str: {why}", stringify!($name));
+                            None
+                        }
+                    }
+                } else {
+                    println!(
+                        "{}::from_serde_json_str: wrong id in {s}, expecting {}",
+                        stringify!($name),
+                        $id_str
+                    );
+                    None
+                }
+            }
+
+            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
                 if let Ok(s) = std::str::from_utf8(buf) {
                     Self::from_serde_json_str(s)
                 } else {
-                    Err(format!("{}::from_serde_json_buf: Not UTF8", stringify!($name)).into())
+                    println!("{}::from_serde_json_buf: Not UTF8", stringify!($name));
+                    None
                 }
             }
         }
