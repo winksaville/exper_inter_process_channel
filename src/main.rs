@@ -6,6 +6,7 @@ use std::{
 };
 
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use custom_logger::env_logger_init;
 use msg1::{Msg1, MSG1_ID};
 use msg2::{Msg2, MSG2_ID};
 use msg_header::MsgId;
@@ -212,6 +213,7 @@ fn tickle_ipchnlr() {
 
 fn main() {
     println!("main:+");
+    env_logger_init("error");
 
     tickle_ipchnl();
 

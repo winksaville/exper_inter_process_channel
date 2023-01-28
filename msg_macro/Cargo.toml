@@ -8,6 +8,8 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+custom_logger = { git = "https://github.com/winksaville/custom_logger", version = "0.2.0" }
+log = "0.4.17"
 msg_header = { path="../msg_header" }
 paste = "1.0.11"
 serde = { version = "1.0.152", features = ["derive"] }

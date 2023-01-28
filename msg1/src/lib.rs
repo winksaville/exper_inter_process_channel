@@ -39,7 +39,7 @@ impl Msg1 {
         match serde_json::to_string(self) {
             Ok(v) => Some(v),
             Err(why) => {
-                println!("{}.to_serde_json_string: Error {}", MSG1_NAME, why);
+                log::error!("{}.to_serde_json_string: Error {}", MSG1_NAME, why);
                 None
             }
         }
@@ -50,14 +50,15 @@ impl Msg1 {
             match serde_json::from_str::<Self>(s) {
                 Ok(msg) => Some(msg),
                 Err(why) => {
-                    println!("{}::from_serde_json_str: {why}", MSG1_NAME);
+                    log::error!("{}::from_serde_json_str: {why}", MSG1_NAME);
                     None
                 }
             }
         } else {
-            println!(
+            log::trace!(
                 "{}::from_serde_json_str: wrong id in {s}, expecting {}",
-                MSG1_NAME, MSG1_ID_STR
+                MSG1_NAME,
+                MSG1_ID_STR
             );
             None
         }
@@ -67,7 +68,7 @@ impl Msg1 {
         if let Ok(s) = std::str::from_utf8(buf) {
             Self::from_serde_json_str(s)
         } else {
-            println!("{}::from_serde_json_buf: Not UTF8", MSG1_NAME);
+            log::error!("{}::from_serde_json_buf: Not UTF8", MSG1_NAME);
             None
         }
     }

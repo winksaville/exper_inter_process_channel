@@ -1,3 +1,4 @@
+use custom_logger::env_logger_init;
 use msg_header::MsgId;
 use msg_macro::{msg_macro, paste};
 use std::collections::HashMap;
@@ -6,6 +7,8 @@ use std::collections::HashMap;
 msg_macro!(MsgA, "d122e9aa-0a69-4654-8e41-e2813bc40272");
 
 fn main() {
+    env_logger_init("error");
+
     let msg_a = MsgA::default();
     println!("MSG_A_ID_STR={MSG_A_ID_STR}");
     println!("msg_a={msg_a:?}");
