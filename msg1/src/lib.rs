@@ -1,4 +1,5 @@
 use msg_header::{MsgHeader, MsgId};
+use msg_serde_json::MsgSerdeJson;
 use serde::{Deserialize, Serialize};
 use uuid::uuid;
 
@@ -63,8 +64,10 @@ impl Msg1 {
             None
         }
     }
+}
 
-    pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
+impl MsgSerdeJson<Msg1> for Msg1 {
+    fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
         if let Ok(s) = std::str::from_utf8(buf) {
             Self::from_serde_json_str(s)
         } else {
@@ -73,8 +76,8 @@ impl Msg1 {
         }
     }
 
-    pub fn to_serde_json_buf(&self) -> std::option::Option<Vec<u8>> {
-        match serde_json::to_vec(self) {
+    fn to_serde_json_buf(msg: &Msg1) -> std::option::Option<Vec<u8>> {
+        match serde_json::to_vec(msg) {
             Ok(v) => Some(v),
             Err(why) => {
                 log::error!("{}.to_serde_json_buf: Error {}", MSG1_NAME, why);
@@ -94,7 +97,7 @@ mod test {
     fn test_msg1_to_from_json_str() {
         let msg1 = Box::<Msg1>::default();
         println!("test_msg1_to_from_json_str: msg1: {msg1:?}");
-        let ser_msg1 = msg1.to_serde_json_string().unwrap();
+        let ser_msg1 = Msg1::to_serde_json_string(&msg1).unwrap();
         println!("test_msg1_to_from_json_str: ser_msg1={ser_msg1}");
         let msg1_deser = Msg1::from_serde_json_str(&ser_msg1).unwrap();
         println!("test_msg1_to_from_json_str: msg1_deser={msg1_deser:?}");
@@ -113,7 +116,7 @@ mod test {
     fn test_msg1_to_from_json_buf() {
         let msg1 = Box::<Msg1>::default();
         println!("test_msg1_to_from_json_buf: msg1: {msg1:?}");
-        let ser_msg1 = msg1.to_serde_json_buf().unwrap();
+        let ser_msg1 = Msg1::to_serde_json_buf(&msg1).unwrap();
         println!("test_msg1_to_from_json_buf: ser_msg1={ser_msg1:x?}");
         let msg1_deser = Msg1::from_serde_json_buf(&ser_msg1).unwrap();
         println!("test_msg1_to_from_json_buf: msg1_deser={msg1_deser:?}");

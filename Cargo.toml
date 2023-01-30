@@ -9,6 +9,7 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="msg_header" }
+msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msg1" }
 msg2 = { path="msg2" }
 sm = { path="sm" }
@@ -23,6 +24,7 @@ custom_logger = { git = "https://github.com/winksaville/custom_logger", version 
 [workspace]
 members = [
     "msg_header",
+    "msg_serde_json",
     "msg1",
     "msg2",
     "msg_macro",
