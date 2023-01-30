@@ -74,6 +74,16 @@ macro_rules! msg_macro {
                     None
                 }
             }
+
+            pub fn to_serde_json_buf(&self) -> std::option::Option<Vec<u8>> {
+                match serde_json::to_vec(self) {
+                    Ok(v) => Some(v),
+                    Err(why) => {
+                        log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
+                        None
+                    }
+                }
+            }
         }
     };
 }

@@ -72,6 +72,16 @@ impl Msg1 {
             None
         }
     }
+
+    pub fn to_serde_json_buf(&self) -> std::option::Option<Vec<u8>> {
+        match serde_json::to_vec(self) {
+            Ok(v) => Some(v),
+            Err(why) => {
+                log::error!("{}.to_serde_json_buf: Error {}", MSG1_NAME, why);
+                None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -81,36 +91,40 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_msg1_serde() {
+    fn test_msg1_to_from_json_str() {
         let msg1 = Box::<Msg1>::default();
-        println!("test_msg1_serde: msg1: {msg1:?}");
+        println!("test_msg1_to_from_json_str: msg1: {msg1:?}");
         let ser_msg1 = msg1.to_serde_json_string().unwrap();
-        println!("test_msg1_serde: ser_msg1={ser_msg1}");
-        let deser_msg1: Msg1 = Msg1::from_serde_json_str(&ser_msg1).unwrap();
-        println!("test_msg1_serde: deser_msg1={deser_msg1:?}");
+        println!("test_msg1_to_from_json_str: ser_msg1={ser_msg1}");
+        let msg1_deser = Msg1::from_serde_json_str(&ser_msg1).unwrap();
+        println!("test_msg1_to_from_json_str: msg1_deser={msg1_deser:?}");
+        assert_eq!(*msg1, msg1_deser);
         assert_eq!(msg1.header.id, MSG1_ID);
-        assert_eq!(msg1.header.id, deser_msg1.header.id);
+        assert_eq!(msg1.header.id, msg1_deser.header.id);
         println!(
-            "test_msg1_serde: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
+            "test_msg1_to_from_json_str: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
             TypeId::of::<Msg1>(),
-            deser_msg1.type_id()
+            msg1_deser.type_id()
         );
-        assert_eq!(TypeId::of::<Msg1>(), deser_msg1.type_id());
+        assert_eq!(TypeId::of::<Msg1>(), msg1_deser.type_id());
     }
 
     #[test]
-    fn test_msg1_from_json_str() {
+    fn test_msg1_to_from_json_buf() {
         let msg1 = Box::<Msg1>::default();
-        let ser_msg1 = msg1.to_serde_json_string().unwrap();
-        let msg1_from_serde_json_str = Msg1::from_serde_json_str(ser_msg1.as_str()).unwrap();
-        assert_eq!(*msg1, msg1_from_serde_json_str);
-    }
-
-    #[test]
-    fn test_msg1_from_json_buf() {
-        let msg1 = Box::<Msg1>::default();
-        let ser_msg1 = msg1.to_serde_json_string().unwrap();
-        let msg1_from_serde_json_str = Msg1::from_serde_json_buf(ser_msg1.as_bytes()).unwrap();
-        assert_eq!(*msg1, msg1_from_serde_json_str);
+        println!("test_msg1_to_from_json_buf: msg1: {msg1:?}");
+        let ser_msg1 = msg1.to_serde_json_buf().unwrap();
+        println!("test_msg1_to_from_json_buf: ser_msg1={ser_msg1:x?}");
+        let msg1_deser = Msg1::from_serde_json_buf(&ser_msg1).unwrap();
+        println!("test_msg1_to_from_json_buf: msg1_deser={msg1_deser:?}");
+        assert_eq!(*msg1, msg1_deser);
+        assert_eq!(msg1.header.id, MSG1_ID);
+        assert_eq!(msg1.header.id, msg1_deser.header.id);
+        println!(
+            "test_msg1_to_from_json_buf: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
+            TypeId::of::<Msg1>(),
+            msg1_deser.type_id()
+        );
+        assert_eq!(TypeId::of::<Msg1>(), msg1_deser.type_id());
     }
 }

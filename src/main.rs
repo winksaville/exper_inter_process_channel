@@ -25,14 +25,14 @@ fn u16_to_buf_u8_le(v: u16) -> Vec<u8> {
     vec![b0, b1]
 }
 
-fn write_msg_str_to_tcp_stream(stream: &mut TcpStream, msg_str: &str) {
-    let buf_len_data = u16_to_buf_u8_le(msg_str.len() as u16);
+fn write_msg_buf_to_tcp_stream(stream: &mut TcpStream, msg_buf: &[u8]) {
+    let buf_len_data = u16_to_buf_u8_le(msg_buf.len() as u16);
 
     stream
         .write_all(buf_len_data.as_ref())
         .expect("tickle_ipchnlr: Couldn't write length");
     stream
-        .write_all(msg_str.as_bytes())
+        .write_all(msg_buf)
         .expect("tickle_ipchnlr: Couldn't write data");
 }
 
@@ -190,8 +190,10 @@ fn tickle_ipchnlr() {
         TcpStream::connect(ip_address_port).expect("tickle_ipchnlr: Could not connect to ipchnlr");
 
     let msg1 = Box::<Msg1>::default();
-    let msg_str = serde_json::to_string(&msg1).expect("tickle_ipchnlr: Could not serialize msg1");
-    write_msg_str_to_tcp_stream(&mut stream, &msg_str);
+    let msg_buf = msg1
+        .to_serde_json_buf()
+        .expect("tickle_ipchnlr: Could not serialize msg1");
+    write_msg_buf_to_tcp_stream(&mut stream, &msg_buf);
 
     let msg = status_rx
         .recv()
@@ -199,8 +201,10 @@ fn tickle_ipchnlr() {
     assert_eq!("completed", msg.as_str());
 
     let msg2 = Box::<Msg2>::default();
-    let msg_str = serde_json::to_string(&msg2).expect("tickle_ipchnlr: Could not serialize msg2");
-    write_msg_str_to_tcp_stream(&mut stream, &msg_str);
+    let msg_buf = msg2
+        .to_serde_json_buf()
+        .expect("tickle_ipchnlr: Could not serialize msg2");
+    write_msg_buf_to_tcp_stream(&mut stream, &msg_buf);
 
     let msg = status_rx
         .recv()
