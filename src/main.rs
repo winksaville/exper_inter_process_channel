@@ -10,6 +10,7 @@ use custom_logger::env_logger_init;
 use msg1::{Msg1, MSG1_ID};
 use msg2::{Msg2, MSG2_ID};
 use msg_header::MsgId;
+use msg_serde_json::MsgSerdeJson;
 use sm::{BoxMsgAny, ProcessMsgAny};
 use sm_channel_to_network::SmChannelToNetwork;
 
@@ -190,9 +191,7 @@ fn tickle_ipchnlr() {
         TcpStream::connect(ip_address_port).expect("tickle_ipchnlr: Could not connect to ipchnlr");
 
     let msg1 = Box::<Msg1>::default();
-    let msg_buf = msg1
-        .to_serde_json_buf()
-        .expect("tickle_ipchnlr: Could not serialize msg1");
+    let msg_buf = Msg1::to_serde_json_buf(&msg1).expect("tickle_ipchnlr: Could not serialize msg1");
     write_msg_buf_to_tcp_stream(&mut stream, &msg_buf);
 
     let msg = status_rx

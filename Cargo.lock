@@ -102,6 +102,7 @@ dependencies = [
  "msg1",
  "msg2",
  "msg_header",
+ "msg_serde_json",
  "serde",
  "serde_json",
  "sm",
@@ -225,6 +226,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
+ "msg_serde_json",
  "serde",
  "serde_json",
  "uuid",
@@ -237,6 +239,7 @@ dependencies = [
  "log",
  "msg_header",
  "msg_macro",
+ "msg_serde_json",
  "serde",
  "serde_json",
  "uuid",
@@ -257,11 +260,16 @@ dependencies = [
  "custom_logger",
  "log",
  "msg_header",
+ "msg_serde_json",
  "paste",
  "serde",
  "serde_json",
  "uuid",
 ]
+
+[[package]]
+name = "msg_serde_json"
+version = "0.1.0"
 
 [[package]]
 name = "paste"

@@ -85,6 +85,27 @@ macro_rules! msg_macro {
                 }
             }
         }
+
+        impl msg_serde_json::MsgSerdeJson<$name> for $name {
+            fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
+                if let Ok(s) = std::str::from_utf8(buf) {
+                    Self::from_serde_json_str(s)
+                } else {
+                    log::error!("{}::from_serde_json_buf: Not UTF8", stringify!($name));
+                    None
+                }
+            }
+
+            fn to_serde_json_buf(msg: &$name) -> std::option::Option<Vec<u8>> {
+                match serde_json::to_vec(msg) {
+                    Ok(v) => Some(v),
+                    Err(why) => {
+                        log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
+                        None
+                    }
+                }
+            }
+        }
     };
 }
 
