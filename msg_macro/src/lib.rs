@@ -37,6 +37,14 @@ macro_rules! msg_macro {
                 self.header.id
             }
 
+            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+                if let Some(m) = msg.downcast_ref::<$name>() {
+                    Some(m)
+                } else {
+                    None
+                }
+            }
+
             pub fn to_serde_json_string(&self) -> std::option::Option<String> {
                 match serde_json::to_string(self) {
                     Ok(v) => Some(v),
@@ -48,7 +56,7 @@ macro_rules! msg_macro {
             }
 
             pub fn from_serde_json_str(s: &str) -> std::option::Option<Self> {
-                if msg_header::MsgHeader::cmp_str_id_and_serde_json_msg_header($id_str, s) {
+                if msg_serde_json::cmp_str_id_and_serde_json_msg_header($id_str, s) {
                     match serde_json::from_str::<Self>(s) {
                         Ok(msg) => Some(msg),
                         Err(why) => {
@@ -66,43 +74,32 @@ macro_rules! msg_macro {
                 }
             }
 
-            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
+            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
                 if let Ok(s) = std::str::from_utf8(buf) {
-                    Self::from_serde_json_str(s)
+                    if let Some(m) = Self::from_serde_json_str(s) {
+                        Some(Box::new(m))
+                    } else {
+                        None
+                    }
                 } else {
                     log::error!("{}::from_serde_json_buf: Not UTF8", stringify!($name));
                     None
                 }
             }
 
-            pub fn to_serde_json_buf(&self) -> std::option::Option<Vec<u8>> {
-                match serde_json::to_vec(self) {
-                    Ok(v) => Some(v),
-                    Err(why) => {
-                        log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
-                        None
+            pub fn to_serde_json_buf(
+                boxed_msg_any: msg_header::BoxMsgAny,
+            ) -> std::option::Option<Vec<u8>> {
+                if let Some(m) = boxed_msg_any.downcast_ref::<Self>() {
+                    match serde_json::to_vec(m) {
+                        Ok(v) => Some(v),
+                        Err(why) => {
+                            log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
+                            None
+                        }
                     }
-                }
-            }
-        }
-
-        impl msg_serde_json::MsgSerdeJson<$name> for $name {
-            fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<Self> {
-                if let Ok(s) = std::str::from_utf8(buf) {
-                    Self::from_serde_json_str(s)
                 } else {
-                    log::error!("{}::from_serde_json_buf: Not UTF8", stringify!($name));
                     None
-                }
-            }
-
-            fn to_serde_json_buf(msg: &$name) -> std::option::Option<Vec<u8>> {
-                match serde_json::to_vec(msg) {
-                    Ok(v) => Some(v),
-                    Err(why) => {
-                        log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
-                        None
-                    }
                 }
             }
         }
@@ -112,6 +109,8 @@ macro_rules! msg_macro {
 #[cfg(test)]
 mod test {
     use std::any::{Any, TypeId};
+
+    use msg_header::BoxMsgAny;
 
     use super::*;
 
@@ -145,10 +144,12 @@ mod test {
     }
 
     #[test]
-    fn test_msg_a_from_json_buf() {
+    fn test_msg_a_to_from_serde_json_buf() {
         let msg_a = Box::<MsgA>::default();
-        let ser_msg_a = msg_a.to_serde_json_string().unwrap();
-        let msg_a_from_serde_json_str = MsgA::from_serde_json_buf(ser_msg_a.as_bytes()).unwrap();
-        assert_eq!(*msg_a, msg_a_from_serde_json_str);
+        let msg_a_any_1: BoxMsgAny = msg_a.clone();
+        let msg_a_vec = MsgA::to_serde_json_buf(msg_a_any_1).unwrap();
+        let msg_a_any_2 = MsgA::from_serde_json_buf(&msg_a_vec).unwrap();
+        let msg_a_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
+        assert_eq!(&*msg_a, msg_a_deser);
     }
 }
