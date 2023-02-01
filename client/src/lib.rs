@@ -5,7 +5,8 @@ use std::{
     fmt::{self, Debug},
 };
 
-use sm::{BoxMsgAny, ProcessMsgAny};
+use msg_header::BoxMsgAny;
+use sm::ProcessMsgAny;
 
 type ProcessMsgFn<SM> = fn(&mut SM, BoxMsgAny);
 
