@@ -9,17 +9,12 @@ state machines with two states.
 ## Run
 
 ```
-wink@3900x 23-02-01T17:38:03.312Z:~/prgs/rust/myrepos/exper_inter_process_channel (main)
+wink@3900x 23-02-01T18:02:45.172Z:~/prgs/rust/myrepos/exper_inter_process_channel (main)
 $ cargo run
-   Compiling msg_header v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_header)
-   Compiling msg_serde_json v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_serde_json)
-   Compiling msg_macro v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_macro)
-   Compiling msg1 v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg1)
-   Compiling msg2 v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg2)
-   Compiling sm_network_to_channel v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/sm_network_to_channel)
-   Compiling sm_channel_to_network v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/sm_channel_to_network)
+   Compiling client v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/client)
+   Compiling server v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/server)
    Compiling exper_inter_process_channel v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel)
-    Finished dev [unoptimized + debuginfo] target(s) in 1.09s
+    Finished dev [unoptimized + debuginfo] target(s) in 0.61s
      Running `target/debug/exper_inter_process_channel`
 main:+
 tickle_ipchnl:+
@@ -46,8 +41,8 @@ ipchnlr stream: msg_len=56
 ipchnlr stream: msg_buf={"header":{"id":"4029b3c4-f380-488a-8560-8320cc8fb76e"}}
 msg2=Msg2 { header: MsgHeader { id: 4029b3c4-f380-488a-8560-8320cc8fb76e } }
 tickle_ipchnlr:-
-main:-
 ipchnlr stream: stream closed reading msg_len, stopping
+main:-
 ipchnlr stream:-
 ```
 
@@ -55,24 +50,31 @@ ipchnlr stream:-
 
 A few tests
 ```
-wink@3900x 23-02-01T17:38:14.142Z:~/prgs/rust/myrepos/exper_inter_process_channel (main)
+wink@3900x 23-02-01T17:52:25.523Z:~/prgs/rust/myrepos/exper_inter_process_channel (main)
 $ cargo test --all
    Compiling msg_header v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_header)
+   Compiling sm v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/sm)
    Compiling msg_serde_json v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_serde_json)
    Compiling msg1 v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg1)
    Compiling msg_macro v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg_macro)
    Compiling msg2 v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/msg2)
-   Compiling sm_channel_to_network v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/sm_channel_to_network)
-   Compiling sm_network_to_channel v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/sm_network_to_channel)
+   Compiling server v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/server)
+   Compiling client v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel/client)
    Compiling exper_inter_process_channel v0.1.0 (/home/wink/prgs/rust/myrepos/exper_inter_process_channel)
     Finished test [unoptimized + debuginfo] target(s) in 0.48s
-     Running unittests src/main.rs (target/debug/deps/exper_inter_process_channel-2dc729b6add59341)
+     Running unittests src/lib.rs (target/debug/deps/client-f157fd6a7bf3181d)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running tests/test.rs (target/debug/deps/test-a0c13e144631c349)
+     Running unittests src/main.rs (target/debug/deps/exper_inter_process_channel-981186be16abd506)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/test.rs (target/debug/deps/test-95eab23c2d044b8e)
 
 running 1 test
 test test_identical_json - should panic ... ok
@@ -104,8 +106,8 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
      Running unittests src/lib.rs (target/debug/deps/msg_macro-3ed0087914ee585e)
 
 running 3 tests
-test test::test_msg_a_from_json_str ... ok
 test test::test_msg_a_serde ... ok
+test test::test_msg_a_from_json_str ... ok
 test test::test_msg_a_to_from_serde_json_buf ... ok
 
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
@@ -125,19 +127,19 @@ test test::test_cmp_str_id_and_serde_json_msg_header_with_short_id_in_header ...
 
 test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
+     Running unittests src/lib.rs (target/debug/deps/server-06365d9056a74c20)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
      Running unittests src/lib.rs (target/debug/deps/sm-6ed153d4965c7216)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/lib.rs (target/debug/deps/sm_channel_to_network-6fc8532fc6643cbf)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src/lib.rs (target/debug/deps/sm_network_to_channel-6d8733a4dfa7844f)
+   Doc-tests client
 
 running 0 tests
 
@@ -173,19 +175,13 @@ running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
+   Doc-tests server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
    Doc-tests sm
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-   Doc-tests sm_channel_to_network
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-   Doc-tests sm_network_to_channel
 
 running 0 tests
 

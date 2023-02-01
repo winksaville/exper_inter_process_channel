@@ -30,6 +30,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "client"
+version = "0.1.0"
+dependencies = [
+ "msg1",
+ "msg2",
+ "msg_header",
+ "sm",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -97,6 +107,7 @@ dependencies = [
 name = "exper_inter_process_channel"
 version = "0.1.0"
 dependencies = [
+ "client",
  "crossbeam-channel",
  "custom_logger",
  "msg1",
@@ -105,9 +116,8 @@ dependencies = [
  "msg_serde_json",
  "serde",
  "serde_json",
+ "server",
  "sm",
- "sm_channel_to_network",
- "sm_network_to_channel",
  "uuid",
 ]
 
@@ -386,31 +396,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "msg1",
+ "msg2",
+ "msg_header",
+ "sm",
+]
+
+[[package]]
 name = "sm"
 version = "0.1.0"
 dependencies = [
  "serde",
  "uuid",
-]
-
-[[package]]
-name = "sm_channel_to_network"
-version = "0.1.0"
-dependencies = [
- "msg1",
- "msg2",
- "msg_header",
- "sm",
-]
-
-[[package]]
-name = "sm_network_to_channel"
-version = "0.1.0"
-dependencies = [
- "msg1",
- "msg2",
- "msg_header",
- "sm",
 ]
 
 [[package]]

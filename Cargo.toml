@@ -13,8 +13,8 @@ msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msg1" }
 msg2 = { path="msg2" }
 sm = { path="sm" }
-sm_channel_to_network = { path="sm_channel_to_network" }
-sm_network_to_channel = { path="sm_network_to_channel" }
+client = { path="client" }
+server = { path="server" }
 uuid = "1.2.2"
 crossbeam-channel = "0.5.6"
 serde = "1.0.152"
@@ -29,8 +29,8 @@ members = [
     "msg2",
     "msg_macro",
     "sm",
-    "sm_channel_to_network",
-    "sm_network_to_channel",
+    "client",
+    "server",
 ]
 
 [workspace.package]

@@ -11,7 +11,7 @@ use msg1::{Msg1, MSG1_ID};
 use msg2::{Msg2, MSG2_ID};
 use msg_header::MsgId;
 use sm::{BoxMsgAny, ProcessMsgAny};
-use sm_channel_to_network::SmChannelToNetwork;
+use client::Client;
 
 fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
     let b0 = buf[0] as u16;
@@ -123,7 +123,7 @@ fn ipchnl(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<String>) {
     let (complete_tx, status_rx) = bounded(1);
     thread::spawn(move || {
         println!("c2n_ipchnl:+");
-        let mut c2n = SmChannelToNetwork::new("c2n", SmChannelToNetwork::state0);
+        let mut c2n = Client::new("c2n", Client::state0);
 
         // Indicate we're ready
         complete_tx

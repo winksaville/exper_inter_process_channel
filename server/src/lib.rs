@@ -19,31 +19,33 @@ pub struct StateInfo {
 type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 
 // State machine for channel to network
-pub struct SmChannelToNetwork {
+pub struct Server {
     pub name: String,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 }
 
-impl Debug for SmChannelToNetwork {
+impl Debug for Server {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let k = self.current_state as *const ProcessMsgFn<Self>;
-        let kstring = format!("{k:p}");
-        let name = if let Some(n) = self.state_info_hash.get(&k) {
+        let fn_ptr = self.current_state as *const ProcessMsgFn<Self>;
+        let fn_ptr_string = format!("{fn_ptr:p}");
+        let state_name = if let Some(n) = self.state_info_hash.get(&fn_ptr) {
+            // State does have a name
             n.name.as_str()
         } else {
-            kstring.as_str()
+            // State does NOT have a name, use address
+            fn_ptr_string.as_str()
         };
 
         write!(
             f,
-            "SmChannelToNetwork {{ name: {}, state_info_hash: {:?}; current_state: {name} }}",
-            self.name, self.state_info_hash
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name} }}",
+            self.name, self.name, self.state_info_hash
         )
     }
 }
 
-impl SmChannelToNetwork {
+impl Server {
     pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
         Self {
             name: name.to_owned(),
@@ -75,7 +77,7 @@ impl SmChannelToNetwork {
             println!("{}:State0: Unknown msg={msg:?}", self.name);
         }
 
-        self.transition(SmChannelToNetwork::state1);
+        self.transition(Server::state1);
     }
 
     pub fn state1(&mut self, msg: BoxMsgAny) {
@@ -89,11 +91,11 @@ impl SmChannelToNetwork {
             println!("{}:State1: Unknown msg={msg:?}", self.name);
         }
 
-        self.transition(SmChannelToNetwork::state0);
+        self.transition(Server::state0);
     }
 }
 
-impl ProcessMsgAny for SmChannelToNetwork {
+impl ProcessMsgAny for Server {
     fn process_msg_any(&mut self, msg: BoxMsgAny) {
         (self.current_state)(self, msg);
     }
