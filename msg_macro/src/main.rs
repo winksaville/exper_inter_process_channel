@@ -1,7 +1,9 @@
 use custom_logger::env_logger_init;
-use msg_header::MsgId;
+use msg_header::BoxMsgAny;
+//use msg_header::{MsgId, BoxMsgAny};
 use msg_macro::{msg_macro, paste};
-use std::collections::HashMap;
+//use msg_serde_json::{FromSerdeJsonBuf, ToSerdeJsonBuf};
+//use std::collections::HashMap;
 
 // From: https://www.uuidgenerator.net/version4
 msg_macro!(MsgA, "d122e9aa-0a69-4654-8e41-e2813bc40272");
@@ -20,17 +22,12 @@ fn main() {
     println!("msg_a_deser={msg_a_deser:?}");
     assert_eq!(msg_a_deser, msg_a);
 
-    let deser = MsgA::from_serde_json_str;
-
-    // Use HashMap to deserialize
-    let mut hm = HashMap::<MsgId, fn(&str) -> Option<MsgA>>::new();
-    hm.insert(msg_a.id(), deser);
-    println!("hm.len()={}", hm.len());
-    let fn_from_serde_json_str = hm.get(&msg_a.id()).unwrap();
-    let msg_a_deser2 = fn_from_serde_json_str(&msg_a_serde_json_string).unwrap();
-    println!("msg_a_deser2={msg_a_deser2:?}");
-    assert_eq!(msg_a_deser2, msg_a);
-
-    // Question If the value of the hashmap is a trait
-    // object can different return Types be returned?
+    let msg_a_any_1: BoxMsgAny = Box::new(msg_a.clone());
+    let msg_a_vec = MsgA::to_serde_json_buf(msg_a_any_1).unwrap();
+    println!("msg_a_vec={msg_a_vec:x?}");
+    println!("msg_a_vec as utf8={:?}", std::str::from_utf8(&msg_a_vec).unwrap());
+    let msg_a_any_2 = MsgA::from_serde_json_buf(&msg_a_vec).unwrap();
+    let msg_a_any_2_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
+    println!("msg_a_any_2_deser={msg_a_any_2_deser:?}");
+    assert_eq!(&msg_a, msg_a_any_2_deser);
 }

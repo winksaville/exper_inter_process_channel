@@ -10,7 +10,6 @@ use custom_logger::env_logger_init;
 use msg1::{Msg1, MSG1_ID};
 use msg2::{Msg2, MSG2_ID};
 use msg_header::MsgId;
-use msg_serde_json::MsgSerdeJson;
 use sm::{BoxMsgAny, ProcessMsgAny};
 use sm_channel_to_network::SmChannelToNetwork;
 
@@ -37,6 +36,8 @@ fn write_msg_buf_to_tcp_stream(stream: &mut TcpStream, msg_buf: &[u8]) {
         .expect("tickle_ipchnlr: Couldn't write data");
 }
 
+// Test that we can use a channel to receive msg serialized to serde_json across thread boundaries
+//
 // Return string representing the remote "ip_address:port"
 fn ipchnlr() -> (String, Receiver<String>) {
     let ip_address_port = "127.0.0.1:54321";
@@ -81,6 +82,7 @@ fn ipchnlr() -> (String, Receiver<String>) {
                                 println!("ipchnlr stream: stream close reading msg_buf, stopping");
                                 break;
                             }
+
                             print!("ipchnlr stream: msg_buf=");
                             if let Ok(msg_buf_str) = from_utf8(&msg_buf) {
                                 println!("{msg_buf_str}");
@@ -88,10 +90,11 @@ fn ipchnlr() -> (String, Receiver<String>) {
                                 println!("{msg_buf:x?}");
                             }
 
+                            // Convert the buffer as msg any
                             if let Some(msg1) = Msg1::from_serde_json_buf(&msg_buf) {
-                                println!("msg1={msg1:?}");
+                                println!("msg1={:?}", Msg1::from_box_msg_any(&msg1).unwrap());
                             } else if let Some(msg2) = Msg2::from_serde_json_buf(&msg_buf) {
-                                println!("msg2={msg2:?}");
+                                println!("msg2={:?}", Msg2::from_box_msg_any(&msg2).unwrap());
                             } else {
                                 println!("Error converting serde_json");
                             }
@@ -113,6 +116,7 @@ fn ipchnlr() -> (String, Receiver<String>) {
     (ip_address_port.to_owned(), status_rx)
 }
 
+// Test that we can use a channel to receive BoxMsgAny across thread boundaries
 fn ipchnl(_msg_list: Vec<MsgId>) -> (Sender<BoxMsgAny>, Receiver<String>) {
     let (tx, rx) = unbounded::<BoxMsgAny>();
 
@@ -191,7 +195,8 @@ fn tickle_ipchnlr() {
         TcpStream::connect(ip_address_port).expect("tickle_ipchnlr: Could not connect to ipchnlr");
 
     let msg1 = Box::<Msg1>::default();
-    let msg_buf = Msg1::to_serde_json_buf(&msg1).expect("tickle_ipchnlr: Could not serialize msg1");
+    let msg_buf =
+        Msg1::to_serde_json_buf(msg1.clone()).expect("tickle_ipchnlr: Could not serialize msg1");
     write_msg_buf_to_tcp_stream(&mut stream, &msg_buf);
 
     let msg = status_rx
@@ -200,9 +205,8 @@ fn tickle_ipchnlr() {
     assert_eq!("completed", msg.as_str());
 
     let msg2 = Box::<Msg2>::default();
-    let msg_buf = msg2
-        .to_serde_json_buf()
-        .expect("tickle_ipchnlr: Could not serialize msg2");
+    let msg_buf =
+        Msg2::to_serde_json_buf(msg2.clone()).expect("tickle_ipchnlr: Could not serialize msg2");
     write_msg_buf_to_tcp_stream(&mut stream, &msg_buf);
 
     let msg = status_rx
@@ -211,6 +215,7 @@ fn tickle_ipchnlr() {
     assert_eq!("completed", msg.as_str());
 
     drop(msg1);
+    drop(msg2);
     println!("tickle_ipchnlr:-");
 }
 

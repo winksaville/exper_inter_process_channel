@@ -270,6 +270,10 @@ dependencies = [
 [[package]]
 name = "msg_serde_json"
 version = "0.1.0"
+dependencies = [
+ "msg_header",
+ "uuid",
+]
 
 [[package]]
 name = "paste"
