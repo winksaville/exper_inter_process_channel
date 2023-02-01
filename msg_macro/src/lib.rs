@@ -45,44 +45,30 @@ macro_rules! msg_macro {
                 }
             }
 
-            pub fn to_serde_json_string(&self) -> std::option::Option<String> {
-                match serde_json::to_string(self) {
-                    Ok(v) => Some(v),
-                    Err(why) => {
-                        log::error!("{}.to_serde_json_string: Error {}", stringify!($name), why);
+            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
+                let id = msg_serde_json::get_id_str_from_buf(buf);
+                if id == $id_str {
+                    if let Ok(s) = std::str::from_utf8(buf) {
+                        match serde_json::from_str::<Self>(s) {
+                            Ok(msg) => Some(Box::new(msg)),
+                            Err(why) => {
+                                log::error!("{}::from_serde_json_str: {why}", stringify!($name));
+                                None
+                            }
+                        }
+                    } else {
+                        log::error!(
+                            "{}::from_serde_json_buf: buf parameter was NOT UTF8",
+                            stringify!($name)
+                        );
                         None
                     }
-                }
-            }
-
-            pub fn from_serde_json_str(s: &str) -> std::option::Option<Self> {
-                if msg_serde_json::cmp_str_id_and_serde_json_msg_header($id_str, s) {
-                    match serde_json::from_str::<Self>(s) {
-                        Ok(msg) => Some(msg),
-                        Err(why) => {
-                            log::error!("{}::from_serde_json_str: {why}", stringify!($name));
-                            None
-                        }
-                    }
                 } else {
-                    log::trace!(
-                        "{}::from_serde_json_str: wrong id in {s}, expecting {}",
+                    log::error!(
+                        "{} id: {}, does not match buffer id: {id}",
                         stringify!($name),
                         $id_str
                     );
-                    None
-                }
-            }
-
-            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
-                if let Ok(s) = std::str::from_utf8(buf) {
-                    if let Some(m) = Self::from_serde_json_str(s) {
-                        Some(Box::new(m))
-                    } else {
-                        None
-                    }
-                } else {
-                    log::error!("{}::from_serde_json_buf: Not UTF8", stringify!($name));
                     None
                 }
             }
@@ -94,7 +80,7 @@ macro_rules! msg_macro {
                     match serde_json::to_vec(m) {
                         Ok(v) => Some(v),
                         Err(why) => {
-                            log::error!("{}.to_serde_json_buf: Error {}", stringify!($name), why);
+                            log::error!("{}.to_serde_json_buf: Error {why}", stringify!($name));
                             None
                         }
                     }
@@ -108,40 +94,12 @@ macro_rules! msg_macro {
 
 #[cfg(test)]
 mod test {
-    use std::any::{Any, TypeId};
-
     use msg_header::BoxMsgAny;
 
     use super::*;
 
     // From: https://www.uuidgenerator.net/version4
     msg_macro!(MsgA, "d122e9aa-0a69-4654-8e41-e2813bc40272");
-
-    #[test]
-    fn test_msg_a_serde() {
-        let msg_a = Box::<MsgA>::default();
-        println!("test_msg_a_serde: msg_a: {msg_a:?}");
-        let ser_msg_a = msg_a.to_serde_json_string().unwrap();
-        println!("test_msg_a_serde: ser_msg_a={ser_msg_a}");
-        let deser_msg_a: MsgA = MsgA::from_serde_json_str(&ser_msg_a).unwrap();
-        println!("test_msg_a_serde: deser_msg_a={deser_msg_a:?}");
-        assert_eq!(msg_a.header.id, MSG_A_ID);
-        assert_eq!(msg_a.header.id, deser_msg_a.header.id);
-        println!(
-            "test_msg_a_serde: TypeId::of::<MsgA>()={:?} msg_a.type_id()={:?}",
-            TypeId::of::<MsgA>(),
-            deser_msg_a.type_id()
-        );
-        assert_eq!(TypeId::of::<MsgA>(), deser_msg_a.type_id());
-    }
-
-    #[test]
-    fn test_msg_a_from_json_str() {
-        let msg_a = Box::<MsgA>::default();
-        let ser_msg_a = msg_a.to_serde_json_string().unwrap();
-        let msg_a_from_serde_json_str = MsgA::from_serde_json_str(ser_msg_a.as_str()).unwrap();
-        assert_eq!(*msg_a, msg_a_from_serde_json_str);
-    }
 
     #[test]
     fn test_msg_a_to_from_serde_json_buf() {
