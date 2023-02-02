@@ -51,6 +51,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo_reply"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "msg_header",
+ "msg_macro",
+ "msg_serde_json",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "echo_req"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "msg_header",
+ "msg_macro",
+ "msg_serde_json",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
