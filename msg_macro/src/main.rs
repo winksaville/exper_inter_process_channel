@@ -3,7 +3,7 @@ use msg_header::BoxMsgAny;
 use msg_macro::{msg_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4
-msg_macro!(MsgA, "d122e9aa-0a69-4654-8e41-e2813bc40272");
+msg_macro!(MsgA "d122e9aa-0a69-4654-8e41-e2813bc40272");
 
 fn main() {
     env_logger_init("error");
@@ -23,4 +23,17 @@ fn main() {
     let msg_a_any_2_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
     println!("msg_a_any_2_deser={msg_a_any_2_deser:?}");
     assert_eq!(&msg_a, msg_a_any_2_deser);
+
+    msg_macro!(MsgB "5cd57392-151a-4460-8a2f-86c79ddad18a" {
+        a_u64: u64,
+        a_string: String
+    });
+
+    let msg_b = MsgB {
+        header: msg_header::MsgHeader { id: MSG_B_ID },
+        a_u64: 23,
+        a_string: "yo".to_string(),
+    };
+
+    println!("msg_b: {msg_b:?}");
 }
