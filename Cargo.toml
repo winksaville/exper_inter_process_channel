@@ -26,6 +26,8 @@ members = [
     "msg_serde_json",
     "msg1",
     "msg2",
+    "echo_reply",
+    "echo_req",
     "msg_macro",
     "sm",
     "client",
