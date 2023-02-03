@@ -1,5 +1,5 @@
-use msg1::{Msg1, MSG1_ID};
-use msg2::{Msg2, MSG2_ID};
+use echo_reply::{EchoReply, ECHO_REPLY_ID};
+use echo_req::{EchoReq, ECHO_REQ_ID};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -48,11 +48,14 @@ impl Debug for Server {
 
 impl Server {
     pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
-        Self {
+        let mut this = Self {
             name: name.to_owned(),
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
-        }
+        };
+
+        this.add_state(Self::state0, "state0");
+        this
     }
 
     pub fn add_state(&mut self, state: ProcessMsgFn<Self>, name: &str) {
@@ -63,41 +66,44 @@ impl Server {
         self.state_info_hash.insert(k, s);
     }
 
+    #[allow(unused)]
     fn transition(&mut self, dest: ProcessMsgFn<Self>) {
         self.current_state = dest;
     }
 
     pub fn state0(&mut self, msg: BoxMsgAny) {
-        if let Some(m) = msg.downcast_ref::<Msg1>() {
-            assert_eq!(m.header.id, MSG1_ID);
+        if let Some(m) = msg.downcast_ref::<EchoReply>() {
+            assert_eq!(m.header.id, ECHO_REPLY_ID);
             println!("{}:State0: {m:?}", self.name);
-        } else if let Some(m) = msg.downcast_ref::<Msg2>() {
-            assert_eq!(m.header.id, MSG2_ID);
+        } else if let Some(m) = msg.downcast_ref::<EchoReq>() {
+            assert_eq!(m.header.id, ECHO_REQ_ID);
             println!("{}:State0: {m:?}", self.name);
         } else {
-            println!("{}:State0: Unknown msg={msg:?}", self.name);
+            let msg_id = msg_header::get_msg_id_from_boxed_msg_any(&msg);
+            println!("{}:State0: Unknown msg={msg:?} {msg_id:?}", self.name);
         }
-
-        self.transition(Server::state1);
-    }
-
-    pub fn state1(&mut self, msg: BoxMsgAny) {
-        if let Some(m) = msg.downcast_ref::<Msg1>() {
-            assert_eq!(m.header.id, MSG1_ID);
-            println!("{}:State1: {m:?}", self.name);
-        } else if let Some(m) = msg.downcast_ref::<Msg2>() {
-            assert_eq!(m.header.id, MSG2_ID);
-            println!("{}:State1: {m:?}", self.name);
-        } else {
-            println!("{}:State1: Unknown msg={msg:?}", self.name);
-        }
-
-        self.transition(Server::state0);
     }
 }
 
 impl ProcessMsgAny for Server {
     fn process_msg_any(&mut self, msg: BoxMsgAny) {
         (self.current_state)(self, msg);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use msg1::Msg1; //, MSG1_ID};
+
+    #[test]
+    fn test_1() {
+        let mut server = Server::new("server", Server::state0);
+        println!("test_1: server={server:?}");
+
+        let msg1 = Msg1::default();
+        println!("test_1: msg1={msg1:?}");
+
+        server.process_msg_any(Box::new(msg1));
     }
 }

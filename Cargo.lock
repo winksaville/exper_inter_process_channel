@@ -33,8 +33,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "echo_reply",
+ "echo_req",
  "msg1",
- "msg2",
  "msg_header",
  "sm",
 ]
@@ -405,8 +406,9 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "echo_reply",
+ "echo_req",
  "msg1",
- "msg2",
  "msg_header",
  "sm",
 ]
