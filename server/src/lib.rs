@@ -3,6 +3,7 @@ use echo_req::{EchoReq, ECHO_REQ_ID};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
+    sync::mpsc::Sender,
 };
 
 use msg_header::BoxMsgAny;
@@ -24,6 +25,7 @@ pub struct Server {
     pub name: String,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
+    pub partner_tx: Sender<BoxMsgAny>,
 }
 
 impl Debug for Server {
@@ -47,11 +49,16 @@ impl Debug for Server {
 }
 
 impl Server {
-    pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
+    pub fn new(
+        name: &str,
+        initial_state: ProcessMsgFn<Self>,
+        partner_tx: Sender<BoxMsgAny>,
+    ) -> Self {
         let mut this = Self {
             name: name.to_owned(),
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
+            partner_tx,
         };
 
         this.add_state(Self::state0, "state0");
@@ -78,6 +85,8 @@ impl Server {
         } else if let Some(m) = msg.downcast_ref::<EchoReq>() {
             assert_eq!(m.header.id, ECHO_REQ_ID);
             println!("{}:State0: {m:?}", self.name);
+            let reply_msg = Box::new(EchoReply::new(&m.content));
+            self.partner_tx.send(reply_msg).unwrap();
         } else {
             let msg_id = msg_header::get_msg_id_from_boxed_msg_any(&msg);
             println!("{}:State0: Unknown msg={msg:?} {msg_id:?}", self.name);
@@ -94,16 +103,22 @@ impl ProcessMsgAny for Server {
 #[cfg(test)]
 mod test {
     use super::*;
-    use msg1::Msg1; //, MSG1_ID};
+
+    use std::sync::mpsc::channel;
 
     #[test]
     fn test_1() {
-        let mut server = Server::new("server", Server::state0);
+        let (tx, rx) = channel();
+
+        let mut server = Server::new("server", Server::state0, tx);
         println!("test_1: server={server:?}");
 
-        let msg1 = Msg1::default();
-        println!("test_1: msg1={msg1:?}");
+        let echo_req = EchoReq::new("a message");
+        println!("test_1: echo_req={echo_req:?}");
 
-        server.process_msg_any(Box::new(msg1));
+        server.process_msg_any(Box::new(echo_req));
+        let reply_msg_any = rx.recv().unwrap();
+        let received_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
+        println!("test_1: received msg={received_msg:?}");
     }
 }

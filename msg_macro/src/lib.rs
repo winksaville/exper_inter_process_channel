@@ -22,7 +22,7 @@ macro_rules! msg_macro {
         pub struct $name {
             pub header: msg_header::MsgHeader,
             $(
-                $field: $field_ty,
+                pub $field: $field_ty,
             )*
         }
 
