@@ -55,6 +55,7 @@ dependencies = [
 name = "echo_reply"
 version = "0.1.0"
 dependencies = [
+ "echo_req",
  "log",
  "msg_header",
  "msg_macro",

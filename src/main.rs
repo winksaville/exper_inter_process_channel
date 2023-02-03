@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-use msg_header::{get_msg_id_from_boxed_msg_any, BoxMsgAny, MsgId};
+use msg_header::{BoxMsgAny, MsgHeader, MsgId};
 use msg_serde_json::{get_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
 fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
@@ -205,7 +205,7 @@ impl IpchnlSerializer {
             while let Ok(msg) = self.rx.recv() {
                 println!("{}::serializer: Received msg", &self.name);
 
-                let msg_id = get_msg_id_from_boxed_msg_any(&msg);
+                let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg);
                 println!("{}::serializer: msg_id={msg_id:?}", &self.name);
                 let fn_to_serde_json_buf = self.msg_serializer_map.get(msg_id).unwrap();
                 let buf = (*fn_to_serde_json_buf)(msg).unwrap();
