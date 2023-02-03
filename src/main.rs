@@ -7,10 +7,8 @@ use std::{
     thread,
 };
 
-use msg_header::{BoxMsgAny, MsgId};
-use msg_serde_json::{
-    get_id_str_from_buf, get_msg_id_from_boxed_msg_any, FromSerdeJsonBuf, ToSerdeJsonBuf,
-};
+use msg_header::{get_msg_id_from_boxed_msg_any, BoxMsgAny, MsgId};
+use msg_serde_json::{get_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
 fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
     let b0 = buf[0] as u16;

@@ -1,5 +1,4 @@
-#![feature(downcast_unchecked)] // Needed for downcast_ref_unchecked
-use msg_header::{BoxMsgAny, MsgId, MSG_ID_STR_LEN};
+use msg_header::{BoxMsgAny, MSG_ID_STR_LEN};
 
 pub type FromSerdeJsonBuf = fn(&[u8]) -> std::option::Option<BoxMsgAny>;
 pub type ToSerdeJsonBuf = fn(BoxMsgAny) -> std::option::Option<Vec<u8>>;
@@ -23,13 +22,6 @@ pub fn get_id_str_from_buf(serde_json_msg_header: &[u8]) -> &str {
         //println!("MsgHeader::get_id_str_from_buf: too short buffer: {serde_json_msg_header:x?}");
         ""
     }
-}
-
-pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &MsgId {
-    // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
-    let msg_id: &MsgId = unsafe { msg.downcast_ref_unchecked() };
-
-    msg_id
 }
 
 #[cfg(test)]
