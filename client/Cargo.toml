@@ -9,6 +9,10 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
-msg1 = { path="../msg1" }
-msg2 = { path="../msg2" }
+echo_req = { path="../echo_req" }
+echo_reply = { path="../echo_reply" }
 sm = { path="../sm" }
+
+[dev-dependencies]
+msg1 = { path="../msg1" }
+#msg2 = { path="../msg2" }
