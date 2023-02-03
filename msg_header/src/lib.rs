@@ -19,11 +19,13 @@ pub struct MsgHeader {
     pub id: MsgId,
 }
 
-pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &MsgId {
-    // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
-    let msg_id: &MsgId = unsafe { msg.downcast_ref_unchecked() };
+impl MsgHeader {
+    pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &MsgId {
+        // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+        let msg_id: &MsgId = unsafe { msg.downcast_ref_unchecked() };
 
-    msg_id
+        msg_id
+    }
 }
 
 #[cfg(test)]

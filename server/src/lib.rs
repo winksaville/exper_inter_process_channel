@@ -6,7 +6,7 @@ use std::{
     sync::mpsc::Sender,
 };
 
-use msg_header::BoxMsgAny;
+use msg_header::{BoxMsgAny, MsgHeader};
 use sm::ProcessMsgAny;
 
 type ProcessMsgFn<SM> = fn(&mut SM, BoxMsgAny);
@@ -78,18 +78,22 @@ impl Server {
         self.current_state = dest;
     }
 
-    pub fn state0(&mut self, msg: BoxMsgAny) {
-        if let Some(m) = msg.downcast_ref::<EchoReply>() {
-            assert_eq!(m.header.id, ECHO_REPLY_ID);
-            println!("{}:State0: {m:?}", self.name);
-        } else if let Some(m) = msg.downcast_ref::<EchoReq>() {
-            assert_eq!(m.header.id, ECHO_REQ_ID);
-            println!("{}:State0: {m:?}", self.name);
-            let reply_msg = Box::new(EchoReply::new(&m.content));
+    pub fn state0(&mut self, msg_any: BoxMsgAny) {
+        if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
+            assert_eq!(msg.header.id, ECHO_REPLY_ID);
+            println!("{}:State0: {msg:?}", self.name);
+        } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
+            assert_eq!(msg.header.id, ECHO_REQ_ID);
+            println!("{}:State0: msg={msg:?}", self.name);
+            let reply_msg = Box::new(EchoReply::from_echo_req(msg));
+            println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
             self.partner_tx.send(reply_msg).unwrap();
         } else {
-            let msg_id = msg_header::get_msg_id_from_boxed_msg_any(&msg);
-            println!("{}:State0: Unknown msg={msg:?} {msg_id:?}", self.name);
+            let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+            println!(
+                "{}:State0: Unknown msg_any={msg_any:?} {msg_id:?}",
+                self.name
+            );
         }
     }
 }
@@ -113,7 +117,7 @@ mod test {
         let mut server = Server::new("server", Server::state0, tx);
         println!("test_1: server={server:?}");
 
-        let echo_req = EchoReq::new("a message");
+        let echo_req = EchoReq::new("a message", 1);
         println!("test_1: echo_req={echo_req:?}");
 
         server.process_msg_any(Box::new(echo_req));
