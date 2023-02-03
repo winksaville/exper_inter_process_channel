@@ -1,3 +1,4 @@
+#![feature(downcast_unchecked)]
 //use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,13 @@ pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 #[repr(C)]
 pub struct MsgHeader {
     pub id: MsgId,
+}
+
+pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &MsgId {
+    // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+    let msg_id: &MsgId = unsafe { msg.downcast_ref_unchecked() };
+
+    msg_id
 }
 
 #[cfg(test)]
