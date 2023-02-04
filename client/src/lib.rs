@@ -1,5 +1,7 @@
+use echo_complete::EchoComplete;
 use echo_reply::{EchoReply, ECHO_REPLY_ID};
 use echo_req::{EchoReq, ECHO_REQ_ID};
+use echo_start::{EchoStart, ECHO_START_ID};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -20,12 +22,23 @@ pub struct StateInfo {
 // HashMap that maps address of a ProcessMsgFn to StateInfo
 type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 
-// State machine for channel to network
+/// Client which supports being controlled and a partner
+/// to pinging.
+///
+/// After instantiating the Controller issues an EchoStart with a ping_count.
+/// The Client will then ping the partner with an EchoReq and expects
+/// the partner to respond with an EchoReply. After pinging the expected
+/// number of times the Client will repspond to the Controller with
+/// EchoDone.
+///
+/// Errors and not handled gracefully, this is just demo.
 pub struct Client {
     pub name: String,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
-    pub partner_tx: Sender<BoxMsgAny>,
+    pub partner_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
+    pub controller_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
+    pub ping_count: u64,
 }
 
 impl Debug for Client {
@@ -42,8 +55,8 @@ impl Debug for Client {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name} }}",
-            self.name, self.name, self.state_info_hash
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; ping_count: {}; }}",
+            self.name, self.name, self.state_info_hash, self.ping_count,
         )
     }
 }
@@ -53,12 +66,15 @@ impl Client {
         name: &str,
         initial_state: ProcessMsgFn<Self>,
         partner_tx: Sender<BoxMsgAny>,
+        controller_tx: Sender<BoxMsgAny>,
     ) -> Self {
         let mut this = Self {
             name: name.to_owned(),
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
             partner_tx,
+            controller_tx,
+            ping_count: 0,
         };
 
         this.add_state(Self::state0, "state0");
@@ -78,16 +94,42 @@ impl Client {
         self.current_state = dest;
     }
 
+    fn send_echo_req_or_complete(&self, content: &str, counter: u64) {
+        println!("{}:send_echo_req_or_complete:+ content={content} counter={counter} ping_count={} * 2 = {}", self.name, self.ping_count, self.ping_count * 2);
+        if counter <= self.ping_count {
+            let req_msg = Box::new(EchoReq::new(content, counter));
+            println!(
+                "{}:send_echo_req_or_complete:- to partner_tx msg={req_msg:?}",
+                self.name
+            );
+            self.partner_tx.send(req_msg).unwrap();
+        } else {
+            println!(
+                "{}:send_echo_req_or_complete:- send Complete to controller_tx",
+                self.name
+            );
+            self.controller_tx
+                .send(Box::new(EchoComplete::new()))
+                .unwrap();
+        }
+    }
+
     pub fn state0(&mut self, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
             assert_eq!(msg.header.id, ECHO_REPLY_ID);
             println!("{}:State0: {msg:?}", self.name);
+            self.send_echo_req_or_complete(&msg.content, msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
-            let reply_msg = Box::new(EchoReply::from_echo_req(msg));
+            let reply_msg = Box::new(EchoReply::new(&msg.content, msg.counter));
             println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
             self.partner_tx.send(reply_msg).unwrap();
+        } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
+            assert_eq!(msg.header.id, ECHO_START_ID);
+            println!("{}:State0: msg={msg:?}", self.name);
+            self.ping_count = msg.ping_count;
+            self.send_echo_req_or_complete(&self.name, 1);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -110,19 +152,58 @@ mod test {
 
     use std::sync::mpsc::channel;
 
+    // Simple test with ping_count 0, there be just
+    // a EchoStart then EchoComplete.
     #[test]
-    fn test_1() {
+    fn test_ping_count_0() {
+        // For simple testing this test code will act as the partner and controller
         let (tx, rx) = channel();
 
-        let mut client = Client::new("client", Client::state0, tx);
+        // Using one channel for both partner and controller
+        let mut client = Client::new("client", Client::state0, tx.clone(), tx.clone());
         println!("test_1: client={client:?}");
 
-        let echo_req = EchoReq::new("a message", 1);
-        println!("test_1: echo_req={echo_req:?}");
-
-        client.process_msg_any(Box::new(echo_req));
+        let start_msg = Box::new(EchoStart::new(0));
+        client.process_msg_any(start_msg);
         let reply_msg_any = rx.recv().unwrap();
-        let received_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
+        let received_msg = reply_msg_any.downcast_ref::<EchoComplete>().unwrap();
         println!("test_1: received msg={received_msg:?}");
+        assert_eq!(received_msg.header.id, echo_complete::ECHO_COMPLETE_ID);
+
+        drop(tx);
+    }
+
+    // Test various ping_counts
+    #[test]
+    fn test_ping_counts() {
+        // For simple testing this test code will act as the partner and controller
+        let (tx, rx) = channel();
+
+        // Using one channel for both partner and controller
+        let mut client = Client::new("client", Client::state0, tx.clone(), tx.clone());
+        println!("test_ping_counts: client={client:?}");
+
+        for ping_count in [0, 1, 5] {
+            println!("\ntest_ping_counts: ping_count={ping_count}");
+            let start_msg = Box::new(EchoStart::new(ping_count));
+            client.process_msg_any(start_msg);
+
+            for _ in 0..ping_count {
+                let reply_msg_any = rx.recv().unwrap();
+                let received_msg = reply_msg_any.downcast_ref::<EchoReq>().unwrap();
+                println!("test_ping_counts: received msg={received_msg:?}");
+                client.process_msg_any(Box::new(EchoReply::new(
+                    &received_msg.content,
+                    received_msg.counter,
+                )));
+            }
+
+            let reply_msg_any = rx.recv().unwrap();
+            let received_msg = reply_msg_any.downcast_ref::<EchoComplete>().unwrap();
+            println!("test_ping_counts: received msg={received_msg:?}");
+            assert_eq!(received_msg.header.id, echo_complete::ECHO_COMPLETE_ID);
+        }
+
+        drop(tx);
     }
 }

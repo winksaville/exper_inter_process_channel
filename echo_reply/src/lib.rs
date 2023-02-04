@@ -1,4 +1,3 @@
-use echo_req::EchoReq;
 use msg_macro::{msg_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4
@@ -15,13 +14,6 @@ impl EchoReply {
             counter,
         }
     }
-    pub fn from_echo_req(msg: &EchoReq) -> Self {
-        Self {
-            header: msg_header::MsgHeader { id: ECHO_REPLY_ID },
-            content: msg.content.clone(),
-            counter: msg.counter + 1,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -36,17 +28,5 @@ mod test {
         assert_eq!(&msg.content, "hello");
         assert_eq!(msg.counter, 1);
         assert_eq!(msg.header.id.to_string(), ECHO_REPLY_ID_STR);
-    }
-
-    #[test]
-    fn test_echo_reply_from() {
-        let msg_echo_req = EchoReq::new("hi", 123);
-        println!("test_echo_reply msg_echo_req={msg_echo_req:?}");
-        let msg_echo_reply = EchoReply::from_echo_req(&msg_echo_req);
-        println!("test_echo_reply msg_echo_reply={msg_echo_reply:?}");
-        assert_eq!(msg_echo_reply.header.id, ECHO_REPLY_ID);
-        assert_eq!(&msg_echo_reply.content, "hi");
-        assert_eq!(msg_echo_reply.counter, 124);
-        assert_eq!(msg_echo_reply.header.id.to_string(), ECHO_REPLY_ID_STR);
     }
 }

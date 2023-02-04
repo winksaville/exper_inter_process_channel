@@ -33,8 +33,10 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "echo_complete",
  "echo_reply",
  "echo_req",
+ "echo_start",
  "msg1",
  "msg_header",
  "sm",
@@ -52,10 +54,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo_complete"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "msg_header",
+ "msg_macro",
+ "msg_serde_json",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "echo_reply"
 version = "0.1.0"
 dependencies = [
- "echo_req",
  "log",
  "msg_header",
  "msg_macro",
@@ -67,6 +81,19 @@ dependencies = [
 
 [[package]]
 name = "echo_req"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "msg_header",
+ "msg_macro",
+ "msg_serde_json",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "echo_start"
 version = "0.1.0"
 dependencies = [
  "log",
