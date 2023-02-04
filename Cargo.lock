@@ -299,6 +299,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "msg_local_macro"
+version = "0.1.0"
+dependencies = [
+ "custom_logger",
+ "log",
+ "msg_header",
+ "msg_serde_json",
+ "paste",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "msg_serde_json"
 version = "0.1.0"
 dependencies = [
