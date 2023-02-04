@@ -81,16 +81,16 @@ impl Server {
     pub fn state0(&mut self, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
-            println!("{}:State0: msg={msg:?}", self.name);
-            let reply_msg = Box::new(EchoReply::new(&msg.content, msg.counter));
-            println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
+            //println!("{}:State0: msg={msg:?}", self.name);
+            let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
+            //println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
             self.partner_tx.send(reply_msg).unwrap();
-        } else {
-            let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
-            println!(
-                "{}:State0: Unknown msg_any={msg_any:?} {msg_id:?}",
-                self.name
-            );
+        //} else {
+        //    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+        //    println!(
+        //        "{}:State0: Unknown msg_any={msg_any:?} {msg_id:?}",
+        //        self.name
+        //    );
         }
     }
 }
@@ -103,6 +103,8 @@ impl ProcessMsgAny for Server {
 
 #[cfg(test)]
 mod test {
+    use chrono::Utc;
+
     use super::*;
 
     use std::sync::mpsc::channel;
@@ -114,12 +116,34 @@ mod test {
         let mut server = Server::new("server", Server::state0, tx);
         println!("test_1: server={server:?}");
 
-        let echo_req = EchoReq::new("a message", 1);
-        println!("test_1: echo_req={echo_req:?}");
+        let first_now_ns = Utc::now().timestamp_nanos();
+        let second_now_ns = Utc::now().timestamp_nanos();
+        let third_now_ns = Utc::now().timestamp_nanos();
 
-        server.process_msg_any(Box::new(echo_req));
+        let now_ns = Utc::now().timestamp_nanos();
+
+        let echo_req = EchoReq::new(1);
+        server.process_msg_any(Box::new(echo_req.clone()));
         let reply_msg_any = rx.recv().unwrap();
         let received_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
-        println!("test_1: received msg={received_msg:?}");
+
+        let last_ns = Utc::now().timestamp_nanos();
+
+        assert!(echo_req.req_timestamp_ns >= now_ns);
+        assert_eq!(received_msg.req_timestamp_ns, echo_req.req_timestamp_ns);
+        assert!(received_msg.req_timestamp_ns >= now_ns);
+        assert!(last_ns >= received_msg.req_timestamp_ns);
+        
+        println!("test_1: echo_req={echo_req:?}");
+        println!("test_1: received msg = {received_msg:?}");
+        println!();
+        println!("test_1:          second_now_ns - first_now_ns = {:6}ns", second_now_ns - first_now_ns);
+        println!("test_1:          third_now_ns - second_now_ns = {:6}ns", third_now_ns - second_now_ns);
+        println!("test_1:                 now_ns - third_now_ns = {:6}ns", now_ns - third_now_ns);
+        println!("test_1:             req_timestamp_ns - now_ns = {:6}ns", received_msg.req_timestamp_ns - now_ns);
+        println!("test_1: reply_timestamp_ns - req_timestamp_ns = {:6}ns", received_msg.reply_timestamp_ns - received_msg.req_timestamp_ns);
+        println!("test_1:          last_ns - reply_timestamp_ns = {:6}ns", last_ns - received_msg.reply_timestamp_ns);
+        println!("test_1:                RTT = last_ns - now_ns = {:6}ns", last_ns - now_ns);
+
     }
 }

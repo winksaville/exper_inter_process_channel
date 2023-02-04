@@ -12,6 +12,7 @@ msg_header = { path="../msg_header" }
 echo_req = { path="../echo_req" }
 echo_reply = { path="../echo_reply" }
 sm = { path="../sm" }
+chrono = "0.4.23"
 
 [dev-dependencies]
 msg1 = { path="../msg1" }
