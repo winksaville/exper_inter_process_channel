@@ -28,7 +28,7 @@ members = [
     "msg2",
     "echo_reply",
     "echo_req",
-    "msg_macro",
+    "msg_serde_macro",
     "sm",
     "client",
     "server",

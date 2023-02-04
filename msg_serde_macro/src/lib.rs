@@ -7,7 +7,7 @@ pub use paste::paste;
 // But I couldn't get that to work. Also, needs to handle
 // nested structs!
 #[macro_export]
-macro_rules! msg_macro {
+macro_rules! msg_serde_macro {
     ($name:ident $id_str:literal { $( $field:ident : $field_ty:ty ),* }) => {
         paste! {
             #[allow(unused)]
@@ -17,7 +17,7 @@ macro_rules! msg_macro {
             pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = uuid::uuid!($id_str);
         }
 
-        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[repr(C)]
         pub struct $name {
             pub header: msg_header::MsgHeader,
@@ -95,7 +95,7 @@ macro_rules! msg_macro {
             pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = uuid::uuid!($id_str);
         }
 
-        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
         #[repr(C)]
         pub struct $name {
             pub header: msg_header::MsgHeader,
@@ -183,7 +183,7 @@ mod test {
     use super::*;
 
     // From: https://www.uuidgenerator.net/version4
-    msg_macro!(MsgA "d122e9aa-0a69-4654-8e41-e2813bc40272");
+    msg_serde_macro!(MsgA "d122e9aa-0a69-4654-8e41-e2813bc40272");
 
     #[test]
     fn test_msg_a_to_from_serde_json_buf() {
@@ -194,10 +194,9 @@ mod test {
         let msg_a_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
         assert_eq!(msg_a_deser.header.id, MSG_A_ID);
         assert_eq!(msg_a_deser.header.id.to_string(), MSG_A_ID_STR);
-        assert_eq!(msg_a_deser, &*msg_a);
     }
 
-    msg_macro!(MsgB "5cd57392-151a-4460-8a2f-86c79ddad18a" {
+    msg_serde_macro!(MsgB "5cd57392-151a-4460-8a2f-86c79ddad18a" {
         a_u64: u64,
         a_string: String  // Last field must not have a comma (need to fix macro)
     });
@@ -229,6 +228,5 @@ mod test {
         assert_eq!(msg_b_deser.a_u64, 123);
         assert_eq!(msg_b_deser.a_string, "hi");
         assert_eq!(msg_b_deser.header.id.to_string(), MSG_B_ID_STR);
-        assert_eq!(msg_b_deser, &*msg_b);
     }
 }
