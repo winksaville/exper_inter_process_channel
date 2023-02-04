@@ -1,7 +1,7 @@
-use msg_macro::{msg_macro, paste};
+use msg_serde_macro::{msg_serde_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4
-msg_macro!(EchoReply "8206e26f-a69d-4875-8a85-0cfb636ca7c2" {
+msg_serde_macro!(EchoReply "8206e26f-a69d-4875-8a85-0cfb636ca7c2" {
     content: String,
     counter: u64
 });

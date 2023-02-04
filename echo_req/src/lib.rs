@@ -1,7 +1,7 @@
-use msg_macro::{msg_macro, paste};
+use msg_serde_macro::{msg_serde_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4
-msg_macro!(EchoReq "ada0f9a9-b556-46ba-b3d5-d19c87ec216c" {
+msg_serde_macro!(EchoReq "ada0f9a9-b556-46ba-b3d5-d19c87ec216c" {
     content: String,
     counter: u64
 });

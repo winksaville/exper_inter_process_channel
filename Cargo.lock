@@ -59,8 +59,8 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_macro",
  "msg_serde_json",
+ "msg_serde_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -72,8 +72,8 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_macro",
  "msg_serde_json",
+ "msg_serde_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -85,8 +85,8 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_macro",
  "msg_serde_json",
+ "msg_serde_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -98,8 +98,8 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_macro",
  "msg_serde_json",
+ "msg_serde_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -283,8 +283,8 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_macro",
  "msg_serde_json",
+ "msg_serde_macro",
  "serde",
  "serde_json",
  "uuid",
@@ -299,7 +299,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "msg_macro"
+name = "msg_serde_json"
+version = "0.1.0"
+dependencies = [
+ "msg_header",
+ "uuid",
+]
+
+[[package]]
+name = "msg_serde_macro"
 version = "0.1.0"
 dependencies = [
  "custom_logger",
@@ -309,14 +317,6 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
- "uuid",
-]
-
-[[package]]
-name = "msg_serde_json"
-version = "0.1.0"
-dependencies = [
- "msg_header",
  "uuid",
 ]
 
