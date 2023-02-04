@@ -1,5 +1,5 @@
 [package]
-name = "echo_reply"
+name = "echo_start"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true

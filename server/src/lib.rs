@@ -1,4 +1,4 @@
-use echo_reply::{EchoReply, ECHO_REPLY_ID};
+use echo_reply::EchoReply;
 use echo_req::{EchoReq, ECHO_REQ_ID};
 use std::{
     collections::HashMap,
@@ -79,13 +79,10 @@ impl Server {
     }
 
     pub fn state0(&mut self, msg_any: BoxMsgAny) {
-        if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
-            assert_eq!(msg.header.id, ECHO_REPLY_ID);
-            println!("{}:State0: {msg:?}", self.name);
-        } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
+        if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
-            let reply_msg = Box::new(EchoReply::from_echo_req(msg));
+            let reply_msg = Box::new(EchoReply::new(&msg.content, msg.counter));
             println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
             self.partner_tx.send(reply_msg).unwrap();
         } else {

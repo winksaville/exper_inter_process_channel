@@ -9,6 +9,8 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
+echo_start = { path="../echo_start" }
+echo_complete = { path="../echo_complete" }
 echo_req = { path="../echo_req" }
 echo_reply = { path="../echo_reply" }
 sm = { path="../sm" }
