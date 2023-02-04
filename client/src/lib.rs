@@ -11,7 +11,7 @@ use std::{
 use msg_header::{BoxMsgAny, MsgHeader};
 use sm::ProcessMsgAny;
 
-type ProcessMsgFn<SM> = fn(&mut SM, BoxMsgAny);
+type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
 // State information
 #[derive(Debug)]
@@ -94,7 +94,7 @@ impl Client {
         self.current_state = dest;
     }
 
-    fn send_echo_req_or_complete(&self, counter: u64) {
+    fn send_echo_req_or_complete(&self, reply_tx: Option<&Sender<BoxMsgAny>>, counter: u64) {
         println!(
             "{}:send_echo_req_or_complete:+ counter={counter} ping_count={} * 2 = {}",
             self.name,
@@ -107,7 +107,11 @@ impl Client {
                 "{}:send_echo_req_or_complete:- to partner_tx msg={req_msg:?}",
                 self.name
             );
-            self.partner_tx.send(req_msg).unwrap();
+            if let Some(tx) = reply_tx {
+                tx.send(req_msg).unwrap();
+            } else {
+                self.partner_tx.send(req_msg).unwrap();
+            }
         } else {
             println!(
                 "{}:send_echo_req_or_complete:- send Complete to controller_tx",
@@ -119,22 +123,26 @@ impl Client {
         }
     }
 
-    pub fn state0(&mut self, msg_any: BoxMsgAny) {
+    pub fn state0(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
             assert_eq!(msg.header.id, ECHO_REPLY_ID);
             println!("{}:State0: {msg:?}", self.name);
-            self.send_echo_req_or_complete(msg.counter + 1);
+            self.send_echo_req_or_complete(reply_tx, msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
             let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
             println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
-            self.partner_tx.send(reply_msg).unwrap();
+            if let Some(tx) = reply_tx {
+                tx.send(reply_msg).unwrap();
+            } else {
+                self.partner_tx.send(reply_msg).unwrap();
+            }
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             assert_eq!(msg.header.id, ECHO_START_ID);
             println!("{}:State0: msg={msg:?}", self.name);
             self.ping_count = msg.ping_count;
-            self.send_echo_req_or_complete(1);
+            self.send_echo_req_or_complete(reply_tx, 1);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -146,8 +154,8 @@ impl Client {
 }
 
 impl ProcessMsgAny for Client {
-    fn process_msg_any(&mut self, msg: BoxMsgAny) {
-        (self.current_state)(self, msg);
+    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
+        (self.current_state)(self, reply_tx, msg);
     }
 }
 
@@ -171,7 +179,7 @@ mod test {
         println!("test_1: client={client:?}");
 
         let start_msg = Box::new(EchoStart::new(0));
-        client.process_msg_any(start_msg);
+        client.process_msg_any(None, start_msg);
         let reply_msg_any = rx.recv().unwrap();
         let received_msg = reply_msg_any.downcast_ref::<EchoComplete>().unwrap();
         println!("test_1: received msg={received_msg:?}");
@@ -190,15 +198,17 @@ mod test {
         let mut client = Client::new("client", Client::state0, tx.clone(), tx.clone());
         println!("test_ping_counts: client={client:?}");
 
+        let reply_tx = tx.clone();
         for ping_count in [0, 1, 5] {
+
             // Controller sends start message
             println!("\ntest_ping_counts: ping_count={ping_count}");
             let start_msg = Box::new(EchoStart::new(ping_count));
-            tx.send(start_msg).unwrap();
+            reply_tx.send(start_msg).unwrap();
 
             // Client receives Start msg
             let start_msg_any = rx.recv().unwrap();
-            client.process_msg_any(start_msg_any);
+            client.process_msg_any(Some(&reply_tx), start_msg_any);
 
             for _ in 0..ping_count {
                 // Server receives request message
@@ -211,11 +221,11 @@ mod test {
                     Utc::now().timestamp_nanos(),
                     req_msg.counter,
                 ));
-                tx.send(reply_msg).unwrap();
+                reply_tx.send(reply_msg).unwrap();
 
                 // Client receives and processes reply message
                 let reply_msg_any = rx.recv().unwrap();
-                client.process_msg_any(reply_msg_any);
+                client.process_msg_any(Some(&reply_tx), reply_msg_any);
             }
 
             // Controller receives Complete msg
