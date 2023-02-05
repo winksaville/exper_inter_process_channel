@@ -200,7 +200,6 @@ mod test {
 
         let reply_tx = tx.clone();
         for ping_count in [0, 1, 5] {
-
             // Controller sends start message
             println!("\ntest_ping_counts: ping_count={ping_count}");
             let start_msg = Box::new(EchoStart::new(ping_count));

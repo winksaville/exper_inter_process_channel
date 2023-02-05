@@ -1,0 +1,17 @@
+[package]
+name = "echo_protocol"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+echo_complete = { path = "../echo_complete" }
+echo_reply = { path = "../echo_reply" }
+echo_req = { path = "../echo_req" }
+echo_start = { path = "../echo_start" }
+msg_header = { version = "0.1.0", path = "../msg_header" }
+protocol = { version = "0.1.0", path = "../protocol" }
+uuid = "1.3.0"
