@@ -120,27 +120,57 @@ mod test {
         let mut server = Server::new("server", Server::state0, tx.clone());
         println!("test_1: server={server:?}");
 
+        // Warm up reading time stamp
         let first_now_ns = Utc::now().timestamp_nanos();
         let second_now_ns = Utc::now().timestamp_nanos();
         let third_now_ns = Utc::now().timestamp_nanos();
 
-        let now_ns = Utc::now().timestamp_nanos();
+        #[derive(Debug, Clone, Copy)]
+        struct Times {
+            now_ns: i64,
+            req_timestamp_ns: i64,
+            reply_timestamp_ns: i64,
+            last_ns: i64,
+        }
 
-        let echo_req = EchoReq::new(1);
-        server.process_msg_any(Some(&tx), Box::new(echo_req.clone()));
-        let reply_msg_any = rx.recv().unwrap();
-        let received_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
+        // We'll do 11 loop and throw out the first loop
+        // as that is slow
+        const LOOP_COUNT: usize = 100;
+        let zero_times = Times {
+            now_ns: 0,
+            req_timestamp_ns: 0,
+            reply_timestamp_ns: 0,
+            last_ns: 0,
+        };
+        let mut times = [zero_times; LOOP_COUNT];
 
-        let last_ns = Utc::now().timestamp_nanos();
+        for i in 0..LOOP_COUNT {
+            // Mark start
+            let now_ns = Utc::now().timestamp_nanos();
 
-        assert!(echo_req.req_timestamp_ns >= now_ns);
-        assert_eq!(received_msg.req_timestamp_ns, echo_req.req_timestamp_ns);
-        assert!(received_msg.req_timestamp_ns >= now_ns);
-        assert!(last_ns >= received_msg.req_timestamp_ns);
+            // Create EchoReq and send it
+            let echo_req = Box::new(EchoReq::new(1));
+            tx.send(echo_req).unwrap();
 
-        println!("test_1: echo_req={echo_req:?}");
-        println!("test_1: received msg = {received_msg:?}");
-        println!();
+            // Receive EchoReq and process it in server
+            let echo_req_any = rx.recv().unwrap();
+            server.process_msg_any(Some(&tx), echo_req_any);
+
+            // Receive EchoReply
+            let reply_msg_any = rx.recv().unwrap();
+            let reply_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
+
+            // Mark done
+            times[i].last_ns = Utc::now().timestamp_nanos();
+            times[i].now_ns = now_ns;
+            times[i].req_timestamp_ns = reply_msg.req_timestamp_ns;
+            times[i].reply_timestamp_ns = reply_msg.reply_timestamp_ns;
+        }
+
+        // Display all times
+        //println!("test_1: times {times:#?}");
+        //println!();
+
         println!(
             "test_1:          second_now_ns - first_now_ns = {:6}ns",
             second_now_ns - first_now_ns
@@ -149,27 +179,48 @@ mod test {
             "test_1:          third_now_ns - second_now_ns = {:6}ns",
             third_now_ns - second_now_ns
         );
-        println!(
-            "test_1:                 now_ns - third_now_ns = {:6}ns",
-            now_ns - third_now_ns
-        );
-        println!(
-            "test_1:             req_timestamp_ns - now_ns = {:6}ns",
-            received_msg.req_timestamp_ns - now_ns
-        );
-        println!(
-            "test_1: reply_timestamp_ns - req_timestamp_ns = {:6}ns",
-            received_msg.reply_timestamp_ns - received_msg.req_timestamp_ns
-        );
-        println!(
-            "test_1:          last_ns - reply_timestamp_ns = {:6}ns",
-            last_ns - received_msg.reply_timestamp_ns
-        );
-        println!(
-            "test_1:                RTT = last_ns - now_ns = {:6}ns",
-            last_ns - now_ns
-        );
+        println!();
 
+        let mut sum_t0 = 0;
+        let mut sum_t1 = 0;
+        let mut sum_t2 = 0;
+        let mut sum_rtt = 0;
+        let ignoring = LOOP_COUNT / 5;
+        for i in 0..LOOP_COUNT {
+            let t0 = times[i].req_timestamp_ns - times[i].now_ns;
+            let t1 = times[i].reply_timestamp_ns - times[i].req_timestamp_ns;
+            let t2 = times[i].last_ns - times[i].reply_timestamp_ns;
+            let rtt = times[i].last_ns - times[i].now_ns;
+
+            if i >= ignoring {
+                // Not ignoring
+                sum_t0 += t0;
+                sum_t1 += t1;
+                sum_t2 += t2;
+                sum_rtt += rtt;
+            }
+
+            // Show the first and last few loops
+            if (i == 0) || (i >= (LOOP_COUNT - 5)) {
+                if i == 0 {
+                    println!("First loop");
+                } else {
+                    println!("Loop {}", i + 1);
+                }
+                println!("  t0 = {:6}ns", t0);
+                println!("  t1 = {:6}ns", t1);
+                println!("  t2 = {:6}ns", t2);
+                println!(" rtt = {:6}ns", rtt);
+                println!();
+            }
+        }
+
+        println!("Average times of the last {} loops", LOOP_COUNT - ignoring);
+        let avg_count = (LOOP_COUNT - ignoring) as i64;
+        println!("  t0 = {}ns", sum_t0 / avg_count);
+        println!("  t1 = {}ns", sum_t1 / avg_count);
+        println!("  t2 = {}ns", sum_t2 / avg_count);
+        println!(" rtt = {}ns", sum_rtt / avg_count);
         drop(tx);
     }
 }

@@ -30,12 +30,15 @@ mod test {
     fn test_protocol() {
         println!("test_protocol");
 
-        let messages = vec![Uuid::nil(), Uuid::nil()];
+        let messages = vec![MsgId(Uuid::nil()), MsgId(Uuid::nil())];
         let id = ProtocolId(Uuid::nil());
         let nil_protocol = Protocol::new("nil_protocol", id, messages);
         println!("nil_protocol={nil_protocol:?}");
         assert_eq!(nil_protocol.name, "nil_protocol");
         assert_eq!(nil_protocol.id.0, Uuid::nil());
-        assert_eq!(nil_protocol.messages, vec![Uuid::nil(), Uuid::nil()]);
+        assert_eq!(
+            nil_protocol.messages,
+            vec![MsgId(Uuid::nil()), MsgId(Uuid::nil())]
+        );
     }
 }

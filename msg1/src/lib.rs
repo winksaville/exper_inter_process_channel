@@ -5,7 +5,7 @@ use uuid::uuid;
 
 // From: https://www.uuidgenerator.net/version4
 pub const MSG1_ID_STR: &str = "a88ba7e7-0930-4df6-bb24-240338bf8eb5";
-pub const MSG1_ID: MsgId = uuid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5");
+pub const MSG1_ID: MsgId = MsgId(uuid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5"));
 pub const MSG1_NAME: &str = "Msg1";
 
 // Message 1
