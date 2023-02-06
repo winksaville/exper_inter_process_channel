@@ -3,6 +3,15 @@
 version = 3
 
 [[package]]
+name = "actor"
+version = "0.1.0"
+dependencies = [
+ "msg_header",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -69,6 +78,7 @@ dependencies = [
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "actor",
  "chrono",
  "echo_complete",
  "echo_reply",
@@ -76,7 +86,6 @@ dependencies = [
  "echo_start",
  "msg1",
  "msg_header",
- "sm",
 ]
 
 [[package]]
@@ -255,6 +264,7 @@ dependencies = [
 name = "exper_inter_process_channel"
 version = "0.1.0"
 dependencies = [
+ "actor",
  "client",
  "custom_logger",
  "echo_protocol",
@@ -266,7 +276,6 @@ dependencies = [
  "serde",
  "serde_json",
  "server",
- "sm",
  "uuid",
 ]
 
@@ -643,21 +652,12 @@ dependencies = [
 name = "server"
 version = "0.1.0"
 dependencies = [
+ "actor",
  "chrono",
  "echo_reply",
  "echo_req",
  "msg1",
  "msg_header",
- "sm",
-]
-
-[[package]]
-name = "sm"
-version = "0.1.0"
-dependencies = [
- "msg_header",
- "serde",
- "uuid",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "sm"
+name = "actor"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,6 +8,6 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-msg_header = { path = "../msg_header" }
-serde = { version = "1.0.152", features = ["derive"] }
-uuid = { version = "1.2.2", features = ["serde"] }
+msg_header = { version = "0.1.0", path = "../msg_header" }
+protocol = { version = "0.1.0", path = "../protocol" }
+uuid = "1.3.0"

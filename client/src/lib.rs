@@ -9,7 +9,7 @@ use std::{
 };
 
 use msg_header::{BoxMsgAny, MsgHeader};
-use sm::ProcessMsgAny;
+use actor::ProcessMsgAny;
 
 type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
