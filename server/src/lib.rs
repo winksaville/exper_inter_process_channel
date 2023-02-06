@@ -1,13 +1,16 @@
+use actor::{Actor, ActorId, ActorInstanceId};
+use echo_protocol::echo_protocol;
 use echo_reply::EchoReply;
 use echo_req::{EchoReq, ECHO_REQ_ID};
+use protocol::{Protocol, ProtocolId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
     sync::mpsc::Sender,
 };
+use uuid::uuid;
 
-use msg_header::BoxMsgAny;
-use actor::ProcessMsgAny;
+use msg_header::{BoxMsgAny, MsgHeader};
 
 type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
@@ -23,9 +26,33 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 // State machine for channel to network
 pub struct Server {
     pub name: String,
+    pub id: ActorId,
+    pub instance_id: ActorInstanceId,
+    pub protocols: Vec<ProtocolId>,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
-    pub partner_tx: Sender<BoxMsgAny>,
+}
+
+impl Actor for Server {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn get_id(&self) -> &ActorId {
+        &self.id
+    }
+
+    fn get_instance_id(&self) -> &ActorInstanceId {
+        &self.instance_id
+    }
+
+    fn get_protocols(&self) -> &Vec<ProtocolId> {
+        &self.protocols
+    }
+
+    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
+        (self.current_state)(self, reply_tx, msg);
+    }
 }
 
 impl Debug for Server {
@@ -48,17 +75,19 @@ impl Debug for Server {
     }
 }
 
+// From: https://www.uuidgenerator.net/version4
+const SERVER_ID: ActorId = ActorId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
+
 impl Server {
-    pub fn new(
-        name: &str,
-        initial_state: ProcessMsgFn<Self>,
-        partner_tx: Sender<BoxMsgAny>,
-    ) -> Self {
+    pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
+        let ep = echo_protocol();
         let mut this = Self {
             name: name.to_owned(),
+            id: SERVER_ID,
+            instance_id: ActorInstanceId::new(),
+            protocols: ep.protocols().to_vec(),
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
-            partner_tx,
         };
 
         this.add_state(Self::state0, "state0");
@@ -84,24 +113,15 @@ impl Server {
             //println!("{}:State0: msg={msg:?}", self.name);
             let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
-            if let Some(tx) = reply_tx {
-                tx.send(reply_msg).unwrap();
-            } else {
-                self.partner_tx.send(reply_msg).unwrap();
-            }
-            //} else {
-            //    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
-            //    println!(
-            //        "{}:State0: Unknown msg_any={msg_any:?} {msg_id:?}",
-            //        self.name
-            //    );
+            let tx = reply_tx.unwrap();
+            tx.send(reply_msg).unwrap();
+        } else {
+            let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+            println!(
+                "{}:State0: Unknown msg_any={msg_any:?} {msg_id:?}",
+                self.name
+            );
         }
-    }
-}
-
-impl ProcessMsgAny for Server {
-    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
-        (self.current_state)(self, reply_tx, msg);
     }
 }
 
@@ -117,7 +137,7 @@ mod test {
     fn test_1() {
         let (tx, rx) = channel();
 
-        let mut server = Server::new("server", Server::state0, tx.clone());
+        let mut server = Server::new("server", Server::state0);
         println!("test_1: server={server:?}");
 
         // Warm up reading time stamp
@@ -149,7 +169,7 @@ mod test {
             let now_ns = Utc::now().timestamp_nanos();
 
             // Create EchoReq and send it
-            let echo_req = Box::new(EchoReq::new(1));
+            let echo_req: BoxMsgAny = Box::new(EchoReq::new(1));
             tx.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server

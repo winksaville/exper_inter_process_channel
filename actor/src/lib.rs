@@ -1,40 +1,23 @@
 use msg_header::BoxMsgAny;
 use protocol::ProtocolId;
-use std::{fmt, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 use uuid::Uuid;
 
-// Actors process messages
-pub trait ProcessMsgAny {
-    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
-}
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ActorId(Uuid);
-
-#[allow(unused)]
-#[derive(Clone, Debug)]
-pub struct Actor {
-    id: ActorId,
-    protocols: Vec<ProtocolId>,
-}
+pub struct ActorId(pub Uuid);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ActorInstanceId(Uuid);
 
-#[allow(unused)]
-pub struct ActorInstance {
-    instance_id: ActorInstanceId,
-    actor_id: ActorId,
-    channel: Box<dyn ActorChannel>, // Make Vec as can be connected to multiple other actors.
+impl Default for ActorInstanceId {
+    fn default() -> Self {
+        ActorInstanceId::new()
+    }
 }
 
-// Manually implement Debug as ActorChannel does not yet implement Debug
-impl fmt::Debug for ActorInstance {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ActorInstance")
-            .field("instance_id", &self.instance_id)
-            .field("actor_id", &self.actor_id)
-            .finish()
+impl ActorInstanceId {
+    pub fn new() -> Self {
+        ActorInstanceId(Uuid::new_v4())
     }
 }
 
@@ -46,6 +29,14 @@ pub trait ActorChannel {
     fn recv(&self) -> Result<BoxMsgAny, Box<dyn std::error::Error>> {
         Err("ActorChannel `fn recv` not implemented".into())
     }
+}
+
+pub trait Actor {
+    fn get_name(&self) -> &str;
+    fn get_id(&self) -> &ActorId;
+    fn get_instance_id(&self) -> &ActorInstanceId;
+    fn get_protocols(&self) -> &Vec<ProtocolId>; // TODO: should this by &<vec<&ProtocolId>> ?
+    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
 }
 
 #[cfg(test)]

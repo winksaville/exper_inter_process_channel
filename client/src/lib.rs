@@ -1,15 +1,18 @@
+use actor::{Actor, ActorId, ActorInstanceId};
 use echo_complete::EchoComplete;
+use echo_protocol::echo_protocol;
 use echo_reply::{EchoReply, ECHO_REPLY_ID};
 use echo_req::{EchoReq, ECHO_REQ_ID};
 use echo_start::{EchoStart, ECHO_START_ID};
+use protocol::{Protocol, ProtocolId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
     sync::mpsc::Sender,
 };
+use uuid::uuid;
 
 use msg_header::{BoxMsgAny, MsgHeader};
-use actor::ProcessMsgAny;
 
 type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
@@ -34,11 +37,36 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 /// Errors and not handled gracefully, this is just demo.
 pub struct Client {
     pub name: String,
+    pub id: ActorId,
+    pub instance_id: ActorInstanceId,
+    pub protocols: Vec<ProtocolId>,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
     pub partner_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
     pub controller_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
     pub ping_count: u64,
+}
+
+impl Actor for Client {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn get_id(&self) -> &ActorId {
+        &self.id
+    }
+
+    fn get_instance_id(&self) -> &ActorInstanceId {
+        &self.instance_id
+    }
+
+    fn get_protocols(&self) -> &Vec<ProtocolId> {
+        &self.protocols
+    }
+
+    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
+        (self.current_state)(self, reply_tx, msg);
+    }
 }
 
 impl Debug for Client {
@@ -61,6 +89,9 @@ impl Debug for Client {
     }
 }
 
+// From: https://www.uuidgenerator.net/version4
+const CLIENT_ID: ActorId = ActorId(uuid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
+
 impl Client {
     pub fn new(
         name: &str,
@@ -68,8 +99,12 @@ impl Client {
         partner_tx: Sender<BoxMsgAny>,
         controller_tx: Sender<BoxMsgAny>,
     ) -> Self {
+        let ep = echo_protocol();
         let mut this = Self {
             name: name.to_owned(),
+            id: CLIENT_ID,
+            instance_id: ActorInstanceId::new(),
+            protocols: ep.protocols().to_vec(),
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
             partner_tx,
@@ -94,11 +129,7 @@ impl Client {
         self.current_state = dest;
     }
 
-    fn send_echo_req_or_complete(
-        &self,
-        reply_tx: Option<&Sender<BoxMsgAny>>,
-        counter: u64,
-    ) {
+    fn send_echo_req_or_complete(&self, reply_tx: Option<&Sender<BoxMsgAny>>, counter: u64) {
         println!(
             "{}:send_echo_req_or_complete:+ counter={counter} ping_count={} * 2 = {}",
             self.name,
@@ -154,12 +185,6 @@ impl Client {
                 self.name
             );
         }
-    }
-}
-
-impl ProcessMsgAny for Client {
-    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
-        (self.current_state)(self, reply_tx, msg);
     }
 }
 
