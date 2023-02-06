@@ -94,7 +94,11 @@ impl Client {
         self.current_state = dest;
     }
 
-    fn send_echo_req_or_complete(&self, reply_tx: Option<&Sender<BoxMsgAny>>, counter: u64) {
+    fn send_echo_req_or_complete(
+        &self,
+        reply_tx: Option<&Sender<BoxMsgAny>>,
+        counter: u64,
+    ) {
         println!(
             "{}:send_echo_req_or_complete:+ counter={counter} ping_count={} * 2 = {}",
             self.name,

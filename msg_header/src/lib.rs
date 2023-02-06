@@ -1,5 +1,6 @@
 #![feature(downcast_unchecked)]
 //use std::hash::{Hash, Hasher};
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -8,7 +9,16 @@ use uuid::Uuid;
 // which is most anything
 pub type BoxMsgAny = Box<dyn std::any::Any + Send>;
 
-pub type MsgId = Uuid;
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct MsgId(pub Uuid);
+
+// This implicilty defines to_string, as advised by clippy
+// https://rust-lang.github.io/rust-clippy/master/index.html#inherent_to_string
+impl fmt::Display for MsgId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -33,7 +43,7 @@ mod test {
     use super::*;
     use uuid::uuid;
 
-    const AN_ID: MsgId = uuid!("3ab7c2f7-6445-4529-a675-5e3246217452");
+    const AN_ID: MsgId = MsgId(uuid!("3ab7c2f7-6445-4529-a675-5e3246217452"));
 
     #[test]
     fn test_id() {
