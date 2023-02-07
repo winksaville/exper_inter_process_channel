@@ -1,5 +1,5 @@
 [package]
-name = "echo_protocol"
+name = "echo_start_complete_protocol"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -9,8 +9,6 @@ license.workspace = true
 
 [dependencies]
 echo_complete = { path = "../echo_complete" }
-echo_reply = { path = "../echo_reply" }
-echo_req = { path = "../echo_req" }
 echo_start = { path = "../echo_start" }
 msg_header = { version = "0.1.0", path = "../msg_header" }
 once_cell = "1.17.0"

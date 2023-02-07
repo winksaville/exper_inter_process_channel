@@ -1,10 +1,12 @@
 use actor::{Actor, ActorId, ActorInstanceId};
 use echo_complete::EchoComplete;
-use echo_protocol::echo_protocol;
 use echo_reply::{EchoReply, ECHO_REPLY_ID};
 use echo_req::{EchoReq, ECHO_REQ_ID};
+use echo_req_reply_protocol::echo_req_reply_protocol;
 use echo_start::{EchoStart, ECHO_START_ID};
+use echo_start_complete_protocol::echo_start_complete_protocol;
 use protocol::{Protocol, ProtocolId};
+use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -39,7 +41,7 @@ pub struct Client {
     pub name: String,
     pub id: ActorId,
     pub instance_id: ActorInstanceId,
-    pub protocols: Vec<ProtocolId>,
+    pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
     pub partner_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
@@ -60,8 +62,8 @@ impl Actor for Client {
         &self.instance_id
     }
 
-    fn get_protocols(&self) -> &Vec<ProtocolId> {
-        &self.protocols
+    fn get_protocol_set(&self) -> &ProtocolSet {
+        &self.protocol_set
     }
 
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
@@ -91,6 +93,8 @@ impl Debug for Client {
 
 // From: https://www.uuidgenerator.net/version4
 const CLIENT_ID: ActorId = ActorId(uuid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
+const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
+    ProtocolSetId(uuid!("1a7b43ed-4676-42cd-9969-72283f258ef1"));
 
 impl Client {
     pub fn new(
@@ -99,12 +103,19 @@ impl Client {
         partner_tx: Sender<BoxMsgAny>,
         controller_tx: Sender<BoxMsgAny>,
     ) -> Self {
-        let ep = echo_protocol();
+        // Create the client ProtocolSet, `client_ps`
+        let errp = echo_req_reply_protocol();
+        let escp = echo_start_complete_protocol();
+        let mut client_pm = HashMap::<ProtocolId, Protocol>::new();
+        client_pm.insert(errp.id.clone(), errp.clone());
+        client_pm.insert(escp.id.clone(), escp.clone());
+
+        let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
         let mut this = Self {
             name: name.to_owned(),
             id: CLIENT_ID,
             instance_id: ActorInstanceId::new(),
-            protocols: ep.protocols().to_vec(),
+            protocol_set: client_ps,
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
             partner_tx,

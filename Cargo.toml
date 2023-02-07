@@ -8,9 +8,16 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#manager = { path="manager" }
 actor = { path="actor" }
+protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
-echo_protocol = { path="echo_protocol" }
+echo_start_complete_protocol = { path="echo_start_complete_protocol" }
+echo_req_reply_protocol = { path="echo_req_reply_protocol" }
+echo_start = { path="echo_start" }
+echo_complete = { path="echo_complete" }
+echo_req = { path="echo_req" }
+echo_reply = { path="echo_reply" }
 msg_header = { path="msg_header" }
 msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msg1" }
@@ -24,13 +31,18 @@ custom_logger = { git = "https://github.com/winksaville/custom_logger", version 
 
 [workspace]
 members = [
+#    "manager",
     "actor",
+    "protocol_set",
     "protocol",
-    "echo_protocol",
     "msg_header",
     "msg_serde_json",
     "msg1",
     "msg2",
+    "echo_start_complete_protocol",
+    "echo_req_reply_protocol",
+    "echo_start",
+    "echo_complete",
     "echo_reply",
     "echo_req",
     "msg_local_macro",

@@ -9,14 +9,11 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
+protocol_set = { path="../protocol_set" }
+echo_req_reply_protocol = { version = "0.1.0", path = "../echo_req_reply_protocol" }
 echo_req = { path="../echo_req" }
 echo_reply = { path="../echo_reply" }
 actor = { path="../actor" }
 chrono = "0.4.23"
-echo_protocol = { version = "0.1.0", path = "../echo_protocol" }
 protocol = { version = "0.1.0", path = "../protocol" }
 uuid = "1.3.0"
-
-[dev-dependencies]
-msg1 = { path="../msg1" }
-#msg2 = { path="../msg2" }
