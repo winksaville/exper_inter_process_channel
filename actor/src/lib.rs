@@ -1,5 +1,5 @@
 use msg_header::BoxMsgAny;
-use protocol::ProtocolId;
+use protocol_set::ProtocolSet;
 use std::sync::mpsc::Sender;
 use uuid::Uuid;
 
@@ -35,7 +35,7 @@ pub trait Actor {
     fn get_name(&self) -> &str;
     fn get_id(&self) -> &ActorId;
     fn get_instance_id(&self) -> &ActorInstanceId;
-    fn get_protocols(&self) -> &Vec<ProtocolId>; // TODO: should this by &<vec<&ProtocolId>> ?
+    fn get_protocol_set(&self) -> &ProtocolSet;
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
 }
 

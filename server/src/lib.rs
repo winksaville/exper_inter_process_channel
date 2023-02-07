@@ -1,8 +1,9 @@
 use actor::{Actor, ActorId, ActorInstanceId};
-use echo_protocol::echo_protocol;
 use echo_reply::EchoReply;
 use echo_req::{EchoReq, ECHO_REQ_ID};
+use echo_req_reply_protocol::echo_req_reply_protocol;
 use protocol::{Protocol, ProtocolId};
+use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -28,7 +29,7 @@ pub struct Server {
     pub name: String,
     pub id: ActorId,
     pub instance_id: ActorInstanceId,
-    pub protocols: Vec<ProtocolId>,
+    pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 }
@@ -46,8 +47,8 @@ impl Actor for Server {
         &self.instance_id
     }
 
-    fn get_protocols(&self) -> &Vec<ProtocolId> {
-        &self.protocols
+    fn get_protocol_set(&self) -> &ProtocolSet {
+        &self.protocol_set
     }
 
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
@@ -77,15 +78,22 @@ impl Debug for Server {
 
 // From: https://www.uuidgenerator.net/version4
 const SERVER_ID: ActorId = ActorId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
+const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
+    ProtocolSetId(uuid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f"));
 
 impl Server {
     pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
-        let ep = echo_protocol();
+        // Create the server ProtocolSet, `server_ps`.
+        let errp = echo_req_reply_protocol();
+        let mut server_pm = HashMap::<ProtocolId, Protocol>::new();
+        server_pm.insert(errp.id.clone(), errp.clone());
+        let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
+
         let mut this = Self {
             name: name.to_owned(),
             id: SERVER_ID,
             instance_id: ActorInstanceId::new(),
-            protocols: ep.protocols().to_vec(),
+            protocol_set: server_ps,
             current_state: initial_state,
             state_info_hash: StateInfoMap::<Self>::new(),
         };

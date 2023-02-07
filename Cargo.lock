@@ -7,7 +7,7 @@ name = "actor"
 version = "0.1.0"
 dependencies = [
  "msg_header",
- "protocol",
+ "protocol_set",
  "uuid",
 ]
 
@@ -81,13 +81,15 @@ dependencies = [
  "actor",
  "chrono",
  "echo_complete",
- "echo_protocol",
  "echo_reply",
  "echo_req",
+ "echo_req_reply_protocol",
  "echo_start",
+ "echo_start_complete_protocol",
  "msg1",
  "msg_header",
  "protocol",
+ "protocol_set",
  "uuid",
 ]
 
@@ -176,20 +178,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "echo_protocol"
-version = "0.1.0"
-dependencies = [
- "echo_complete",
- "echo_reply",
- "echo_req",
- "echo_start",
- "msg_header",
- "once_cell",
- "protocol",
- "uuid",
-]
-
-[[package]]
 name = "echo_reply"
 version = "0.1.0"
 dependencies = [
@@ -218,6 +206,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "echo_req_reply_protocol"
+version = "0.1.0"
+dependencies = [
+ "echo_reply",
+ "echo_req",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
 name = "echo_start"
 version = "0.1.0"
 dependencies = [
@@ -227,6 +227,18 @@ dependencies = [
  "msg_serde_macro",
  "serde",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "echo_start_complete_protocol"
+version = "0.1.0"
+dependencies = [
+ "echo_complete",
+ "echo_start",
+ "msg_header",
+ "once_cell",
+ "protocol",
  "uuid",
 ]
 
@@ -271,12 +283,18 @@ dependencies = [
  "actor",
  "client",
  "custom_logger",
- "echo_protocol",
+ "echo_complete",
+ "echo_reply",
+ "echo_req",
+ "echo_req_reply_protocol",
+ "echo_start",
+ "echo_start_complete_protocol",
  "msg1",
  "msg2",
  "msg_header",
  "msg_serde_json",
  "protocol",
+ "protocol_set",
  "serde",
  "serde_json",
  "server",
@@ -563,6 +581,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol_set"
+version = "0.1.0"
+dependencies = [
+ "msg_header",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -669,12 +696,12 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "chrono",
- "echo_protocol",
  "echo_reply",
  "echo_req",
- "msg1",
+ "echo_req_reply_protocol",
  "msg_header",
  "protocol",
+ "protocol_set",
  "uuid",
 ]
 
