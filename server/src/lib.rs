@@ -82,7 +82,7 @@ const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
     ProtocolSetId(uuid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f"));
 
 impl Server {
-    pub fn new(name: &str, initial_state: ProcessMsgFn<Self>) -> Self {
+    pub fn new(name: &str) -> Self {
         // Create the server ProtocolSet, `server_ps`.
         let errp = echo_req_reply_protocol();
         let mut server_pm = HashMap::<ProtocolId, Protocol>::new();
@@ -94,7 +94,7 @@ impl Server {
             id: SERVER_ID,
             instance_id: ActorInstanceId::new(),
             protocol_set: server_ps,
-            current_state: initial_state,
+            current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
         };
 
@@ -145,7 +145,7 @@ mod test {
     fn test_1() {
         let (tx, rx) = channel();
 
-        let mut server = Server::new("server", Server::state0);
+        let mut server = Server::new("server");
         println!("test_1: server={server:?}");
 
         // Warm up reading time stamp
