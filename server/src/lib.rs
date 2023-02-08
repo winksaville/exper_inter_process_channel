@@ -27,7 +27,7 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 // State machine for channel to network
 pub struct Server {
     pub name: String,
-    pub id: ActorId,
+    pub actor_id: ActorId,
     pub instance_id: ActorInstanceId,
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
@@ -39,8 +39,8 @@ impl Actor for Server {
         &self.name
     }
 
-    fn get_id(&self) -> &ActorId {
-        &self.id
+    fn get_actor_id(&self) -> &ActorId {
+        &self.actor_id
     }
 
     fn get_instance_id(&self) -> &ActorInstanceId {
@@ -77,7 +77,7 @@ impl Debug for Server {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const SERVER_ID: ActorId = ActorId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
+const SERVER_ACTOR_ID: ActorId = ActorId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
 const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
     ProtocolSetId(uuid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f"));
 
@@ -91,7 +91,7 @@ impl Server {
 
         let mut this = Self {
             name: name.to_owned(),
-            id: SERVER_ID,
+            actor_id: SERVER_ACTOR_ID,
             instance_id: ActorInstanceId::new(),
             protocol_set: server_ps,
             current_state: Self::state0,

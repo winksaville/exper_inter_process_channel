@@ -2,8 +2,8 @@ use actor::{Actor, ActorId, ActorInstanceId};
 use echo_complete::EchoComplete;
 use echo_reply::{EchoReply, ECHO_REPLY_ID};
 use echo_req::{EchoReq, ECHO_REQ_ID};
-use echo_requester_protocol::echo_requester_protocol;
 use echo_requestee_protocol::echo_requestee_protocol;
+use echo_requester_protocol::echo_requester_protocol;
 use echo_start::{EchoStart, ECHO_START_ID};
 use echo_start_complete_protocol::echo_start_complete_protocol;
 use protocol::{Protocol, ProtocolId};
@@ -40,7 +40,7 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 /// Errors and not handled gracefully, this is just demo.
 pub struct Client {
     pub name: String,
-    pub id: ActorId,
+    pub actor_id: ActorId,
     pub instance_id: ActorInstanceId,
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
@@ -55,8 +55,8 @@ impl Actor for Client {
         &self.name
     }
 
-    fn get_id(&self) -> &ActorId {
-        &self.id
+    fn get_actor_id(&self) -> &ActorId {
+        &self.actor_id
     }
 
     fn get_instance_id(&self) -> &ActorInstanceId {
@@ -93,7 +93,7 @@ impl Debug for Client {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CLIENT_ID: ActorId = ActorId(uuid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
+const CLIENT_ACTOR_ID: ActorId = ActorId(uuid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
 const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
     ProtocolSetId(uuid!("1a7b43ed-4676-42cd-9969-72283f258ef1"));
 
@@ -115,7 +115,7 @@ impl Client {
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
         let mut this = Self {
             name: name.to_owned(),
-            id: CLIENT_ID,
+            actor_id: CLIENT_ACTOR_ID,
             instance_id: ActorInstanceId::new(),
             protocol_set: client_ps,
             current_state: Self::state0,

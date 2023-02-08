@@ -109,13 +109,13 @@ impl Manager {
     fn add_map_by_actor_id(&mut self, idx: usize) {
         let actor = &self.actors[idx];
 
-        if let Some(v) = self.actors_map_by_actor_id.get_mut(actor.get_id()) {
+        if let Some(v) = self.actors_map_by_actor_id.get_mut(actor.get_actor_id()) {
             // Add another idx
             v.push(idx);
         } else {
             // First time seeing this actor_id, add vector with one item
             self.actors_map_by_actor_id
-                .insert(actor.get_id().clone(), vec![idx]);
+                .insert(actor.get_actor_id().clone(), vec![idx]);
         }
     }
 

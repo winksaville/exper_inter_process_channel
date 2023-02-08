@@ -50,27 +50,27 @@ pub trait Actor {
 
         s
     }
-    fn get_name_and_short_id(&self) -> String {
+    fn get_name_and_short_actor_idid(&self) -> String {
         let mut s: String = "".to_string();
 
         s += self.get_name();
-        s += "-iid:";
-        s += &self.get_id().0.to_string()[0..8];
+        s += "-aid:";
+        s += &self.get_actor_id().0.to_string()[0..8];
 
         s
     }
-    fn get_name_and_long_id(&self) -> String {
+    fn get_name_and_long_actor_id(&self) -> String {
         let mut s: String = "".to_owned();
 
         s += self.get_name();
-        s += "-iid:";
-        s += &self.get_id().0.to_string();
+        s += "-aid:";
+        s += &self.get_actor_id().0.to_string();
 
         s
     }
 
     fn get_name(&self) -> &str;
-    fn get_id(&self) -> &ActorId;
+    fn get_actor_id(&self) -> &ActorId;
     fn get_instance_id(&self) -> &ActorInstanceId;
     fn get_protocol_set(&self) -> &ProtocolSet;
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
