@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub struct ActorId(pub Uuid);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ActorInstanceId(Uuid);
+pub struct ActorInstanceId(pub Uuid);
 
 impl Default for ActorInstanceId {
     fn default() -> Self {
@@ -32,6 +32,43 @@ pub trait ActorChannel {
 }
 
 pub trait Actor {
+    fn get_name_and_short_instance_id(&self) -> String {
+        let mut s: String = "".to_string();
+
+        s += self.get_name();
+        s += "-iid:";
+        s += &self.get_instance_id().0.to_string()[0..8];
+
+        s
+    }
+    fn get_name_and_long_instance_id(&self) -> String {
+        let mut s: String = "".to_owned();
+
+        s += self.get_name();
+        s += "-iid:";
+        s += &self.get_instance_id().0.to_string();
+
+        s
+    }
+    fn get_name_and_short_id(&self) -> String {
+        let mut s: String = "".to_string();
+
+        s += self.get_name();
+        s += "-iid:";
+        s += &self.get_id().0.to_string()[0..8];
+
+        s
+    }
+    fn get_name_and_long_id(&self) -> String {
+        let mut s: String = "".to_owned();
+
+        s += self.get_name();
+        s += "-iid:";
+        s += &self.get_id().0.to_string();
+
+        s
+    }
+
     fn get_name(&self) -> &str;
     fn get_id(&self) -> &ActorId;
     fn get_instance_id(&self) -> &ActorInstanceId;
