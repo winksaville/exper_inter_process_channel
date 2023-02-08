@@ -1,5 +1,5 @@
 [package]
-name = "manager"
+name = "echo_requester_protocol"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,12 +8,9 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actor = { version = "0.1.0", path = "../actor" }
+echo_reply = { path = "../echo_reply" }
+echo_req = { path = "../echo_req" }
 msg_header = { version = "0.1.0", path = "../msg_header" }
+once_cell = "1.17.0"
 protocol = { version = "0.1.0", path = "../protocol" }
-protocol_set = { version = "0.1.0", path = "../protocol_set" }
 uuid = "1.3.0"
-
-[dev-dependencies]
-client = { path = "../client" }
-server = { path = "../server" }

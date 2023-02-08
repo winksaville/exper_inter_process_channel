@@ -1,5 +1,5 @@
 [package]
-name = "echo_req_reply_protocol"
+name = "echo_requestee_protocol"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true

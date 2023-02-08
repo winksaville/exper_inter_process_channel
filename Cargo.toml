@@ -13,7 +13,8 @@ actor = { path="actor" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
 echo_start_complete_protocol = { path="echo_start_complete_protocol" }
-echo_req_reply_protocol = { path="echo_req_reply_protocol" }
+echo_requester_protocol = { path="echo_requester_protocol" }
+echo_requestee_protocol = { path="echo_requestee_protocol" }
 echo_start = { path="echo_start" }
 echo_complete = { path="echo_complete" }
 echo_req = { path="echo_req" }
@@ -40,7 +41,8 @@ members = [
     "msg1",
     "msg2",
     "echo_start_complete_protocol",
-    "echo_req_reply_protocol",
+    "echo_requester_protocol",
+    "echo_requestee_protocol",
     "echo_start",
     "echo_complete",
     "echo_reply",

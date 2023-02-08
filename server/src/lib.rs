@@ -1,7 +1,7 @@
 use actor::{Actor, ActorId, ActorInstanceId};
 use echo_reply::EchoReply;
 use echo_req::{EchoReq, ECHO_REQ_ID};
-use echo_req_reply_protocol::echo_req_reply_protocol;
+use echo_requestee_protocol::echo_requestee_protocol;
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
@@ -84,9 +84,9 @@ const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
 impl Server {
     pub fn new(name: &str) -> Self {
         // Create the server ProtocolSet, `server_ps`.
-        let errp = echo_req_reply_protocol();
+        let erep = echo_requestee_protocol();
         let mut server_pm = HashMap::<ProtocolId, Protocol>::new();
-        server_pm.insert(errp.id.clone(), errp.clone());
+        server_pm.insert(erep.id.clone(), erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
         let mut this = Self {

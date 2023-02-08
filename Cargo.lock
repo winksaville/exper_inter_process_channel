@@ -83,7 +83,8 @@ dependencies = [
  "echo_complete",
  "echo_reply",
  "echo_req",
- "echo_req_reply_protocol",
+ "echo_requestee_protocol",
+ "echo_requester_protocol",
  "echo_start",
  "echo_start_complete_protocol",
  "msg1",
@@ -206,7 +207,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "echo_req_reply_protocol"
+name = "echo_requestee_protocol"
+version = "0.1.0"
+dependencies = [
+ "echo_reply",
+ "echo_req",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "echo_requester_protocol"
 version = "0.1.0"
 dependencies = [
  "echo_reply",
@@ -286,7 +299,8 @@ dependencies = [
  "echo_complete",
  "echo_reply",
  "echo_req",
- "echo_req_reply_protocol",
+ "echo_requestee_protocol",
+ "echo_requester_protocol",
  "echo_start",
  "echo_start_complete_protocol",
  "manager",
@@ -712,7 +726,7 @@ dependencies = [
  "chrono",
  "echo_reply",
  "echo_req",
- "echo_req_reply_protocol",
+ "echo_requestee_protocol",
  "msg_header",
  "protocol",
  "protocol_set",

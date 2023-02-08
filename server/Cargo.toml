@@ -10,7 +10,7 @@ license.workspace = true
 [dependencies]
 msg_header = { path="../msg_header" }
 protocol_set = { path="../protocol_set" }
-echo_req_reply_protocol = { version = "0.1.0", path = "../echo_req_reply_protocol" }
+echo_requestee_protocol = { version = "0.1.0", path = "../echo_requestee_protocol" }
 echo_req = { path="../echo_req" }
 echo_reply = { path="../echo_reply" }
 actor = { path="../actor" }

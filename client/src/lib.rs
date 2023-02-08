@@ -2,7 +2,8 @@ use actor::{Actor, ActorId, ActorInstanceId};
 use echo_complete::EchoComplete;
 use echo_reply::{EchoReply, ECHO_REPLY_ID};
 use echo_req::{EchoReq, ECHO_REQ_ID};
-use echo_req_reply_protocol::echo_req_reply_protocol;
+use echo_requester_protocol::echo_requester_protocol;
+use echo_requestee_protocol::echo_requestee_protocol;
 use echo_start::{EchoStart, ECHO_START_ID};
 use echo_start_complete_protocol::echo_start_complete_protocol;
 use protocol::{Protocol, ProtocolId};
@@ -103,10 +104,12 @@ impl Client {
         controller_tx: Sender<BoxMsgAny>,
     ) -> Self {
         // Create the client ProtocolSet, `client_ps`
-        let errp = echo_req_reply_protocol();
+        let errp = echo_requester_protocol();
+        let erep = echo_requestee_protocol();
         let escp = echo_start_complete_protocol();
         let mut client_pm = HashMap::<ProtocolId, Protocol>::new();
         client_pm.insert(errp.id.clone(), errp.clone());
+        client_pm.insert(erep.id.clone(), erep.clone());
         client_pm.insert(escp.id.clone(), escp.clone());
 
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
