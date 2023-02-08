@@ -99,7 +99,6 @@ const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
 impl Client {
     pub fn new(
         name: &str,
-        initial_state: ProcessMsgFn<Self>,
         partner_tx: Sender<BoxMsgAny>,
         controller_tx: Sender<BoxMsgAny>,
     ) -> Self {
@@ -116,7 +115,7 @@ impl Client {
             id: CLIENT_ID,
             instance_id: ActorInstanceId::new(),
             protocol_set: client_ps,
-            current_state: initial_state,
+            current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
             partner_tx,
             controller_tx,
@@ -215,7 +214,7 @@ mod test {
         let (tx, rx) = channel();
 
         // Using one channel for both partner and controller
-        let mut client = Client::new("client", Client::state0, tx.clone(), tx.clone());
+        let mut client = Client::new("client", tx.clone(), tx.clone());
         println!("test_1: client={client:?}");
 
         let start_msg = Box::new(EchoStart::new(0));
@@ -235,7 +234,7 @@ mod test {
         let (tx, rx) = channel();
 
         // Using one channel for both partner and controller
-        let mut client = Client::new("client", Client::state0, tx.clone(), tx.clone());
+        let mut client = Client::new("client", tx.clone(), tx.clone());
         println!("test_ping_counts: client={client:?}");
 
         let reply_tx = tx.clone();
