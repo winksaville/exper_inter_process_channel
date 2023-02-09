@@ -153,6 +153,7 @@ mod test {
 
     use super::*;
     use client::Client;
+    use msg_header::BoxMsgAny;
     use server::Server;
     use uuid::Uuid;
 
@@ -161,8 +162,8 @@ mod test {
         println!("test_manager");
         let mut manager = Manager::new("a_manager", ManagerId(Uuid::new_v4()));
 
-        let (tx, rx) = channel();
-        let client = Client::new("client", tx.clone(), tx.clone());
+        let (tx, rx) = channel::<BoxMsgAny>();
+        let client = Client::new("client");
         manager.add_actor(client).unwrap();
 
         let server1 = Server::new("server1");
