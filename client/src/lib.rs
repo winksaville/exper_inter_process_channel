@@ -45,8 +45,8 @@ pub struct Client {
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
-    pub partner_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
-    pub controller_tx: Sender<BoxMsgAny>, // TODO: Allow each message to have available a "reply Sender"
+    pub partner_tx: Option<Sender<BoxMsgAny>>,
+    pub controller_tx: Option<Sender<BoxMsgAny>>,
     pub ping_count: u64,
 }
 
@@ -98,11 +98,7 @@ const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
     ProtocolSetId(uuid!("1a7b43ed-4676-42cd-9969-72283f258ef1"));
 
 impl Client {
-    pub fn new(
-        name: &str,
-        partner_tx: Sender<BoxMsgAny>,
-        controller_tx: Sender<BoxMsgAny>,
-    ) -> Self {
+    pub fn new(name: &str) -> Self {
         // Create the client ProtocolSet, `client_ps`
         let errp = echo_requester_protocol();
         let erep = echo_requestee_protocol();
@@ -120,8 +116,8 @@ impl Client {
             protocol_set: client_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            partner_tx,
-            controller_tx,
+            partner_tx: None,
+            controller_tx: None,
             ping_count: 0,
         };
 
@@ -142,7 +138,7 @@ impl Client {
         self.current_state = dest;
     }
 
-    fn send_echo_req_or_complete(&self, reply_tx: Option<&Sender<BoxMsgAny>>, counter: u64) {
+    fn send_echo_req_or_complete(&mut self, counter: u64) {
         println!(
             "{}:send_echo_req_or_complete:+ counter={counter} ping_count={} * 2 = {}",
             self.name,
@@ -155,19 +151,22 @@ impl Client {
                 "{}:send_echo_req_or_complete:- to partner_tx msg={req_msg:?}",
                 self.name
             );
-            if let Some(tx) = reply_tx {
+            if let Some(tx) = &self.partner_tx {
                 tx.send(req_msg).unwrap();
             } else {
-                self.partner_tx.send(req_msg).unwrap();
+                println!(
+                    "{}:send_echo_req_or_complete:- no partner={req_msg:?}",
+                    self.name
+                );
             }
-        } else {
+        } else if let Some(tx) = &self.controller_tx {
+            tx.send(Box::new(EchoComplete::new())).unwrap();
             println!(
                 "{}:send_echo_req_or_complete:- send Complete to controller_tx",
                 self.name
             );
-            self.controller_tx
-                .send(Box::new(EchoComplete::new()))
-                .unwrap();
+        } else {
+            println!("{}:send_echo_req_or_complete:- no controller_tx", self.name);
         }
     }
 
@@ -175,7 +174,7 @@ impl Client {
         if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
             assert_eq!(msg.header.id, ECHO_REPLY_ID);
             println!("{}:State0: {msg:?}", self.name);
-            self.send_echo_req_or_complete(reply_tx, msg.counter + 1);
+            self.send_echo_req_or_complete(msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
@@ -184,13 +183,25 @@ impl Client {
             if let Some(tx) = reply_tx {
                 tx.send(reply_msg).unwrap();
             } else {
-                self.partner_tx.send(reply_msg).unwrap();
+                println!(
+                    "{}:State0: Error no reply_tx, can't send repl_msg={reply_msg:?}",
+                    self.name
+                );
             }
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             assert_eq!(msg.header.id, ECHO_START_ID);
-            println!("{}:State0: msg={msg:?}", self.name);
-            self.ping_count = msg.ping_count;
-            self.send_echo_req_or_complete(reply_tx, 1);
+            if let Some(tx) = reply_tx {
+                println!("{}:State0: msg={msg:?}", self.name);
+                self.partner_tx = Some(msg.partner_tx.clone());
+                self.controller_tx = Some(tx.clone());
+                self.ping_count = msg.ping_count;
+                self.send_echo_req_or_complete(1);
+            } else {
+                println!(
+                    "{}:State0: Error no controller_tx, can't start msg={msg:?}",
+                    self.name
+                );
+            }
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -203,57 +214,37 @@ impl Client {
 
 #[cfg(test)]
 mod test {
-    use chrono::Utc;
-
     use super::*;
-
+    use chrono::Utc;
     use std::sync::mpsc::channel;
 
-    // Simple test with ping_count 0, there be just
-    // a EchoStart then EchoComplete.
-    #[test]
-    fn test_ping_count_0() {
-        // For simple testing this test code will act as the partner and controller
-        let (tx, rx) = channel();
-
-        // Using one channel for both partner and controller
-        let mut client = Client::new("client", tx.clone(), tx.clone());
-        println!("test_1: client={client:?}");
-
-        let start_msg = Box::new(EchoStart::new(0));
-        client.process_msg_any(None, start_msg);
-        let reply_msg_any = rx.recv().unwrap();
-        let received_msg = reply_msg_any.downcast_ref::<EchoComplete>().unwrap();
-        println!("test_1: received msg={received_msg:?}");
-        assert_eq!(received_msg.header.id, echo_complete::ECHO_COMPLETE_ID);
-
-        drop(tx);
-    }
-
-    // Test various ping_counts
+    // Test various ping_counts including 0
     #[test]
     fn test_ping_counts() {
-        // For simple testing this test code will act as the partner and controller
-        let (tx, rx) = channel();
+        // Channel pair between ctrl and clnt
+        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = channel::<BoxMsgAny>();
+        let (clnt_to_ctrl_tx, clnt_to_ctrl_rx) = channel::<BoxMsgAny>();
 
-        // Using one channel for both partner and controller
-        let mut client = Client::new("client", tx.clone(), tx.clone());
+        // Channel pair between clnt and srvr
+        let (clnt_to_srvr_tx, clnt_to_srvr_rx) = channel::<BoxMsgAny>();
+        let (srvr_to_clnt_tx, srvr_to_clnt_rx) = channel::<BoxMsgAny>();
+
+        let mut client = Client::new("client");
         println!("test_ping_counts: client={client:?}");
 
-        let reply_tx = tx.clone();
         for ping_count in [0, 1, 5] {
-            // Controller sends start message
+            // Controller sends start message to client
             println!("\ntest_ping_counts: ping_count={ping_count}");
-            let start_msg = Box::new(EchoStart::new(ping_count));
-            reply_tx.send(start_msg).unwrap();
+            let start_msg = Box::new(EchoStart::new(clnt_to_srvr_tx.clone(), ping_count));
+            ctrl_to_clnt_tx.send(start_msg).unwrap();
 
             // Client receives Start msg
-            let start_msg_any = rx.recv().unwrap();
-            client.process_msg_any(Some(&reply_tx), start_msg_any);
+            let start_msg_any = ctrl_to_clnt_rx.recv().unwrap();
+            client.process_msg_any(Some(&clnt_to_ctrl_tx), start_msg_any);
 
             for _ in 0..ping_count {
                 // Server receives request message
-                let req_msg_any = rx.recv().unwrap();
+                let req_msg_any = clnt_to_srvr_rx.recv().unwrap();
                 let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
                 println!("test_ping_counts: received req_msg={req_msg:?}");
 
@@ -262,20 +253,23 @@ mod test {
                     Utc::now().timestamp_nanos(),
                     req_msg.counter,
                 ));
-                reply_tx.send(reply_msg).unwrap();
+                srvr_to_clnt_tx.send(reply_msg).unwrap();
 
                 // Client receives and processes reply message
-                let reply_msg_any = rx.recv().unwrap();
-                client.process_msg_any(Some(&reply_tx), reply_msg_any);
+                let reply_msg_any = srvr_to_clnt_rx.recv().unwrap();
+                client.process_msg_any(Some(&srvr_to_clnt_tx), reply_msg_any);
             }
 
             // Controller receives Complete msg
-            let complete_msg_any = rx.recv().unwrap();
+            let complete_msg_any = clnt_to_ctrl_rx.recv().unwrap();
             let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
             println!("test_ping_counts: received complete msg={complete_msg:?}");
             assert_eq!(complete_msg.header.id, echo_complete::ECHO_COMPLETE_ID);
         }
 
-        drop(tx);
+        drop(ctrl_to_clnt_tx);
+        drop(clnt_to_ctrl_tx);
+        drop(clnt_to_srvr_tx);
+        drop(srvr_to_clnt_tx);
     }
 }

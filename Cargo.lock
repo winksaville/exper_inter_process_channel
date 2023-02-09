@@ -236,8 +236,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
+ "msg_local_macro",
  "serde",
  "serde_json",
  "uuid",
