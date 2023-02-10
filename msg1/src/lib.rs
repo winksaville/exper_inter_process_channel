@@ -13,12 +13,12 @@ pub const MSG1_NAME: &str = "Msg1";
 #[repr(C)]
 pub struct Msg1 {
     pub header: MsgHeader,
-    pub fu64: u64,
+    pub v: u64,
 }
 
 impl Default for Msg1 {
     fn default() -> Self {
-        Self::new()
+        Self::new(0x1234567890ABCDEF)
     }
 }
 
@@ -27,10 +27,10 @@ impl Default for Msg1 {
 // format string. Also this is caught by `cargo +nightly clippy`.
 #[allow(clippy::uninlined_format_args)]
 impl Msg1 {
-    pub fn new() -> Self {
+    pub fn new(v: u64) -> Self {
         Self {
             header: MsgHeader { id: MSG1_ID },
-            fu64: 0x123456789ABCDEF1,
+            v,
         }
     }
 
