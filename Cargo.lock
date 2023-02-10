@@ -84,6 +84,7 @@ dependencies = [
  "echo_requester_protocol",
  "echo_start_complete_protocol",
  "msg1",
+ "msg2",
  "msg_header",
  "protocol",
  "protocol_set",
