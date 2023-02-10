@@ -212,7 +212,7 @@ impl Client {
             }
         } else if let Some(_msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1 so our test passes :)
-            let msg1 = Box::new(Msg1::new());
+            let msg1 = Box::new(Msg1::default());
             self.self_tx.as_ref().unwrap().send(msg1).unwrap();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
