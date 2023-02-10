@@ -48,6 +48,7 @@ pub struct Client {
     pub partner_tx: Option<Sender<BoxMsgAny>>,
     pub controller_tx: Option<Sender<BoxMsgAny>>,
     pub ping_count: u64,
+    self_tx: Option<Sender<BoxMsgAny>>,
 }
 
 impl Actor for Client {
@@ -65,6 +66,10 @@ impl Actor for Client {
 
     fn get_protocol_set(&self) -> &ProtocolSet {
         &self.protocol_set
+    }
+
+    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
+        self.self_tx = Some(sender);
     }
 
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
@@ -119,6 +124,7 @@ impl Client {
             partner_tx: None,
             controller_tx: None,
             ping_count: 0,
+            self_tx: None,
         };
 
         this.add_state(Self::state0, "state0");

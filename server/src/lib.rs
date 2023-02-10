@@ -30,6 +30,8 @@ pub struct Server {
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
+
+    self_tx: Option<Sender<BoxMsgAny>>,
 }
 
 impl Actor for Server {
@@ -49,6 +51,9 @@ impl Actor for Server {
         &self.protocol_set
     }
 
+    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
+        self.self_tx = Some(sender);
+    }
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
         (self.current_state)(self, reply_tx, msg);
     }
@@ -94,6 +99,7 @@ impl Server {
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
+            self_tx: None,
         };
 
         this.add_state(Self::state0, "state0");
