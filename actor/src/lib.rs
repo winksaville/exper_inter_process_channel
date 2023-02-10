@@ -73,6 +73,7 @@ pub trait Actor {
     fn get_actor_id(&self) -> &ActorId;
     fn get_instance_id(&self) -> &ActorInstanceId;
     fn get_protocol_set(&self) -> &ProtocolSet;
+    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>);
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
 }
 
