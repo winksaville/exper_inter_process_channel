@@ -1,7 +1,5 @@
 use actor::{Actor, ActorId, ActorInstanceId};
-use echo_reply::EchoReply;
-use echo_req::{EchoReq, ECHO_REQ_ID};
-use echo_requestee_protocol::echo_requestee_protocol;
+use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{

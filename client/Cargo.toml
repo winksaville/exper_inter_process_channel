@@ -9,10 +9,6 @@ license.workspace = true
 
 [dependencies]
 msg_header = { path="../msg_header" }
-echo_start = { path="../echo_start" }
-echo_complete = { path="../echo_complete" }
-echo_req = { path="../echo_req" }
-echo_reply = { path="../echo_reply" }
 actor = { version = "0.1.0", path = "../actor" }
 chrono = "0.4.23"
 protocol = { version = "0.1.0", path = "../protocol" }
@@ -24,3 +20,4 @@ protocol_set = { version = "0.1.0", path = "../protocol_set" }
 
 [dev-dependencies]
 msg1 = { path="../msg1" }
+server = { path = "../server" }

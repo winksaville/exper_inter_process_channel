@@ -1,11 +1,13 @@
 //! Protocol implemented by entities that send requests
 //! and receive responses.
-use echo_reply::ECHO_REPLY_ID;
-use echo_req::ECHO_REQ_ID;
 use msg_header::MsgId;
 use once_cell::sync::Lazy;
 use protocol::{Protocol, ProtocolId};
 use uuid::uuid;
+
+// Re-exports
+pub use echo_reply::*;
+pub use echo_req::*;
 
 const ECHO_REQUESTEE_PROTOCOL_ID: ProtocolId =
     ProtocolId(uuid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183"));
