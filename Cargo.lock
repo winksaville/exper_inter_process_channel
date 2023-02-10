@@ -12,6 +12,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "actor_bi_dir_channel"
+version = "0.1.0"
+dependencies = [
+ "msg1",
+ "msg_header",
+ "protocol_set",
+ "uuid",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -291,6 +301,7 @@ name = "exper_inter_process_channel"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "actor_bi_dir_channel",
  "client",
  "custom_logger",
  "echo_complete",

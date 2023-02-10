@@ -10,6 +10,7 @@ license.workspace = true
 [dependencies]
 manager = { path="manager" }
 actor = { path="actor" }
+actor_bi_dir_channel = { path="actor_bi_dir_channel" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
 echo_start_complete_protocol = { path="echo_start_complete_protocol" }
@@ -34,6 +35,7 @@ custom_logger = { git = "https://github.com/winksaville/custom_logger", version 
 members = [
     "manager",
     "actor",
+    "actor_bi_dir_channel",
     "protocol_set",
     "protocol",
     "msg_header",
