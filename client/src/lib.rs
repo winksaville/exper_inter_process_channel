@@ -1,11 +1,11 @@
 use actor::{Actor, ActorId, ActorInstanceId};
-use echo_complete::EchoComplete;
-use echo_reply::{EchoReply, ECHO_REPLY_ID};
-use echo_req::{EchoReq, ECHO_REQ_ID};
 use echo_requestee_protocol::echo_requestee_protocol;
-use echo_requester_protocol::echo_requester_protocol;
-use echo_start::{EchoStart, ECHO_START_ID};
-use echo_start_complete_protocol::echo_start_complete_protocol;
+use echo_requester_protocol::{
+    echo_requester_protocol, EchoReply, EchoReq, ECHO_REPLY_ID, ECHO_REQ_ID,
+};
+use echo_start_complete_protocol::{
+    echo_start_complete_protocol, EchoComplete, EchoStart, ECHO_START_ID,
+};
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
@@ -216,6 +216,7 @@ impl Client {
 mod test {
     use super::*;
     use chrono::Utc;
+    use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
     use std::sync::mpsc::channel;
 
     // Test various ping_counts including 0
@@ -264,7 +265,7 @@ mod test {
             let complete_msg_any = clnt_to_ctrl_rx.recv().unwrap();
             let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
             println!("test_ping_counts: received complete msg={complete_msg:?}");
-            assert_eq!(complete_msg.header.id, echo_complete::ECHO_COMPLETE_ID);
+            assert_eq!(complete_msg.header.id, ECHO_COMPLETE_ID);
         }
 
         drop(ctrl_to_clnt_tx);

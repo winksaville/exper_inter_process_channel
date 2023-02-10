@@ -1,9 +1,11 @@
-use echo_complete::ECHO_COMPLETE_ID;
-use echo_start::ECHO_START_ID;
 use msg_header::MsgId;
 use once_cell::sync::Lazy;
 use protocol::{Protocol, ProtocolId};
 use uuid::uuid;
+
+// Re-exports
+pub use echo_complete::*;
+pub use echo_start::*;
 
 const ECHO_START_COMPLETE_PROTOCOL_ID: ProtocolId =
     ProtocolId(uuid!("e46194bc-65a4-4b8e-884a-4272fd8fae99"));
