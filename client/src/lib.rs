@@ -6,6 +6,8 @@ use echo_requester_protocol::{
 use echo_start_complete_protocol::{
     echo_start_complete_protocol, EchoComplete, EchoStart, ECHO_START_ID,
 };
+use msg1::Msg1;
+use msg2::Msg2;
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
@@ -208,6 +210,10 @@ impl Client {
                     self.name
                 );
             }
+        } else if let Some(_msg) = msg_any.downcast_ref::<Msg2>() {
+            // Got a Msg2 so self send a Msg1 so our test passes :)
+            let msg1 = Box::new(Msg1::new());
+            self.self_tx.as_ref().unwrap().send(msg1).unwrap();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -223,7 +229,22 @@ mod test {
     use super::*;
     use chrono::Utc;
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
-    use std::sync::mpsc::channel;
+    use msg1::MSG1_ID;
+    use msg_header::MsgHeader;
+    use std::{sync::mpsc::channel};
+
+    #[test]
+    fn test_self_tx() {
+        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = channel::<BoxMsgAny>();
+
+        let mut client = Client::new("client");
+        client.set_self_sender(ctrl_to_clnt_tx.clone());
+
+        let msg2 = Box::new(Msg2::new());
+        client.process_msg_any(None, msg2);
+        let recv_msg = ctrl_to_clnt_rx.recv().unwrap();
+        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg), &MSG1_ID);
+    }
 
     // Test various ping_counts including 0
     #[test]
