@@ -88,28 +88,40 @@ mod test {
         // Verify left can send to self and receive on left.recv
         left.send_self(msg_1.clone()).unwrap();
         let recv_msg_1_any = left.recv().unwrap();
-        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any), &msg_1.header.id);
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
 
         // Verify right can send to self and receive on right.recv
         right.send_self(msg_1.clone()).unwrap();
         let recv_msg_1_any = right.recv().unwrap();
-        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any), &msg_1.header.id);
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
 
         // Verify left can send to right
         left.send(msg_1.clone()).unwrap();
         let recv_msg_1_any = right.recv().unwrap();
-        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any), &msg_1.header.id);
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
 
         // Verify right can send to left
         right.send(msg_1.clone()).unwrap();
         let recv_msg_1_any = left.recv().unwrap();
-        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any), &msg_1.header.id);
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
 

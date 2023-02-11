@@ -21,5 +21,6 @@ msg2 = { path = "../msg2" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
 
 [dev-dependencies]
+actor_bi_dir_channel = { path = "../actor_bi_dir_channel" }
 msg_header = { path = "../msg_header" }
 server = { path = "../server" }

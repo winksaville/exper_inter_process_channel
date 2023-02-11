@@ -212,7 +212,7 @@ impl Client {
             }
         } else if let Some(_msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1 so our test passes :)
-            let msg1 = Box::new(Msg1::default());
+            let msg1 = Box::<Msg1>::default();
             self.self_tx.as_ref().unwrap().send(msg1).unwrap();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
@@ -227,11 +227,12 @@ impl Client {
 #[cfg(test)]
 mod test {
     use super::*;
+    use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
     use msg1::MSG1_ID;
     use msg_header::MsgHeader;
-    use std::{sync::mpsc::channel};
+    use std::sync::mpsc::channel;
 
     #[test]
     fn test_self_tx() {
@@ -243,7 +244,10 @@ mod test {
         let msg2 = Box::new(Msg2::new());
         client.process_msg_any(None, msg2);
         let recv_msg = ctrl_to_clnt_rx.recv().unwrap();
-        assert_eq!(MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg), &MSG1_ID);
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg),
+            &MSG1_ID
+        );
     }
 
     // Test various ping_counts including 0
@@ -266,11 +270,16 @@ mod test {
             let start_msg = Box::new(EchoStart::new(clnt_to_srvr_tx.clone(), ping_count));
             ctrl_to_clnt_tx.send(start_msg).unwrap();
 
-            // Client receives Start msg
+            // Client receives Start msg from control
             let start_msg_any = ctrl_to_clnt_rx.recv().unwrap();
             client.process_msg_any(Some(&clnt_to_ctrl_tx), start_msg_any);
 
-            for _ in 0..ping_count {
+            for i in 0..ping_count {
+                println!(
+                    "test_ping_counts: server recv TOL {} of {ping_count}",
+                    i + 1
+                );
+
                 // Server receives request message
                 let req_msg_any = clnt_to_srvr_rx.recv().unwrap();
                 let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
@@ -283,7 +292,7 @@ mod test {
                 ));
                 srvr_to_clnt_tx.send(reply_msg).unwrap();
 
-                // Client receives and processes reply message
+                // Client receives and processes reply message from server
                 let reply_msg_any = srvr_to_clnt_rx.recv().unwrap();
                 client.process_msg_any(Some(&srvr_to_clnt_tx), reply_msg_any);
             }
@@ -299,5 +308,65 @@ mod test {
         drop(clnt_to_ctrl_tx);
         drop(clnt_to_srvr_tx);
         drop(srvr_to_clnt_tx);
+    }
+
+    // Test various ping_counts including 0
+    #[test]
+    fn test_bi_dir_local_channel() {
+        println!("test_bi_dir_local_channel:");
+
+        // BiDirLocalChannel between ctrl and clnt
+        let (ctrl_side_with_clnt, clnt_side_with_ctrl) = BiDirLocalChannel::new();
+
+        // BiDirLocalChannel between clnt and srvr
+        let (clnt_side_with_srvr, srvr_side_with_clnt) = BiDirLocalChannel::new();
+
+        let mut client = Client::new("client");
+
+        for ping_count in [0, 1, 5] {
+            let clnt_side_with_ctrl_tx = clnt_side_with_ctrl.clone_tx();
+            let srvr_side_with_clnt_tx = srvr_side_with_clnt.clone_tx();
+
+            // Controller sends start message to client
+            println!("\ntest_bi_dir_local_channel: ping_count={ping_count}");
+            let start_msg = Box::new(EchoStart::new(clnt_side_with_srvr.clone_tx(), ping_count));
+            ctrl_side_with_clnt.send(start_msg).unwrap();
+
+            // Client receives Start msg from control
+            let start_msg_any = clnt_side_with_ctrl.recv().unwrap();
+            client.process_msg_any(Some(&clnt_side_with_ctrl_tx), start_msg_any);
+
+            for i in 0..ping_count {
+                println!(
+                    "test_bi_dir_local_channel: server recv TOL {} of {ping_count}",
+                    i + 1
+                );
+
+                // Server receives request message
+                let req_msg_any = srvr_side_with_clnt.recv().unwrap();
+                let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
+                println!("test_bi_dir_local_channel: received req_msg={req_msg:?}");
+
+                // Server creates and sends reply message
+                let reply_msg = Box::new(EchoReply::new(
+                    Utc::now().timestamp_nanos(),
+                    req_msg.counter,
+                ));
+                srvr_side_with_clnt_tx.send(reply_msg).unwrap();
+
+                // Client receives and processes reply message from server
+                let reply_msg_any = clnt_side_with_srvr.recv().unwrap();
+                client.process_msg_any(Some(&srvr_side_with_clnt_tx), reply_msg_any);
+            }
+
+            drop(clnt_side_with_ctrl_tx);
+            drop(srvr_side_with_clnt_tx);
+
+            // Controller receives Complete msg
+            let complete_msg_any = ctrl_side_with_clnt.recv().unwrap();
+            let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
+            println!("test_bi_dir_local_channel: received complete msg={complete_msg:?}");
+            assert_eq!(complete_msg.header.id, ECHO_COMPLETE_ID);
+        }
     }
 }
