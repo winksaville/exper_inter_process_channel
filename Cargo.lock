@@ -317,6 +317,7 @@ dependencies = [
  "msg2",
  "msg_header",
  "msg_serde_json",
+ "name_id",
  "protocol",
  "protocol_set",
  "serde",
@@ -566,6 +567,13 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "name_id"
+version = "0.1.0"
+dependencies = [
  "uuid",
 ]
 

@@ -24,6 +24,7 @@ msg_header = { path="msg_header" }
 msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msg1" }
 msg2 = { path="msg2" }
+name_id = { path="name_id" }
 client = { path="client" }
 server = { path="server" }
 uuid = "1.2.2"
@@ -42,6 +43,7 @@ members = [
     "msg_serde_json",
     "msg1",
     "msg2",
+    "name_id",
     "echo_start_complete_protocol",
     "echo_requester_protocol",
     "echo_requestee_protocol",
