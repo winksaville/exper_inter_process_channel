@@ -89,6 +89,7 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "actor_bi_dir_channel",
  "chrono",
  "echo_requestee_protocol",
  "echo_requester_protocol",
