@@ -3,10 +3,8 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct NameId {
-    name: String,
-    short_name: String,
-    full_name: String,
     id: Uuid,
+    name: String,
 }
 
 impl Debug for NameId {
@@ -14,8 +12,6 @@ impl Debug for NameId {
         if f.alternate() {
             f.debug_struct("NameId")
                 .field("name", &self.name)
-                .field("short_name", &self.short_name)
-                .field("full_name", &self.full_name)
                 .field("id", &self.id)
                 .finish()
         } else {
@@ -34,8 +30,6 @@ impl NameId {
     pub fn new(name: &str, id: Uuid) -> Self {
         Self {
             name: name.to_string(),
-            short_name: format!("{}-{}", name, &id.to_string()[0..8]),
-            full_name: format!("{}-{}", name, &id.to_string()),
             id,
         }
     }
@@ -48,17 +42,16 @@ impl NameId {
         &self.id
     }
 
-    #[allow(clippy::misnamed_getters)]
-    pub fn name(&self) -> &str {
-        &self.short_name
+    pub fn name(&self) -> String {
+        format!("{}-{}", self.name, &self.id.to_string()[0..8])
     }
 
     pub fn just_name(&self) -> &str {
         &self.name
     }
 
-    pub fn full_name(&self) -> &str {
-        &self.full_name
+    pub fn full_name(&self) -> String {
+        format!("{}-{}", self.name, self.id.to_string())
     }
 }
 
