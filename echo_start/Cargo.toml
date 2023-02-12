@@ -8,6 +8,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+crossbeam-channel = "0.5.6"
 log = "0.4.17"
 msg_header = { path = "../msg_header" }
 msg_local_macro = { path = "../msg_local_macro" }

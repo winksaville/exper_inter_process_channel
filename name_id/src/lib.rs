@@ -48,6 +48,7 @@ impl NameId {
         &self.id
     }
 
+    #[allow(clippy::misnamed_getters)]
     pub fn name(&self) -> &str {
         &self.short_name
     }

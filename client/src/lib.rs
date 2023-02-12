@@ -1,4 +1,5 @@
 use actor::{Actor, ActorId, ActorInstanceId};
+use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
     echo_requester_protocol, EchoReply, EchoReq, ECHO_REPLY_ID, ECHO_REQ_ID,
@@ -13,7 +14,6 @@ use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    sync::mpsc::Sender,
 };
 use uuid::uuid;
 
@@ -229,14 +229,14 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
+    use crossbeam_channel::unbounded;
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
     use msg1::MSG1_ID;
     use msg_header::MsgHeader;
-    use std::sync::mpsc::channel;
 
     #[test]
     fn test_self_tx() {
-        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = channel::<BoxMsgAny>();
+        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = unbounded::<BoxMsgAny>();
 
         let mut client = Client::new("client");
         client.set_self_sender(ctrl_to_clnt_tx.clone());
@@ -254,12 +254,12 @@ mod test {
     #[test]
     fn test_ping_counts() {
         // Channel pair between ctrl and clnt
-        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = channel::<BoxMsgAny>();
-        let (clnt_to_ctrl_tx, clnt_to_ctrl_rx) = channel::<BoxMsgAny>();
+        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = unbounded::<BoxMsgAny>();
+        let (clnt_to_ctrl_tx, clnt_to_ctrl_rx) = unbounded::<BoxMsgAny>();
 
         // Channel pair between clnt and srvr
-        let (clnt_to_srvr_tx, clnt_to_srvr_rx) = channel::<BoxMsgAny>();
-        let (srvr_to_clnt_tx, srvr_to_clnt_rx) = channel::<BoxMsgAny>();
+        let (clnt_to_srvr_tx, clnt_to_srvr_rx) = unbounded::<BoxMsgAny>();
+        let (srvr_to_clnt_tx, srvr_to_clnt_rx) = unbounded::<BoxMsgAny>();
 
         let mut client = Client::new("client");
         println!("test_ping_counts: client={client:?}");
@@ -329,7 +329,9 @@ mod test {
 
             // Controller sends start message to client
             println!("\ntest_bi_dir_local_channel: ping_count={ping_count}");
-            let start_msg = Box::new(EchoStart::new(clnt_side_with_srvr.clone_tx(), ping_count));
+            let tx = clnt_side_with_srvr.clone_tx();
+            let start_msg = Box::new(EchoStart::new(tx, ping_count));
+            //let start_msg = Box::new(EchoStart::new(clnt_side_with_srvr.clone_tx(), ping_count));
             ctrl_side_with_clnt.send(start_msg).unwrap();
 
             // Client receives Start msg from control

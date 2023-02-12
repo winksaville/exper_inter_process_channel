@@ -1,6 +1,6 @@
+use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
-use std::sync::mpsc::Sender;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

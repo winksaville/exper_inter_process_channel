@@ -6,6 +6,7 @@ version = 3
 name = "actor"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "msg_header",
  "protocol_set",
  "uuid",
@@ -15,10 +16,9 @@ dependencies = [
 name = "actor_bi_dir_channel"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "msg1",
  "msg_header",
- "protocol_set",
- "uuid",
 ]
 
 [[package]]
@@ -91,6 +91,7 @@ dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "chrono",
+ "crossbeam-channel",
  "echo_requestee_protocol",
  "echo_requester_protocol",
  "echo_start_complete_protocol",
@@ -118,6 +119,25 @@ name = "core-foundation-sys"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
+
+[[package]]
+name = "crossbeam-channel"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2dd04ddaf88237dc3b8d8f9a3c1004b506b54b3313403944054d23c0870c521"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb766fa798726286dbbb842f174001dab8abc7b627a1dd86e0b7222a95d929f"
+dependencies = [
+ "cfg-if",
+]
 
 [[package]]
 name = "custom_logger"
@@ -243,6 +263,7 @@ dependencies = [
 name = "echo_start"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "log",
  "msg_header",
  "msg_local_macro",
@@ -304,6 +325,7 @@ dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "client",
+ "crossbeam-channel",
  "custom_logger",
  "echo_complete",
  "echo_reply",
@@ -488,6 +510,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "client",
+ "crossbeam-channel",
  "msg_header",
  "protocol",
  "protocol_set",
@@ -538,6 +561,7 @@ dependencies = [
 name = "msg_local_macro"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
  "custom_logger",
  "log",
  "msg_header",
@@ -741,6 +765,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "chrono",
+ "crossbeam-channel",
  "echo_requestee_protocol",
  "msg_header",
  "protocol",

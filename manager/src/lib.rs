@@ -149,7 +149,7 @@ impl Manager {
 
 #[cfg(test)]
 mod test {
-    use std::sync::mpsc::channel;
+    use crossbeam_channel::unbounded;
 
     use super::*;
     use client::Client;
@@ -162,7 +162,7 @@ mod test {
         println!("test_manager");
         let mut manager = Manager::new("a_manager", ManagerId(Uuid::new_v4()));
 
-        let (tx, rx) = channel::<BoxMsgAny>();
+        let (tx, rx) = unbounded::<BoxMsgAny>();
         let client = Client::new("client");
         manager.add_actor(client).unwrap();
 

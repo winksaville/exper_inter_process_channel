@@ -1,11 +1,11 @@
 use actor::{Actor, ActorId, ActorInstanceId};
+use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    sync::mpsc::Sender,
 };
 use uuid::uuid;
 
@@ -143,11 +143,11 @@ mod test {
 
     use super::*;
 
-    use std::sync::mpsc::channel;
+    use crossbeam_channel::unbounded;
 
     #[test]
     fn test_1() {
-        let (tx, rx) = channel();
+        let (tx, rx) = unbounded();
 
         let mut server = Server::new("server");
         println!("test_1: server={server:?}");
