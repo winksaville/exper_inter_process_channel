@@ -19,6 +19,7 @@ echo_start_complete_protocol = { version = "0.1.0", path = "../echo_start_comple
 msg1 = { path = "../msg1" }
 msg2 = { path = "../msg2" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
+crossbeam-channel = "0.5.6"
 
 [dev-dependencies]
 actor_bi_dir_channel = { path = "../actor_bi_dir_channel" }

@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use crossbeam_channel::Sender;
 
 use msg_header::BoxMsgAny;
 use msg_local_macro::{msg_local_macro, paste};

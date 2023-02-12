@@ -90,7 +90,7 @@ macro_rules! msg_local_macro {
 
 #[cfg(test)]
 mod test {
-    use std::sync::mpsc::{channel, Sender};
+    use crossbeam_channel::{unbounded, Sender};
 
     use msg_header::BoxMsgAny;
 
@@ -116,7 +116,7 @@ mod test {
 
     #[test]
     fn test_with_fields_including_a_sender() {
-        let (tx, rx) = channel();
+        let (tx, rx) = unbounded();
 
         let msg_lcl_a_0 = Box::new(MsgLclA::new(123, "hi", tx.clone()));
         println!("test_with_fields msg_lcl_a_0={msg_lcl_a_0:?}");

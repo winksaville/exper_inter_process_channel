@@ -1,9 +1,9 @@
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use std::{
     collections::HashMap,
     error::Error,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
-    sync::mpsc::{channel, sync_channel, Receiver, Sender},
     thread,
 };
 
@@ -63,8 +63,8 @@ impl IpchnlDeserializer {
 
     /// Reads messages from a TcpStream, deserializes them and sends them to an associated channel
     pub fn deserializer(self) -> Result<Receiver<BoxMsgAny>, Box<dyn Error>> {
-        let (tx, rx) = channel::<BoxMsgAny>();
-        let (status_tx, status_rx) = sync_channel::<String>(1);
+        let (tx, rx) = unbounded::<BoxMsgAny>();
+        let (status_tx, status_rx) = bounded::<String>(1);
 
         let self_name = self.name.clone();
         thread::spawn(move || {
@@ -189,7 +189,7 @@ impl IpchnlSerializer {
 
     /// Receive messages on a channel, serializes them and then writes them to TcpStream
     pub fn serializer(self) -> Result<(), Box<dyn Error>> {
-        let (status_tx, status_rx) = sync_channel(1);
+        let (status_tx, status_rx) = bounded(1);
         thread::spawn(move || {
             println!("{}::serializer:+", &self.name);
 

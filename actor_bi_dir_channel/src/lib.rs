@@ -1,4 +1,4 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use msg_header::BoxMsgAny;
 
@@ -17,8 +17,13 @@ pub trait ActorBiDirChannel {
     fn recv(&self) -> Result<BoxMsgAny, Box<dyn std::error::Error>> {
         Err("ActorBiDirChannel `fn recv` not implemented".into())
     }
+
+    fn get_recv(&self) -> &Receiver<BoxMsgAny> {
+        panic!("ActorBiDirChannel `fn get_recv` not implemented");
+    }
 }
 
+#[derive(Clone)]
 pub struct BiDirLocalChannel {
     self_tx: Sender<BoxMsgAny>,
     tx: Sender<BoxMsgAny>,
@@ -28,10 +33,10 @@ pub struct BiDirLocalChannel {
 impl BiDirLocalChannel {
     pub fn new() -> (Self, Self) {
         // left_tx -----> right_rx
-        let (left_tx, right_rx) = channel();
+        let (left_tx, right_rx) = unbounded();
 
         // left_rx <---- right_tx
-        let (right_tx, left_rx) = channel();
+        let (right_tx, left_rx) = unbounded();
 
         (
             Self {
@@ -51,6 +56,10 @@ impl BiDirLocalChannel {
 impl ActorBiDirChannel for BiDirLocalChannel {
     fn clone_tx(&self) -> Sender<BoxMsgAny> {
         self.tx.clone()
+    }
+
+    fn get_recv(&self) -> &Receiver<BoxMsgAny> {
+        &self.rx
     }
 
     fn send_self(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
