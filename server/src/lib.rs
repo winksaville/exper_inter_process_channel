@@ -23,6 +23,7 @@ pub struct StateInfo {
 type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 
 // State machine for channel to network
+#[derive(Clone)]
 pub struct Server {
     pub name: String,
     pub actor_id: ActorId,

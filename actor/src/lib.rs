@@ -31,7 +31,7 @@ pub trait ActorChannel {
     }
 }
 
-pub trait Actor {
+pub trait Actor: Send + Clone {
     fn get_name_and_short_instance_id(&self) -> String {
         let mut s: String = "".to_string();
 

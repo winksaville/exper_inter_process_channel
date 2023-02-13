@@ -22,6 +22,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "actor_thread"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "crossbeam-channel",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -324,6 +336,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "actor_thread",
  "client",
  "crossbeam-channel",
  "custom_logger",

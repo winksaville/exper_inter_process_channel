@@ -1,0 +1,16 @@
+[package]
+name = "actor_thread"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+uuid = { version = "1.3.0", features = ["v4"] }
+crossbeam-channel = "0.5.6"
+actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
+actor = { version = "0.1.0", path = "../actor" }
+msg_header = { version = "0.1.0", path = "../msg_header" }
+msg_local_macro = { version = "0.1.0", path = "../msg_local_macro" }

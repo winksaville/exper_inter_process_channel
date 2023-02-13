@@ -11,6 +11,7 @@ license.workspace = true
 manager = { path="manager" }
 actor = { path="actor" }
 actor_bi_dir_channel = { path="actor_bi_dir_channel" }
+actor_thread = { path="actor_thread" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
 echo_start_complete_protocol = { path="echo_start_complete_protocol" }
@@ -38,6 +39,7 @@ members = [
     "manager",
     "actor",
     "actor_bi_dir_channel",
+    "actor_thread",
     "protocol_set",
     "protocol",
     "msg_header",
