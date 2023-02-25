@@ -334,6 +334,7 @@ dependencies = [
  "echo_requester_protocol",
  "echo_start",
  "echo_start_complete_protocol",
+ "incremental_select",
  "manager",
  "msg1",
  "msg2",
@@ -426,6 +427,14 @@ checksum = "0703ae284fc167426161c2e3f1da3ea71d94b21bedbcc9494e92b28e334e3dca"
 dependencies = [
  "cxx",
  "cxx-build",
+]
+
+[[package]]
+name = "incremental_select"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "msg_header",
 ]
 
 [[package]]

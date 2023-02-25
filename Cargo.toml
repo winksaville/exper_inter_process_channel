@@ -27,6 +27,7 @@ msg2 = { path="msg2" }
 name_id = { path="name_id" }
 client = { path="client" }
 server = { path="server" }
+incremental_select = { path="incremental_select" }
 uuid = "1.2.2"
 serde = "1.0.152"
 serde_json = "1.0.91"
@@ -56,6 +57,7 @@ members = [
     "msg_serde_macro",
     "client",
     "server",
+    "incremental_select",
 ]
 
 [workspace.package]
