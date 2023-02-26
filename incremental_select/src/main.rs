@@ -16,19 +16,72 @@ fn simple() {
 fn rc_refcell() {
     use std::{rc::Rc, cell::RefCell};
 
-    struct Channel {
-        tx: Sender<i32>,
-        rx: Receiver<i32>,
-    }
-
     let mut channels: Vec::<Rc<RefCell<Channel>>> = Vec::new();
     let mut sel = Select::new();
 
     for i in 0..=1 {
         let (tx, rx) = unbounded::<i32>();
         channels.push(Rc::new(RefCell::new(Channel {tx, rx})));
-        let channel = &(*channels)[i].borrow();
+        let channel = &channels[i].borrow();
         sel.recv(&channel.rx);
+    }
+}
+
+#[cfg(feature = "select_immutable")]
+fn select_immutable() {
+    use std::{rc::Rc, cell::RefCell};
+    use crossbeam_channel::SelectedOperation;
+
+    // Originally investigated in:
+    //   https://github.com/winksaville/exper_crossbeam_channel/blob/fe4f0e732efd03cc5084e6f27b16e84b77ceb18d/select_immutable/src/main.rs#L5-L40 
+    // where it "worked" but I wasn't incrementally adding channelds
+    // as I am here, where it doesn't work :(
+    struct SelectImmutable<'a> {
+        // Maybe using UnsafeCell like in VecBdlcs it this would work
+        sel: Rc<RefCell<Select<'a>>>,
+    }
+
+    impl<'a> SelectImmutable<'a> {
+        pub fn new() -> Self {
+            println!("SelectImmutable::new:+-");
+            Self {
+                sel: Rc::new(RefCell::new(Select::new())),
+            }
+        }
+
+        pub fn select(&self) -> SelectedOperation<'a> {
+            println!("SelectImmutable.slect:+");
+            let r = self.sel.borrow_mut().select();
+            println!("SelectImmutable.select:- r={r:?}");
+
+            r
+        }
+
+        pub fn recv<T>(&self, r: &'a Receiver<T>) -> usize {
+            println!("SelectImmutable.recv:+");
+            let r = self.sel.borrow_mut().recv(r);
+            println!("SelectImmutable.recv:- r={r:?}");
+
+            r
+        }
+
+        pub fn ready(&self) -> usize {
+            println!("SelectImmutable.ready:+");
+            let r = self.sel.borrow_mut().ready();
+            println!("SelectImmutable.ready:- r={r:?}");
+
+            r
+        }
+    }
+
+    let mut channels: Vec::<Channel> = Vec::new();
+    let sel = SelectImmutable::new();
+
+    for i in 0..=1 {
+        let (tx, rx) = unbounded::<i32>();
+        channels.push(Channel {tx, rx});
+        let channel = &channels[i];
+        sel.recv::<i32>(&channel.rx);
     }
 }
 
@@ -115,6 +168,9 @@ fn main() {
 
     #[cfg(feature = "rc_refcell")]
     rc_refcell();
+
+    #[cfg(feature = "select_immutable")]
+    select_immutable();
 
     working();
 }
