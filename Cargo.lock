@@ -28,6 +28,7 @@ dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "crossbeam-channel",
+ "manager",
  "msg_header",
  "msg_local_macro",
  "uuid",

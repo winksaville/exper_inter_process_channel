@@ -14,3 +14,4 @@ actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 actor = { version = "0.1.0", path = "../actor" }
 msg_header = { version = "0.1.0", path = "../msg_header" }
 msg_local_macro = { version = "0.1.0", path = "../msg_local_macro" }
+manager = { version = "0.1.0", path = "../manager" }

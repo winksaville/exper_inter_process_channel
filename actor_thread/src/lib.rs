@@ -4,15 +4,16 @@ use actor::{Actor, ActorId, ActorInstanceId};
 use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
 use crossbeam_channel::Select;
 
+use manager::Manager;
 use msg_local_macro::{msg_local_macro, paste};
 
 // https://www.uuidgenerator.net/version4
 msg_local_macro!(AddActor "828ee6a0-488a-43b6-850a-537820c546ac" {
-    actor: Box<dyn Actor>
+    actor: Box<ActorInstanceId>
 });
 
 impl AddActor {
-    pub fn new(actor: Box<dyn Actor>) -> Self {
+    pub fn new(actor: Box<ActorInstanceId>) -> Self {
         Self {
             header: msg_header::MsgHeader { id: ADD_ACTOR_ID },
             actor,
@@ -55,7 +56,7 @@ pub struct ActorThread {
 }
 
 impl ActorThread {
-    pub fn new() -> Self {
+    pub fn new(manager: &Manager) -> Self {
 
         let (ctrl_chnl_left, ctrl_chnl_right) = BiDirLocalChannel::new();
 
@@ -69,7 +70,7 @@ impl ActorThread {
 
             let mut sel = Select::new();
 
-            let mut actors = Vec::<Option<(Box<dyn ActorBiDirChannel>, Box<dyn Actor>)>>::new();
+            //let mut actors = Vec::<Option<(Box<dyn ActorBiDirChannel>, Box<dyn Actor>)>>::new();
             let mut actors_by_id_map = HashMap::<ActorInstanceId, usize>::new();
 
             let ctrl_chnl_idx = sel.recv(ctrl_chnl_right.get_recv());
@@ -83,6 +84,7 @@ impl ActorThread {
                         if let Ok(msg_any) = oper.recv(ctrl_chnl_right.get_recv()) {
                             if let Some(msg) = msg_any.downcast_ref::<AddActor>() {
                                 assert_eq!(msg.header.id, ADD_ACTOR_ID);
+
                                 let (left, right) = BiDirLocalChannel::new();
                                 let oper_idx = sel.recv(right.get_recv());
                                 let actors_idx = actors.len();

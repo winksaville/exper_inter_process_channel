@@ -20,7 +20,7 @@ pub struct ManagerId(pub Uuid);
 pub struct Manager {
     name: String,
     id: ManagerId,
-    actors: Vec<Box<dyn Actor + 'static>>,
+    actors: Vec<Option<Box<dyn Actor + 'static>>>,
     actors_map_by_instance_id: HashMap<ActorInstanceId, usize>,
     actors_map_by_actor_id: HashMap<ActorId, Vec<usize>>,
     actors_map_by_protocol_id: HashMap<ProtocolId, Vec<usize>>,
@@ -69,6 +69,14 @@ impl Manager {
             actors_map_by_actor_id: HashMap::new(),
             actors_map_by_protocol_id: HashMap::new(),
             actors_map_by_protocol_set_id: HashMap::new(),
+        }
+    }
+
+    pub fn get_actor_mut_by_instance_id(&self, instance_id: &ActorInstanceId) -> Option<Box<dyn Actor + 'static>> {
+        if let Some(idx) = self.actors_map_by_instance_id.get(&instance_id) {
+            Some(self.actors[*idx])
+        } else  {
+            None 
         }
     }
 
