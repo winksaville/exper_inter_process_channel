@@ -8,9 +8,10 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-#default = ["rc_refcell"]
+#default = ["select_immutable"]
 simple = []
 rc_refcell = []
+select_immutable = []
 
 [dependencies]
 msg_header = { path="../msg_header" }
