@@ -334,7 +334,6 @@ dependencies = [
  "echo_requester_protocol",
  "echo_start",
  "echo_start_complete_protocol",
- "incremental_select",
  "manager",
  "msg1",
  "msg2",
