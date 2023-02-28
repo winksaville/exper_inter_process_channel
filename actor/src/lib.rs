@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
@@ -31,7 +32,7 @@ pub trait ActorChannel {
     }
 }
 
-pub trait Actor {
+pub trait Actor: Send + Debug + Sync {
     fn get_name_and_short_instance_id(&self) -> String {
         let mut s: String = "".to_string();
 

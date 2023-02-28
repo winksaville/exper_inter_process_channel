@@ -53,6 +53,12 @@ pub struct Client {
     self_tx: Option<Sender<BoxMsgAny>>,
 }
 
+// TODO: For Send implementors must guarantee maybe moved between threads. ??
+unsafe impl Send for Client {}
+
+// TODO: This Sync guarantee is valid because multiple threads will never access an Actor. ??
+unsafe impl Sync for Client {}
+
 impl Actor for Client {
     fn get_name(&self) -> &str {
         &self.name

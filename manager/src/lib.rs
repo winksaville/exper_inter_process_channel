@@ -20,7 +20,7 @@ pub struct ManagerId(pub Uuid);
 pub struct Manager {
     name: String,
     id: ManagerId,
-    actors: Vec<Box<dyn Actor + 'static>>,
+    actors: Vec<Box<dyn Actor>>,
     actors_map_by_instance_id: HashMap<ActorInstanceId, usize>,
     actors_map_by_actor_id: HashMap<ActorId, Vec<usize>>,
     actors_map_by_protocol_id: HashMap<ProtocolId, Vec<usize>>,
