@@ -1,8 +1,10 @@
-use std::fmt::Debug;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
+use std::fmt::Debug;
 use uuid::Uuid;
+
+pub type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ActorId(pub Uuid);
@@ -76,6 +78,7 @@ pub trait Actor: Send + Debug + Sync {
     fn get_protocol_set(&self) -> &ProtocolSet;
     fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>);
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny);
+    fn done(&self) -> bool;
 }
 
 #[cfg(test)]

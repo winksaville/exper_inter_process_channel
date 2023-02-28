@@ -1,8 +1,6 @@
-
-
 #[cfg(feature = "simple")]
 fn simple() {
-    let mut channels: Vec::<(Sender<i32>, Receiver<i32>)> = Vec::new();
+    let mut channels: Vec<(Sender<i32>, Receiver<i32>)> = Vec::new();
     let mut sel = Select::new();
 
     for i in 0..=1 {
@@ -14,14 +12,14 @@ fn simple() {
 
 #[cfg(feature = "rc_refcell")]
 fn rc_refcell() {
-    use std::{rc::Rc, cell::RefCell};
+    use std::{cell::RefCell, rc::Rc};
 
-    let mut channels: Vec::<Rc<RefCell<Channel>>> = Vec::new();
+    let mut channels: Vec<Rc<RefCell<Channel>>> = Vec::new();
     let mut sel = Select::new();
 
     for i in 0..=1 {
         let (tx, rx) = unbounded::<i32>();
-        channels.push(Rc::new(RefCell::new(Channel {tx, rx})));
+        channels.push(Rc::new(RefCell::new(Channel { tx, rx })));
         let channel = &channels[i].borrow();
         sel.recv(&channel.rx);
     }
@@ -29,11 +27,11 @@ fn rc_refcell() {
 
 #[cfg(feature = "select_immutable")]
 fn select_immutable() {
-    use std::{rc::Rc, cell::RefCell};
     use crossbeam_channel::SelectedOperation;
+    use std::{cell::RefCell, rc::Rc};
 
     // Originally investigated in:
-    //   https://github.com/winksaville/exper_crossbeam_channel/blob/fe4f0e732efd03cc5084e6f27b16e84b77ceb18d/select_immutable/src/main.rs#L5-L40 
+    //   https://github.com/winksaville/exper_crossbeam_channel/blob/fe4f0e732efd03cc5084e6f27b16e84b77ceb18d/select_immutable/src/main.rs#L5-L40
     // where it "worked" but I wasn't incrementally adding channelds
     // as I am here, where it doesn't work :(
     struct SelectImmutable<'a> {
@@ -74,19 +72,19 @@ fn select_immutable() {
         }
     }
 
-    let mut channels: Vec::<Channel> = Vec::new();
+    let mut channels: Vec<Channel> = Vec::new();
     let sel = SelectImmutable::new();
 
     for i in 0..=1 {
         let (tx, rx) = unbounded::<i32>();
-        channels.push(Channel {tx, rx});
+        channels.push(Channel { tx, rx });
         let channel = &channels[i];
         sel.recv::<i32>(&channel.rx);
     }
 }
 
+use crossbeam_channel::{unbounded, Receiver, Select, Sender};
 use std::cell::UnsafeCell;
-use crossbeam_channel::{Sender, Receiver, Select, unbounded};
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -137,7 +135,7 @@ fn working() {
     // Incrementally add a receiver and test it
     for i in 0..=1 {
         let (tx, rx) = unbounded::<i32>();
-        channels.push(Channel {tx, rx});
+        channels.push(Channel { tx, rx });
         let channel = channels.get(i);
         sel.recv(&channel.rx);
 

@@ -83,6 +83,10 @@ impl Actor for Client {
     fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
         (self.current_state)(self, reply_tx, msg);
     }
+
+    fn done(&self) -> bool {
+        false
+    }
 }
 
 impl Debug for Client {

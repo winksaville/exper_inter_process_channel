@@ -125,7 +125,6 @@ macro_rules! msg_local_macro {
     };
 }
 
-
 #[cfg(test)]
 mod test {
     use crossbeam_channel::{unbounded, Sender};
