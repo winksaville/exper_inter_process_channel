@@ -25,6 +25,7 @@ msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msg1" }
 msg2 = { path="msg2" }
 req_add_actor = { path="msgs/req_add_actor" }
+rsp_add_actor = { path="msgs/rsp_add_actor" }
 name_id = { path="name_id" }
 client = { path="client" }
 server = { path="server" }
@@ -43,6 +44,7 @@ members = [
     "protocol_set",
     "protocol",
     "msgs/req_add_actor",
+    "msgs/rsp_add_actor",
     "msg_header",
     "msg_serde_json",
     "msg1",

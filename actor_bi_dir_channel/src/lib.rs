@@ -23,7 +23,7 @@ pub trait ActorBiDirChannel {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BiDirLocalChannel {
     self_tx: Sender<BoxMsgAny>,
     tx: Sender<BoxMsgAny>,
