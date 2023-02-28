@@ -7,6 +7,43 @@ pub use paste::paste;
 // But I couldn't get that to work. Also, needs to handle
 // nested structs!
 #[macro_export]
+macro_rules! msg_local_macro_not_cloneable {
+    ($name:ident $id_str:literal { $( $field:ident : $field_ty:ty ),* }) => {
+        paste! {
+            #[allow(unused)]
+            pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
+
+            #[allow(unused)]
+            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(uuid::uuid!($id_str));
+        }
+
+        #[derive(Debug)]
+        #[repr(C)]
+        pub struct $name {
+            pub header: msg_header::MsgHeader,
+            $(
+                pub $field: $field_ty,
+            )*
+        }
+
+        #[allow(unused)]
+        impl $name {
+            pub fn id(&self) -> msg_header::MsgId {
+                self.header.id
+            }
+
+            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+                if let Some(m) = msg.downcast_ref::<$name>() {
+                    Some(m)
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! msg_local_macro {
     ($name:ident $id_str:literal { $( $field:ident : $field_ty:ty ),* }) => {
         paste! {
@@ -87,6 +124,7 @@ macro_rules! msg_local_macro {
         }
     };
 }
+
 
 #[cfg(test)]
 mod test {
