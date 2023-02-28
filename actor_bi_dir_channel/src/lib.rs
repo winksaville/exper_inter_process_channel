@@ -2,6 +2,8 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use msg_header::BoxMsgAny;
 
+pub mod vec_bi_dir_local_channels;
+
 pub trait ActorBiDirChannel {
     fn clone_tx(&self) -> Sender<BoxMsgAny> {
         panic!("ActorBiDirChannel `fn send_self` not implemented");
@@ -25,9 +27,9 @@ pub trait ActorBiDirChannel {
 
 #[derive(Debug, Clone)]
 pub struct BiDirLocalChannel {
-    self_tx: Sender<BoxMsgAny>,
-    tx: Sender<BoxMsgAny>,
-    rx: Receiver<BoxMsgAny>,
+    pub self_tx: Sender<BoxMsgAny>,
+    pub tx: Sender<BoxMsgAny>,
+    pub rx: Receiver<BoxMsgAny>,
 }
 
 impl BiDirLocalChannel {

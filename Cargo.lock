@@ -22,6 +22,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "actor_executor"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "cmd_done",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "msg_header",
+ "protocol_set",
+ "req_add_actor",
+ "req_their_bi_dir_channel",
+ "rsp_add_actor",
+ "rsp_their_bi_dir_channel",
+ "server",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -101,6 +119,19 @@ dependencies = [
  "protocol",
  "protocol_set",
  "server",
+ "uuid",
+]
+
+[[package]]
+name = "cmd_done"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "msg_header",
+ "msg_serde_json",
+ "msg_serde_macro",
+ "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -324,7 +355,9 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "actor_executor",
  "client",
+ "cmd_done",
  "crossbeam-channel",
  "custom_logger",
  "echo_complete",
@@ -343,7 +376,9 @@ dependencies = [
  "protocol",
  "protocol_set",
  "req_add_actor",
+ "req_their_bi_dir_channel",
  "rsp_add_actor",
+ "rsp_their_bi_dir_channel",
  "serde",
  "serde_json",
  "server",
@@ -726,12 +761,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "req_their_bi_dir_channel"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "msg_serde_json",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "rsp_add_actor"
 version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "rsp_their_bi_dir_channel"
+version = "0.1.0"
+dependencies = [
+ "actor_bi_dir_channel",
  "log",
  "msg_header",
  "msg_local_macro",

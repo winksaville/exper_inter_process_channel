@@ -2,15 +2,15 @@ use actor_bi_dir_channel::BiDirLocalChannel;
 use msg_local_macro::{msg_local_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4
-msg_local_macro!(RspAddActor "17a6ee73-6a91-42e2-908f-b1887e95d87a" {
+msg_local_macro!(RspTheirBiDirChannel "03eb8c2c-0bc4-4d87-bcef-619e647b815f" {
     bdlc: Box<BiDirLocalChannel>
 });
 
-impl RspAddActor {
+impl RspTheirBiDirChannel {
     pub fn new(bdlc: Box<BiDirLocalChannel>) -> Self {
         Self {
             header: msg_header::MsgHeader {
-                id: RSP_ADD_ACTOR_ID,
+                id: RSP_THEIR_BI_DIR_CHANNEL_ID,
             },
             bdlc,
         }

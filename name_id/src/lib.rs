@@ -51,7 +51,7 @@ impl NameId {
     }
 
     pub fn full_name(&self) -> String {
-        format!("{}-{}", self.name, self.id.to_string())
+        format!("{}-{}", self.name, self.id)
     }
 }
 
