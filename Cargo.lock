@@ -344,6 +344,7 @@ dependencies = [
  "protocol",
  "protocol_set",
  "req_add_actor",
+ "rsp_add_actor",
  "serde",
  "serde_json",
  "server",
@@ -714,6 +715,19 @@ dependencies = [
 
 [[package]]
 name = "req_add_actor"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "rsp_add_actor"
 version = "0.1.0"
 dependencies = [
  "actor",
