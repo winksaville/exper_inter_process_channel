@@ -27,9 +27,11 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "client",
  "cmd_done",
  "crossbeam-channel",
  "echo_requestee_protocol",
+ "echo_start_complete_protocol",
  "msg_header",
  "protocol_set",
  "req_add_actor",

@@ -21,5 +21,7 @@ rsp_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/rsp_their_bi_dir
 [dev-dependencies]
 cmd_done = { path = "../msgs/cmd_done" }
 echo_requestee_protocol = { path = "../echo_requestee_protocol" }
+echo_start_complete_protocol = { path = "../echo_start_complete_protocol" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
 server = { path = "../server" }
+client = { path = "../client" }
