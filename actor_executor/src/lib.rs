@@ -14,7 +14,7 @@ use rsp_add_actor::RspAddActor;
 use rsp_their_bi_dir_channel::RspTheirBiDirChannel;
 
 #[derive(Debug)]
-struct ActorsExecutor {
+struct ActorExecutor {
     pub name: String,
     pub actor_vec: Vec<Box<dyn Actor>>,
     pub bi_dir_channels_vec: VecBdlcs, //Vec<Box<BiDirLocalChannels>>,
@@ -22,7 +22,7 @@ struct ActorsExecutor {
 }
 
 #[allow(unused)]
-impl ActorsExecutor {
+impl ActorExecutor {
     // Returns a thread::JoinHandle and a Box<dyn ActorBiDirChannel> which
     // allows messages to be sent and received from the AeActor.
     pub fn start(name: &str) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
@@ -63,16 +63,16 @@ impl ActorsExecutor {
                         }
                         Ok(msg_any) => {
                             // This is a message for this ActorExecutor!!!
-                            println!("{}: msg_any={msg_any:?}", ae.name);
+                            println!("AE:{}: msg_any={msg_any:?}", ae.name);
                             if msg_any.downcast_ref::<ReqAddActor>().is_some() {
                                 // It is a MsgReqAeAddActor, now downcast to concrete message so we can push it to actor_vec
                                 let msg = msg_any.downcast::<ReqAddActor>().unwrap();
-                                println!("{}: msg={msg:?}", ae.name);
+                                println!("AE:{}: msg={msg:?}", ae.name);
                                 let actor_idx = ae.actor_vec.len();
                                 ae.actor_vec.push(msg.actor);
 
                                 // Create the bdlcs and add to bi_dir_channels_vec
-                                println!("{}: create BiDirLocalChannels", ae.name());
+                                println!("AE:{}: create BiDirLocalChannels", ae.name);
                                 let bdlcs = BiDirLocalChannels::new();
 
                                 assert_eq!(ae.bi_dir_channels_vec.len(), actor_idx);
@@ -80,37 +80,37 @@ impl ActorsExecutor {
                                 ae.bi_dir_channels_vec.push(bdlcs);
                                 let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
 
-                                println!("{}: selector.recv(our_channel.get_recv())", ae.name());
+                                println!("AE:{}: selector.recv(our_channel.get_recv())", ae.name);
                                 selector.recv(bdlcs.our_channel.get_recv());
 
                                 // Send the response message with their_channel
                                 let msg_rsp = Box::new(RspAddActor::new(Box::new(
                                     bdlcs.their_channel.clone(),
                                 )));
-                                println!("{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name());
+                                println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
                                 msg.rsp_tx.send(msg_rsp);
 
                                 println!(
-                                    "{}: added new receiver for {}",
-                                    ae.name(),
+                                    "AE:{}: added new receiver for {}",
+                                    ae.name,
                                     ae.actor_vec[actor_idx].get_name()
                                 );
                             } else if let Some(msg) = msg_any.downcast_ref::<CmdDone>() {
-                                println!("{}: msg={msg:?}", ae.name());
+                                println!("AE:{}: msg={msg:?}", ae.name);
                                 ae.done = true;
                             } else if let Some(msg) = msg_any.downcast_ref::<ReqTheirBiDirChannel>()
                             {
-                                println!("{}: msg={msg:?}", ae.name());
+                                println!("AE:{}: msg={msg:?}", ae.name);
                                 let bdc = ae.bi_dir_channels_vec.get(msg.handle);
                                 let their_channel = bdc.their_channel.clone();
                                 let msg_rsp =
                                     Box::new(RspTheirBiDirChannel::new(Box::new(their_channel)));
 
                                 // send msg_rsp
-                                println!("{}: send msg_rsp={msg_rsp:?}", ae.name());
+                                println!("AE:{}: send msg_rsp={msg_rsp:?}", ae.name);
                                 msg.rsp_tx.send(msg_rsp).unwrap();
                             } else {
-                                println!("{}: Uknown msg", ae.name());
+                                println!("AE:{}: Uknown msg", ae.name);
                             }
                         }
                     }
@@ -119,7 +119,7 @@ impl ActorsExecutor {
                     let actor_idx = oper_idx - 1;
                     let actor = &mut ae.actor_vec[actor_idx];
                     println!(
-                        "{}: msg for actor_vec[{actor_idx}] {}",
+                        "AE:{}: msg for actor_vec[{actor_idx}] {}",
                         ae.name,
                         actor.get_name()
                     );
@@ -127,7 +127,7 @@ impl ActorsExecutor {
                     let rx = bdlcs.our_channel.get_recv();
                     if let Ok(msg_any) = oper.recv(rx).map_err(|why| {
                         // TODO: What should we do here?
-                        panic!("{}: {} error on recv: {why}", ae.name, actor.get_name())
+                        panic!("AE:{}: {} error on recv: {why}", ae.name, actor.get_name())
                     }) {
                         actor.process_msg_any(Some(&bdlcs.our_channel.tx), msg_any);
                         if actor.done() {
@@ -149,8 +149,7 @@ impl ActorsExecutor {
     }
 
     fn name(&self) -> &str {
-        // This needs an InstanceId
-        "ActorExecutor"
+        self.name.as_str()
     }
 }
 
@@ -165,50 +164,50 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_msg_req_add_actor() {
-        println!("\ntest_msg_req_add_actor:+");
+    fn test_add_one_actor() {
+        println!("\ntest_add_one_actor:+");
         let (tx, rx) = unbounded::<BoxMsgAny>();
 
-        // Start an ActorsExecutor
-        let (executor1_join_handle, executor1_tx) = ActorsExecutor::start("executor1");
-        println!("test_msg_req_add_actor: executor1_tx={executor1_tx:?}");
+        // Start an ActorExecutor
+        let (aex1_join_handle, aex1_bdlc) = ActorExecutor::start("aex1");
+        println!("test_add_one_actor: aex1_bdlc={aex1_bdlc:?}");
 
         // Create Actor Server
         let s1 = Box::new(Server::new("s1"));
-        println!("test_msg_req_add_actor: create s1={s1:?}");
+        println!("test_add_one_actor: create s1={s1:?}");
 
         let s1_name = s1.get_name().to_owned();
 
-        // Add Thing to the executor
+        // Add s1 to the executor
         let msg = Box::new(ReqAddActor::new(s1, tx));
-        executor1_tx.send(msg).unwrap();
-        println!("test_msg_req_add_actor: sent {} to executor1", s1_name);
+        aex1_bdlc.send(msg).unwrap();
+        println!("test_add_one_actor: sent {} to aex1", s1_name);
 
         let msg_any = rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
-        println!("test_msg_req_add_actor: recvd rsp_add_actor={msg:?}");
+        println!("test_add_one_actor: recvd rsp_add_actor={msg:?}");
 
         let s1_bdlc = &msg.bdlc;
 
-        println!("test_msg_req_add_actor: send EchoReq");
+        println!("test_add_one_actor: send EchoReq");
         s1_bdlc.send(Box::new(EchoReq::new(1))).unwrap();
-        println!("test_msg_req_add_actor: sent EchoReq");
+        println!("test_add_one_actor: sent EchoReq");
 
-        println!("test_msg_req_add_actor: wait EchoRsp");
+        println!("test_add_one_actor: wait EchoRsp");
         let msg_any = s1_bdlc.recv().unwrap();
         let msg_rsp = msg_any.downcast_ref::<EchoReply>().unwrap();
-        println!("test_msg_req_add_actor: recv EchoReply={msg_rsp:?}");
+        println!("test_add_one_actor: recv EchoReply={msg_rsp:?}");
         assert_eq!(msg_rsp.counter, 1);
 
-        println!("test_msg_req_add_actor: send CmdDone");
+        println!("test_add_one_actor: send CmdDone");
         let msg = Box::new(CmdDone::new());
-        executor1_tx.send(msg).unwrap();
-        println!("test_msg_req_add_actor: sent CmdDone");
+        aex1_bdlc.send(msg).unwrap();
+        println!("test_add_one_actor: sent CmdDone");
 
-        println!("test_msg_req_add_actor: join executor1 to complete");
-        executor1_join_handle.join().unwrap();
-        println!("test_msg_req_add_actor: join executor1 to completed");
+        println!("test_add_one_actor: join aex1 to complete");
+        aex1_join_handle.join().unwrap();
+        println!("test_add_one_actor: join aex1 to completed");
 
-        println!("test_msg_req_add_actor:-");
+        println!("test_add_one_actor:-");
     }
 }
