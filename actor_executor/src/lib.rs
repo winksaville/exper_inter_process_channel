@@ -155,9 +155,11 @@ impl ActorExecutor {
 
 #[cfg(test)]
 mod tests {
-    use crossbeam_channel::unbounded;
+    use client::Client;
+    use crossbeam_channel::{unbounded, Sender, Receiver};
     use cmd_done::CmdDone;
     use echo_requestee_protocol::{EchoReq, EchoReply};
+    use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use msg_header::BoxMsgAny;
     use server::Server;
 
@@ -209,5 +211,54 @@ mod tests {
         println!("test_add_one_actor: join aex1 to completed");
 
         println!("test_add_one_actor:-");
+    }
+
+    fn add_actor(aex_bdlc: Box<BiDirLocalChannel>, rsp_tx: Sender<BoxMsgAny>, rsp_rx: Receiver<BoxMsgAny>, actor: Box<dyn Actor>) -> BiDirLocalChannel {
+        let msg = Box::new(ReqAddActor::new(actor, rsp_tx));
+        aex_bdlc.send(msg).unwrap();
+        let msg_any = rsp_rx.recv().unwrap();
+        let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
+        *msg.bdlc.clone()
+    }
+
+    #[ignore] // This is broken because there is no connection between server and client
+    #[test]
+    fn test_add_two_actors() {
+        println!("\ntest_add_two_actors:+");
+        let (tx, rx) = unbounded::<BoxMsgAny>();
+
+        // Start an ActorExecutor
+        let (aex1_join_handle, aex1_bdlc) = ActorExecutor::start("aex1");
+        println!("test_add_two_actors: aex1_bdlc={aex1_bdlc:?}");
+
+        let s1_name = "s1";
+        let s1_bdlc = add_actor(aex1_bdlc.clone(), tx.clone(), rx.clone(), Box::new(Server::new(s1_name)));
+        println!("test_add_two_actors: added s1");
+
+        let c1_name = "c1";
+        let c1_bdlc = add_actor(aex1_bdlc.clone(), tx.clone(), rx.clone(), Box::new(Client::new(c1_name)));
+        println!("test_add_two_actors: added c1");
+
+        // Send EchoStart to c1
+        println!("test_add_two_actors: send EchoStart");
+        c1_bdlc.send(Box::new(EchoStart::new(s1_bdlc.clone_tx(), 10))).unwrap();
+        println!("test_msg_req_add_actor: sent EchoStart");
+
+        // Wait for EchoComplete from c1
+        println!("test_add_two_actors: wait EchoComplete");
+        let msg_any = c1_bdlc.recv().unwrap();
+        let msg_rsp = msg_any.downcast_ref::<EchoComplete>().unwrap();
+        println!("test_add_two_actors: recv EchoComplete={msg_rsp:?}");
+
+        println!("test_add_two_actors: send CmdDone");
+        let msg = Box::new(CmdDone::new());
+        aex1_bdlc.send(msg).unwrap();
+        println!("test_add_two_actors: sent CmdDone");
+
+        println!("test_add_two_actors: join aex1 to complete");
+        aex1_join_handle.join().unwrap();
+        println!("test_add_two_actors: join aex1 to completed");
+
+        println!("test_add_two_actors:-");
     }
 }
