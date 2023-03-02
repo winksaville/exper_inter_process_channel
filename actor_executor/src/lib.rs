@@ -7,7 +7,7 @@ use actor_bi_dir_channel::{
 };
 use cmd_done::CmdDone;
 use crossbeam_channel::Select;
-//use msg_header::BoxMsgAny;
+use msg_header::MsgHeader;
 use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
 use rsp_add_actor::RspAddActor;
@@ -121,7 +121,7 @@ impl ActorExecutor {
                     println!(
                         "AE:{}: msg for actor_vec[{actor_idx}] {}",
                         ae.name,
-                        actor.get_name()
+                        actor.get_name(),
                     );
                     let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
                     let rx = bdlcs.our_channel.get_recv();
@@ -129,7 +129,18 @@ impl ActorExecutor {
                         // TODO: What should we do here?
                         panic!("AE:{}: {} error on recv: {why}", ae.name, actor.get_name())
                     }) {
+                        println!(
+                            "AE:{}: call process_msg_any[{actor_idx}] {} msg_id={}",
+                            ae.name,
+                            actor.get_name(),
+                            MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
+                        );
                         actor.process_msg_any(Some(&bdlcs.our_channel.tx), msg_any);
+                        println!(
+                            "AE:{}: retf process_msg_any[{actor_idx}] {}",
+                            ae.name,
+                            actor.get_name(),
+                        );
                         if actor.done() {
                             panic!(
                                 "AE:{}: {} reported done, what to do?",
@@ -241,7 +252,7 @@ mod tests {
         // Send EchoStart to c1
         println!("test_add_two_actors: send EchoStart");
         c1_bdlc.send(Box::new(EchoStart::new(s1_bdlc.clone_tx(), 10))).unwrap();
-        println!("test_msg_req_add_actor: sent EchoStart");
+        println!("test_add_two_actors: sent EchoStart");
 
         // Wait for EchoComplete from c1
         println!("test_add_two_actors: wait EchoComplete");

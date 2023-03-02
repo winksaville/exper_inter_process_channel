@@ -97,6 +97,7 @@ const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
 impl Server {
     pub fn new(name: &str) -> Self {
         // Create the server ProtocolSet, `server_ps`.
+        println!("Server::new({})", name);
         let erep = echo_requestee_protocol();
         let mut server_pm = HashMap::<ProtocolId, Protocol>::new();
         server_pm.insert(erep.id.clone(), erep.clone());
@@ -132,9 +133,9 @@ impl Server {
     pub fn state0(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
-            //println!("{}:State0: msg={msg:?}", self.name);
+            println!("{}:State0: msg={msg:?}", self.name);
             let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
-            //println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
+            println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
             let tx = reply_tx.unwrap();
             tx.send(reply_msg).unwrap();
         } else {
