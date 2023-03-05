@@ -14,18 +14,18 @@ use crossbeam_channel::unbounded;
 use crate::BiDirLocalChannel;
 
 #[derive(Debug, Clone)]
-pub struct BiDirLocalChannels {
+pub struct BdlcPair {
     pub their_channel: BiDirLocalChannel,
     pub our_channel: BiDirLocalChannel,
 }
 
-impl Default for BiDirLocalChannels {
+impl Default for BdlcPair {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl BiDirLocalChannels {
+impl BdlcPair {
     pub fn new() -> Self {
         // left_tx -----> right_rx
         let (left_tx, right_rx) = unbounded();
@@ -49,28 +49,28 @@ impl BiDirLocalChannels {
 }
 
 #[derive(Debug)]
-pub struct VecBdlcs(UnsafeCell<Vec<BiDirLocalChannels>>);
+pub struct VecBdlcPair(UnsafeCell<Vec<BdlcPair>>);
 
-impl Default for VecBdlcs {
+impl Default for VecBdlcPair {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl VecBdlcs {
+impl VecBdlcPair {
     pub fn new() -> Self {
         Self(UnsafeCell::new(Vec::new()))
     }
 
     // Panic's if idx is out of bounds
-    pub fn get(&self, idx: usize) -> &BiDirLocalChannels {
+    pub fn get(&self, idx: usize) -> &BdlcPair {
         unsafe {
             let v = &*self.0.get();
             &v[idx]
         }
     }
 
-    pub fn push(&self, bdlcs: BiDirLocalChannels) {
+    pub fn push(&self, bdlcs: BdlcPair) {
         unsafe {
             let ptr = &mut *self.0.get();
             ptr.push(bdlcs);

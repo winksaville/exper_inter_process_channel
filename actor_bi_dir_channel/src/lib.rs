@@ -2,7 +2,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use msg_header::BoxMsgAny;
 
-pub mod vec_bi_dir_local_channels;
+pub mod vec_bdlc_pair;
 
 pub trait ActorBiDirChannel {
     fn clone_tx(&self) -> Sender<BoxMsgAny> {

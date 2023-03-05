@@ -2,7 +2,7 @@ use std::thread::{self, JoinHandle};
 
 use actor::Actor;
 use actor_bi_dir_channel::{
-    vec_bi_dir_local_channels::{BiDirLocalChannels, VecBdlcs},
+    vec_bdlc_pair::{BdlcPair, VecBdlcPair},
     ActorBiDirChannel, BiDirLocalChannel,
 };
 use cmd_done::CmdDone;
@@ -17,7 +17,7 @@ use rsp_their_bi_dir_channel::RspTheirBiDirChannel;
 struct ActorExecutor {
     pub name: String,
     pub actor_vec: Vec<Box<dyn Actor>>,
-    pub bi_dir_channels_vec: VecBdlcs, //Vec<Box<BiDirLocalChannels>>,
+    pub bi_dir_channels_vec: VecBdlcPair, //Vec<Box<BiDirLocalChannels>>,
     done: bool,
 }
 
@@ -26,7 +26,7 @@ impl ActorExecutor {
     // Returns a thread::JoinHandle and a Box<dyn ActorBiDirChannel> which
     // allows messages to be sent and received from the AeActor.
     pub fn start(name: &str) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
-        let ae_actor_bi_dir_channels = BiDirLocalChannels::new();
+        let ae_actor_bi_dir_channels = BdlcPair::new();
         let their_bi_dir_channel = Box::new(ae_actor_bi_dir_channels.their_channel.clone());
 
         // Convert name to string so it can be moved into the thread
@@ -36,7 +36,7 @@ impl ActorExecutor {
             let mut ae = Self {
                 name: name.to_string(),
                 actor_vec: Vec::new(),
-                bi_dir_channels_vec: VecBdlcs::new(),
+                bi_dir_channels_vec: VecBdlcPair::new(),
                 done: false,
             };
             println!("AE:{}:+", ae.name);
@@ -73,7 +73,7 @@ impl ActorExecutor {
 
                                 // Create the bdlcs and add to bi_dir_channels_vec
                                 println!("AE:{}: create BiDirLocalChannels", ae.name);
-                                let bdlcs = BiDirLocalChannels::new();
+                                let bdlcs = BdlcPair::new();
 
                                 assert_eq!(ae.bi_dir_channels_vec.len(), actor_idx);
 
