@@ -1,12 +1,10 @@
 use std::thread::{self, JoinHandle};
 
 use actor::Actor;
-use actor_bi_dir_channel::{
-    ActorBiDirChannel, BiDirLocalChannel,
-};
+use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
 
-use connection_mgr::{Connection, VecConnection};
 use cmd_done::CmdDone;
+use connection_mgr::{Connection, VecConnection};
 use crossbeam_channel::Select;
 use msg_header::MsgHeader;
 use req_add_actor::ReqAddActor;
@@ -168,9 +166,9 @@ impl ActorExecutor {
 #[cfg(test)]
 mod tests {
     use client::Client;
-    use crossbeam_channel::{unbounded, Sender, Receiver};
     use cmd_done::CmdDone;
-    use echo_requestee_protocol::{EchoReq, EchoReply};
+    use crossbeam_channel::{unbounded, Receiver, Sender};
+    use echo_requestee_protocol::{EchoReply, EchoReq};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use msg_header::BoxMsgAny;
     use server::Server;
@@ -225,7 +223,12 @@ mod tests {
         println!("test_add_one_actor:-");
     }
 
-    fn add_actor(aex_bdlc: Box<BiDirLocalChannel>, rsp_tx: Sender<BoxMsgAny>, rsp_rx: Receiver<BoxMsgAny>, actor: Box<dyn Actor>) -> BiDirLocalChannel {
+    fn add_actor(
+        aex_bdlc: Box<BiDirLocalChannel>,
+        rsp_tx: Sender<BoxMsgAny>,
+        rsp_rx: Receiver<BoxMsgAny>,
+        actor: Box<dyn Actor>,
+    ) -> BiDirLocalChannel {
         let msg = Box::new(ReqAddActor::new(actor, rsp_tx));
         aex_bdlc.send(msg).unwrap();
         let msg_any = rsp_rx.recv().unwrap();
@@ -244,16 +247,28 @@ mod tests {
         println!("test_add_two_actors: aex1_bdlc={aex1_bdlc:?}");
 
         let s1_name = "s1";
-        let s1_bdlc = add_actor(aex1_bdlc.clone(), tx.clone(), rx.clone(), Box::new(Server::new(s1_name)));
+        let s1_bdlc = add_actor(
+            aex1_bdlc.clone(),
+            tx.clone(),
+            rx.clone(),
+            Box::new(Server::new(s1_name)),
+        );
         println!("test_add_two_actors: added s1");
 
         let c1_name = "c1";
-        let c1_bdlc = add_actor(aex1_bdlc.clone(), tx.clone(), rx.clone(), Box::new(Client::new(c1_name)));
+        let c1_bdlc = add_actor(
+            aex1_bdlc.clone(),
+            tx.clone(),
+            rx.clone(),
+            Box::new(Client::new(c1_name)),
+        );
         println!("test_add_two_actors: added c1");
 
         // Send EchoStart to c1
         println!("test_add_two_actors: send EchoStart");
-        c1_bdlc.send(Box::new(EchoStart::new(s1_bdlc.clone_tx(), 10))).unwrap();
+        c1_bdlc
+            .send(Box::new(EchoStart::new(s1_bdlc.clone_tx(), 10)))
+            .unwrap();
         println!("test_add_two_actors: sent EchoStart");
 
         // Wait for EchoComplete from c1
