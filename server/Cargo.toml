@@ -10,7 +10,7 @@ license.workspace = true
 [dependencies]
 msg_header = { path="../msg_header" }
 protocol_set = { path="../protocol_set" }
-echo_requestee_protocol = { version = "0.1.0", path = "../echo_requestee_protocol" }
+echo_requestee_protocol = { version = "0.1.0", path = "../protocols/echo_requestee_protocol" }
 actor = { path="../actor" }
 chrono = "0.4.23"
 protocol = { version = "0.1.0", path = "../protocol" }

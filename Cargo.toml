@@ -15,9 +15,9 @@ actor_bi_dir_channel = { path="actor_bi_dir_channel" }
 connection_mgr = { path="connection_mgr" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
-echo_start_complete_protocol = { path="echo_start_complete_protocol" }
-echo_requester_protocol = { path="echo_requester_protocol" }
-echo_requestee_protocol = { path="echo_requestee_protocol" }
+echo_start_complete_protocol = { path="protocols/echo_start_complete_protocol" }
+echo_requester_protocol = { path="protocols/echo_requester_protocol" }
+echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
 echo_start = { path="msgs/echo_start" }
 echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
@@ -63,9 +63,9 @@ members = [
     "msgs/echo_req",
     "msgs/echo_start",
     "name_id",
-    "echo_start_complete_protocol",
-    "echo_requester_protocol",
-    "echo_requestee_protocol",
+    "protocols/echo_start_complete_protocol",
+    "protocols/echo_requester_protocol",
+    "protocols/echo_requestee_protocol",
     "msg_local_macro",
     "msg_serde_macro",
     "client",

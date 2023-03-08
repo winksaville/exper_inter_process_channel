@@ -21,8 +21,8 @@ connection_mgr = { version = "0.1.0", path = "../connection_mgr" }
 
 [dev-dependencies]
 cmd_done = { path = "../msgs/cmd_done" }
-echo_requestee_protocol = { path = "../echo_requestee_protocol" }
-echo_start_complete_protocol = { path = "../echo_start_complete_protocol" }
+echo_requestee_protocol = { path = "../protocols/echo_requestee_protocol" }
+echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
 server = { path = "../server" }
 client = { path = "../client" }
