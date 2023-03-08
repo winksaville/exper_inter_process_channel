@@ -1,4 +1,4 @@
-use actor::{Actor, ActorId, ActorInstanceId};
+use actor::{Actor, ActorId, ActorInstanceId, ProcessMsgFn};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
@@ -18,8 +18,6 @@ use std::{
 use uuid::uuid;
 
 use msg_header::{BoxMsgAny, MsgHeader};
-
-type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
 // State information
 #[derive(Debug)]
