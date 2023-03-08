@@ -12,6 +12,7 @@ manager = { path="manager" }
 actor = { path="actor" }
 actor_executor = { path="actor_executor" }
 actor_bi_dir_channel = { path="actor_bi_dir_channel" }
+connection_mgr = { path="connection_mgr" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
 echo_start_complete_protocol = { path="echo_start_complete_protocol" }
@@ -45,6 +46,7 @@ members = [
     "actor",
     "actor_executor",
     "actor_bi_dir_channel",
+    "connection_mgr",
     "protocol_set",
     "protocol",
     "msg_header",

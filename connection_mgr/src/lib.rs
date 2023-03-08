@@ -11,7 +11,7 @@ use std::cell::UnsafeCell;
 
 use crossbeam_channel::unbounded;
 
-use crate::BiDirLocalChannel;
+use actor_bi_dir_channel::BiDirLocalChannel;
 
 #[derive(Debug, Clone)]
 pub struct Connection {

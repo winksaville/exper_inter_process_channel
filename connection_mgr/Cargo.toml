@@ -1,0 +1,19 @@
+[package]
+name = "connection_mgr"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+msg_header = { path="../msg_header" }
+protocol_set = { path="../protocol_set" }
+echo_requestee_protocol = { version = "0.1.0", path = "../echo_requestee_protocol" }
+actor = { path="../actor" }
+chrono = "0.4.23"
+protocol = { version = "0.1.0", path = "../protocol" }
+uuid = "1.3.0"
+crossbeam-channel = "0.5.6"
+actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }

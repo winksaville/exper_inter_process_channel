@@ -2,9 +2,10 @@ use std::thread::{self, JoinHandle};
 
 use actor::Actor;
 use actor_bi_dir_channel::{
-    vec_connection::{Connection, VecConnection},
     ActorBiDirChannel, BiDirLocalChannel,
 };
+
+use connection_mgr::{Connection, VecConnection};
 use cmd_done::CmdDone;
 use crossbeam_channel::Select;
 use msg_header::MsgHeader;

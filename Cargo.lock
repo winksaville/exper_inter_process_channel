@@ -29,6 +29,7 @@ dependencies = [
  "actor_bi_dir_channel",
  "client",
  "cmd_done",
+ "connection_mgr",
  "crossbeam-channel",
  "echo_requestee_protocol",
  "echo_start_complete_protocol",
@@ -145,6 +146,21 @@ checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
 dependencies = [
  "termcolor",
  "unicode-width",
+]
+
+[[package]]
+name = "connection_mgr"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "chrono",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "msg_header",
+ "protocol",
+ "protocol_set",
+ "uuid",
 ]
 
 [[package]]
@@ -360,6 +376,7 @@ dependencies = [
  "actor_executor",
  "client",
  "cmd_done",
+ "connection_mgr",
  "crossbeam-channel",
  "custom_logger",
  "echo_complete",

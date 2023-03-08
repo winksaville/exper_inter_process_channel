@@ -17,6 +17,7 @@ rsp_add_actor = { version = "0.1.0", path = "../msgs/rsp_add_actor" }
 cmd_done = { version = "0.1.0", path = "../msgs/cmd_done" }
 req_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/req_their_bi_dir_channel" }
 rsp_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/rsp_their_bi_dir_channel" }
+connection_mgr = { version = "0.1.0", path = "../connection_mgr" }
 
 [dev-dependencies]
 cmd_done = { path = "../msgs/cmd_done" }
