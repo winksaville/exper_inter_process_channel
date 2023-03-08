@@ -18,14 +18,14 @@ protocol = { path="protocol" }
 echo_start_complete_protocol = { path="echo_start_complete_protocol" }
 echo_requester_protocol = { path="echo_requester_protocol" }
 echo_requestee_protocol = { path="echo_requestee_protocol" }
-echo_start = { path="echo_start" }
-echo_complete = { path="echo_complete" }
-echo_req = { path="echo_req" }
-echo_reply = { path="echo_reply" }
+echo_start = { path="msgs/echo_start" }
+echo_complete = { path="msgs/echo_complete" }
+echo_req = { path="msgs/echo_req" }
+echo_reply = { path="msgs/echo_reply" }
 msg_header = { path="msg_header" }
 msg_serde_json = { path="msg_serde_json" }
-msg1 = { path="msg1" }
-msg2 = { path="msg2" }
+msg1 = { path="msgs/msg1" }
+msg2 = { path="msgs/msg2" }
 cmd_done = { path="msgs/cmd_done" }
 req_their_bi_dir_channel = { path="msgs/req_their_bi_dir_channel" }
 rsp_their_bi_dir_channel = { path="msgs/rsp_their_bi_dir_channel" }
@@ -51,21 +51,21 @@ members = [
     "protocol",
     "msg_header",
     "msg_serde_json",
-    "msg1",
-    "msg2",
+    "msgs/msg1",
+    "msgs/msg2",
     "msgs/cmd_done",
     "msgs/req_their_bi_dir_channel",
     "msgs/rsp_their_bi_dir_channel",
     "msgs/req_add_actor",
     "msgs/rsp_add_actor",
+    "msgs/echo_complete",
+    "msgs/echo_reply",
+    "msgs/echo_req",
+    "msgs/echo_start",
     "name_id",
     "echo_start_complete_protocol",
     "echo_requester_protocol",
     "echo_requestee_protocol",
-    "echo_start",
-    "echo_complete",
-    "echo_reply",
-    "echo_req",
     "msg_local_macro",
     "msg_serde_macro",
     "client",
