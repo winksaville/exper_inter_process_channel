@@ -15,6 +15,6 @@ select_immutable = []
 
 [dependencies]
 msg_header = { path="../msg_header" }
-crossbeam-channel = "0.5.6"
+crossbeam-channel = "0.5.7"
 
 [dev-dependencies]

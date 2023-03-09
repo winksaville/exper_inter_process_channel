@@ -10,7 +10,7 @@ license.workspace = true
 [dependencies]
 actor = { version = "0.1.0", path = "../actor" }
 actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
-crossbeam-channel = "0.5.6"
+crossbeam-channel = "0.5.7"
 msg_header = { version = "0.1.0", path = "../msg_header" }
 req_add_actor = { version = "0.1.0", path = "../msgs/req_add_actor" }
 rsp_add_actor = { version = "0.1.0", path = "../msgs/rsp_add_actor" }
