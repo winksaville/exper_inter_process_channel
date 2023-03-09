@@ -14,6 +14,7 @@ use crossbeam_channel::unbounded;
 use actor::{Actor, ActorId, ActorInstanceId, ProcessMsgFn};
 use actor_bi_dir_channel::BiDirLocalChannel;
 
+use an_id::AnId;
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
 use protocol::{Protocol, ProtocolId};
@@ -179,9 +180,9 @@ impl Debug for ConnectionMgr {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CM_ACTOR_ID: ActorId = ActorId(uuid!("3f82508e-7970-44e9-8fb9-b7936c9c4833"));
+const CM_ACTOR_ID: ActorId = ActorId(AnId(uuid!("3f82508e-7970-44e9-8fb9-b7936c9c4833")));
 const CM_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(uuid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb"));
+    ProtocolSetId(AnId(uuid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb")));
 
 impl ConnectionMgr {
     pub fn new(name: &str) -> Self {

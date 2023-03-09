@@ -6,6 +6,7 @@ version = 3
 name = "actor"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "crossbeam-channel",
  "msg_header",
  "protocol_set",
@@ -49,6 +50,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc936419f96fa211c1b9166887b38e5e40b19958e5b895be7c1f93adec7071ac"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "an_id"
+version = "0.1.0"
+dependencies = [
+ "paste",
+ "serde",
+ "uuid",
 ]
 
 [[package]]
@@ -111,6 +121,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "an_id",
  "chrono",
  "crossbeam-channel",
  "echo_requestee_protocol",
@@ -129,6 +140,7 @@ dependencies = [
 name = "cmd_done"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "log",
  "msg_header",
  "msg_serde_json",
@@ -154,6 +166,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "an_id",
  "chrono",
  "crossbeam-channel",
  "echo_requestee_protocol",
@@ -247,6 +260,7 @@ dependencies = [
 name = "echo_complete"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "log",
  "msg_header",
  "msg_serde_json",
@@ -260,6 +274,7 @@ dependencies = [
 name = "echo_reply"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "chrono",
  "log",
  "msg_header",
@@ -274,6 +289,7 @@ dependencies = [
 name = "echo_req"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "chrono",
  "log",
  "msg_header",
@@ -288,6 +304,7 @@ dependencies = [
 name = "echo_requestee_protocol"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "echo_reply",
  "echo_req",
  "msg_header",
@@ -300,6 +317,7 @@ dependencies = [
 name = "echo_requester_protocol"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "echo_reply",
  "echo_req",
  "msg_header",
@@ -312,6 +330,7 @@ dependencies = [
 name = "echo_start"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "crossbeam-channel",
  "log",
  "msg_header",
@@ -325,6 +344,7 @@ dependencies = [
 name = "echo_start_complete_protocol"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "echo_complete",
  "echo_start",
  "msg_header",
@@ -374,6 +394,7 @@ dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "actor_executor",
+ "an_id",
  "client",
  "cmd_done",
  "connection_mgr",
@@ -573,6 +594,7 @@ name = "manager"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "an_id",
  "client",
  "crossbeam-channel",
  "msg_header",
@@ -592,6 +614,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 name = "msg1"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "log",
  "msg_header",
  "msg_serde_json",
@@ -604,6 +627,7 @@ dependencies = [
 name = "msg2"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "log",
  "msg_header",
  "msg_serde_json",
@@ -617,6 +641,7 @@ dependencies = [
 name = "msg_header"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "serde",
  "uuid",
 ]
@@ -625,6 +650,7 @@ dependencies = [
 name = "msg_local_macro"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "crossbeam-channel",
  "custom_logger",
  "log",
@@ -648,6 +674,7 @@ dependencies = [
 name = "msg_serde_macro"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "custom_logger",
  "log",
  "msg_header",
@@ -662,6 +689,7 @@ dependencies = [
 name = "name_id"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "uuid",
 ]
 
@@ -709,6 +737,7 @@ dependencies = [
 name = "protocol"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "msg_header",
  "uuid",
 ]
@@ -717,9 +746,9 @@ dependencies = [
 name = "protocol_set"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "msg_header",
  "protocol",
- "uuid",
 ]
 
 [[package]]
@@ -772,6 +801,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "an_id",
  "crossbeam-channel",
  "log",
  "msg_header",
@@ -783,6 +813,7 @@ dependencies = [
 name = "req_their_bi_dir_channel"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "crossbeam-channel",
  "log",
  "msg_header",
@@ -799,6 +830,7 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "an_id",
  "crossbeam-channel",
  "log",
  "msg_header",
@@ -811,6 +843,7 @@ name = "rsp_their_bi_dir_channel"
 version = "0.1.0"
 dependencies = [
  "actor_bi_dir_channel",
+ "an_id",
  "log",
  "msg_header",
  "msg_local_macro",
@@ -879,6 +912,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "an_id",
  "chrono",
  "crossbeam-channel",
  "echo_requestee_protocol",

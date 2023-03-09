@@ -1,9 +1,9 @@
+use an_id::AnId;
 use protocol::{Protocol, ProtocolId};
 use std::collections::HashMap;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ProtocolSetId(pub Uuid);
+pub struct ProtocolSetId(pub AnId);
 
 #[derive(Clone, Debug)]
 pub struct ProtocolSet {
@@ -35,21 +35,20 @@ impl ProtocolSet {
 mod test {
     use super::*;
     use msg_header::MsgId;
-    use uuid::Uuid;
 
     #[test]
     fn test_protocol() {
         println!("test_protocol");
 
-        let protocol1_id = ProtocolId(Uuid::new_v4());
-        let protocol1_msgs = vec![MsgId(Uuid::new_v4())];
+        let protocol1_id = ProtocolId(AnId::new());
+        let protocol1_msgs = vec![MsgId(AnId::new())];
         let protocol1 = Protocol::new("protocol1", protocol1_id.clone(), protocol1_msgs.clone());
 
-        let protocol2_id = ProtocolId(Uuid::new_v4());
-        let protocol2_msgs = vec![MsgId(Uuid::new_v4())];
+        let protocol2_id = ProtocolId(AnId::new());
+        let protocol2_msgs = vec![MsgId(AnId::new())];
         let protocol2 = Protocol::new("protocol2", protocol2_id.clone(), protocol2_msgs.clone());
 
-        let protocol_set_id = ProtocolSetId(Uuid::new_v4());
+        let protocol_set_id = ProtocolSetId(AnId::new());
         let mut protocols_map = HashMap::new();
         assert!(protocols_map
             .insert(protocol1_id.clone(), protocol1.clone())

@@ -1,4 +1,5 @@
 use actor::{Actor, ActorId, ActorInstanceId, ProcessMsgFn};
+use an_id::AnId;
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
 use protocol::{Protocol, ProtocolId};
@@ -88,9 +89,9 @@ impl Debug for Server {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const SERVER_ACTOR_ID: ActorId = ActorId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
+const SERVER_ACTOR_ID: ActorId = ActorId(AnId(uuid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892")));
 const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(uuid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f"));
+    ProtocolSetId(AnId(uuid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f")));
 
 impl Server {
     pub fn new(name: &str) -> Self {

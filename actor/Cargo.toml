@@ -8,6 +8,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+an_id = { version = "0.1.0", path = "../an_id" }
 crossbeam-channel = "0.5.7"
 msg_header = { version = "0.1.0", path = "../msg_header" }
 #protocol = { version = "0.1.0", path = "../protocol" }

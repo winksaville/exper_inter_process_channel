@@ -14,7 +14,7 @@ macro_rules! msg_local_macro_not_cloneable {
             pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
 
             #[allow(unused)]
-            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(uuid::uuid!($id_str));
+            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::AnId(uuid::uuid!($id_str)));
         }
 
         #[derive(Debug)]
@@ -51,7 +51,7 @@ macro_rules! msg_local_macro {
             pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
 
             #[allow(unused)]
-            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(uuid::uuid!($id_str));
+            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::AnId(uuid::uuid!($id_str)));
         }
 
         #[derive(Debug, Clone)]
@@ -85,7 +85,7 @@ macro_rules! msg_local_macro {
             pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
 
             #[allow(unused)]
-            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = uuid::uuid!($id_str);
+            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::AnId(uuid::uuid!($id_str)));
         }
 
         #[derive(Debug, Clone)]
@@ -105,7 +105,7 @@ macro_rules! msg_local_macro {
             pub fn new() -> Self {
                 Self {
                     header: msg_header::MsgHeader {
-                        id: uuid::uuid!($id_str),
+                        id: msg_header::MsgId(an_id::AnId(uuid::uuid!($id_str)));
                     },
                 }
             }

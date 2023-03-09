@@ -1,16 +1,16 @@
+use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
 use std::fmt::Debug;
-use uuid::Uuid;
 
 pub type ProcessMsgFn<SM> = fn(&mut SM, Option<&Sender<BoxMsgAny>>, BoxMsgAny);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ActorId(pub Uuid);
+pub struct ActorId(pub AnId);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ActorInstanceId(pub Uuid);
+pub struct ActorInstanceId(pub AnId);
 
 impl Default for ActorInstanceId {
     fn default() -> Self {
@@ -20,7 +20,7 @@ impl Default for ActorInstanceId {
 
 impl ActorInstanceId {
     pub fn new() -> Self {
-        ActorInstanceId(Uuid::new_v4())
+        ActorInstanceId(AnId::new())
     }
 }
 

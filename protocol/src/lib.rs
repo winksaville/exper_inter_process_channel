@@ -1,8 +1,8 @@
+use an_id::AnId;
 use msg_header::MsgId;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ProtocolId(pub Uuid);
+pub struct ProtocolId(pub AnId);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Protocol {
@@ -29,8 +29,8 @@ mod test {
     fn test_protocol() {
         println!("test_protocol");
 
-        let id = ProtocolId(Uuid::new_v4());
-        let messages = vec![MsgId(Uuid::new_v4())];
+        let id = ProtocolId(AnId::new());
+        let messages = vec![MsgId(AnId::new())];
         let a_protocol = Protocol::new("a_protocol", id.clone(), messages.clone());
 
         println!("a_protocol={a_protocol:#?}");

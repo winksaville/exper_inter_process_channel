@@ -9,6 +9,7 @@ license.workspace = true
 
 [dependencies]
 actor = { version = "0.1.0", path = "../actor" }
+an_id = { version = "0.1.0", path = "../an_id" }
 msg_header = { version = "0.1.0", path = "../msg_header" }
 protocol = { version = "0.1.0", path = "../protocol" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }

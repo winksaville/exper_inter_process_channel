@@ -1,9 +1,9 @@
+use an_id::AnId;
 use std::fmt::{Debug, Display};
-use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct NameId {
-    id: Uuid,
+    id: AnId,
     name: String,
 }
 
@@ -27,7 +27,7 @@ impl Display for NameId {
 }
 
 impl NameId {
-    pub fn new(name: &str, id: Uuid) -> Self {
+    pub fn new(name: &str, id: AnId) -> Self {
         Self {
             name: name.to_string(),
             id,
@@ -35,10 +35,10 @@ impl NameId {
     }
 
     pub fn new_v4(name: &str) -> Self {
-        NameId::new(name, Uuid::new_v4())
+        NameId::new(name, AnId::new())
     }
 
-    pub fn id(&self) -> &Uuid {
+    pub fn id(&self) -> &AnId {
         &self.id
     }
 
@@ -64,7 +64,7 @@ mod test {
     #[test]
     fn test_name_id() {
         println!("test_name_id");
-        let id = Uuid::new_v4();
+        let id = AnId::new();
         let nid = NameId::new("test", id.clone());
         println!("test_name_id: {nid}");
         println!("test_name_id: {nid:?}");

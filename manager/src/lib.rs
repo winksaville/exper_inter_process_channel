@@ -9,12 +9,12 @@
 use std::{collections::HashMap, error::Error, fmt::Debug};
 
 use actor::{Actor, ActorId, ActorInstanceId};
+use an_id::AnId;
 use protocol::ProtocolId;
 use protocol_set::ProtocolSetId;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ManagerId(pub Uuid);
+pub struct ManagerId(pub AnId);
 
 // Manager
 pub struct Manager {
@@ -155,12 +155,11 @@ mod test {
     use client::Client;
     use msg_header::BoxMsgAny;
     use server::Server;
-    use uuid::Uuid;
 
     #[test]
     fn test_manager() {
         println!("test_manager");
-        let mut manager = Manager::new("a_manager", ManagerId(Uuid::new_v4()));
+        let mut manager = Manager::new("a_manager", ManagerId(AnId::new()));
 
         let (tx, rx) = unbounded::<BoxMsgAny>();
         let client = Client::new("client");
