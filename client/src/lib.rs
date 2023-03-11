@@ -1,4 +1,4 @@
-use actor::{Actor, ActorId, ActorInstanceId, ProcessMsgFn};
+use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
 use an_id::AnId;
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
@@ -79,8 +79,8 @@ impl Actor for Client {
         self.self_tx = Some(sender);
     }
 
-    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
-        (self.current_state)(self, reply_tx, msg);
+    fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
+        (self.current_state)(self, context, msg);
     }
 
     fn done(&self) -> bool {
@@ -187,7 +187,7 @@ impl Client {
         }
     }
 
-    pub fn state0(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg_any: BoxMsgAny) {
+    pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
             assert_eq!(msg.header.id, ECHO_REPLY_ID);
             println!("{}:State0: {msg:?}", self.name);
@@ -195,22 +195,15 @@ impl Client {
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
-            let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
-            println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
-            if let Some(tx) = reply_tx {
-                tx.send(reply_msg).unwrap();
-            } else {
-                println!(
-                    "{}:State0: Error no reply_tx, can't send repl_msg={reply_msg:?}",
-                    self.name
-                );
-            }
+            let rsp_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
+            println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
+            context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             assert_eq!(msg.header.id, ECHO_START_ID);
-            if let Some(tx) = reply_tx {
+            if let Some(tx) = context.clone_rsp_tx() {
                 println!("{}:State0: msg={msg:?}", self.name);
                 self.partner_tx = Some(msg.partner_tx.clone());
-                self.controller_tx = Some(tx.clone());
+                self.controller_tx = Some(tx);
                 self.ping_count = msg.ping_count;
                 self.send_echo_req_or_complete(1);
             } else {
@@ -243,80 +236,44 @@ mod test {
     use msg1::MSG1_ID;
     use msg_header::MsgHeader;
 
+    struct Context {
+        rsp_tx: Sender<BoxMsgAny>,
+    }
+
+    impl ActorContext for Context {
+        fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.rsp_tx.send(msg)?)
+        }
+
+        fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+            Some(self.rsp_tx.clone())
+        }
+    }
+
     #[test]
     fn test_self_tx() {
-        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = unbounded::<BoxMsgAny>();
+        let (tx, rx) = unbounded::<BoxMsgAny>();
+
+        let context = Context { rsp_tx: tx.clone() };
 
         let mut client = Client::new("client");
-        client.set_self_sender(ctrl_to_clnt_tx.clone());
+        client.set_self_sender(tx);
 
         let msg2 = Box::new(Msg2::new());
-        client.process_msg_any(None, msg2);
-        let recv_msg = ctrl_to_clnt_rx.recv().unwrap();
+        client.process_msg_any(&context, msg2);
+        let recv_msg = rx.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg),
             &MSG1_ID
         );
-    }
-
-    // Test various ping_counts including 0
-    #[test]
-    fn test_ping_counts() {
-        // Channel pair between ctrl and clnt
-        let (ctrl_to_clnt_tx, ctrl_to_clnt_rx) = unbounded::<BoxMsgAny>();
-        let (clnt_to_ctrl_tx, clnt_to_ctrl_rx) = unbounded::<BoxMsgAny>();
-
-        // Channel pair between clnt and srvr
-        let (clnt_to_srvr_tx, clnt_to_srvr_rx) = unbounded::<BoxMsgAny>();
-        let (srvr_to_clnt_tx, srvr_to_clnt_rx) = unbounded::<BoxMsgAny>();
-
-        let mut client = Client::new("client");
-        println!("test_ping_counts: client={client:?}");
-
-        for ping_count in [0, 1, 5] {
-            // Controller sends start message to client
-            println!("\ntest_ping_counts: ping_count={ping_count}");
-            let start_msg = Box::new(EchoStart::new(clnt_to_srvr_tx.clone(), ping_count));
-            ctrl_to_clnt_tx.send(start_msg).unwrap();
-
-            // Client receives Start msg from control
-            let start_msg_any = ctrl_to_clnt_rx.recv().unwrap();
-            client.process_msg_any(Some(&clnt_to_ctrl_tx), start_msg_any);
-
-            for i in 0..ping_count {
-                println!(
-                    "test_ping_counts: server recv TOL {} of {ping_count}",
-                    i + 1
-                );
-
-                // Server receives request message
-                let req_msg_any = clnt_to_srvr_rx.recv().unwrap();
-                let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
-                println!("test_ping_counts: received req_msg={req_msg:?}");
-
-                // Server creates and sends reply message
-                let reply_msg = Box::new(EchoReply::new(
-                    Utc::now().timestamp_nanos(),
-                    req_msg.counter,
-                ));
-                srvr_to_clnt_tx.send(reply_msg).unwrap();
-
-                // Client receives and processes reply message from server
-                let reply_msg_any = srvr_to_clnt_rx.recv().unwrap();
-                client.process_msg_any(Some(&srvr_to_clnt_tx), reply_msg_any);
-            }
-
-            // Controller receives Complete msg
-            let complete_msg_any = clnt_to_ctrl_rx.recv().unwrap();
-            let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
-            println!("test_ping_counts: received complete msg={complete_msg:?}");
-            assert_eq!(complete_msg.header.id, ECHO_COMPLETE_ID);
-        }
-
-        drop(ctrl_to_clnt_tx);
-        drop(clnt_to_ctrl_tx);
-        drop(clnt_to_srvr_tx);
-        drop(srvr_to_clnt_tx);
     }
 
     // Test various ping_counts including 0
@@ -333,19 +290,23 @@ mod test {
         let mut client = Client::new("client");
 
         for ping_count in [0, 1, 5] {
-            let clnt_side_with_ctrl_tx = clnt_side_with_ctrl.clone_tx();
-            let srvr_side_with_clnt_tx = srvr_side_with_clnt.clone_tx();
+            let clnt_side_with_ctrl_context = Context {
+                rsp_tx: clnt_side_with_ctrl.clone_tx(),
+            };
+
+            let srvr_side_with_clnt_context = Context {
+                rsp_tx: srvr_side_with_clnt.clone_tx(),
+            };
 
             // Controller sends start message to client
             println!("\ntest_bi_dir_local_channel: ping_count={ping_count}");
             let tx = clnt_side_with_srvr.clone_tx();
             let start_msg = Box::new(EchoStart::new(tx, ping_count));
-            //let start_msg = Box::new(EchoStart::new(clnt_side_with_srvr.clone_tx(), ping_count));
             ctrl_side_with_clnt.send(start_msg).unwrap();
 
             // Client receives Start msg from control
             let start_msg_any = clnt_side_with_ctrl.recv().unwrap();
-            client.process_msg_any(Some(&clnt_side_with_ctrl_tx), start_msg_any);
+            client.process_msg_any(&clnt_side_with_ctrl_context, start_msg_any);
 
             for i in 0..ping_count {
                 println!(
@@ -363,15 +324,12 @@ mod test {
                     Utc::now().timestamp_nanos(),
                     req_msg.counter,
                 ));
-                srvr_side_with_clnt_tx.send(reply_msg).unwrap();
+                srvr_side_with_clnt.send(reply_msg).unwrap();
 
                 // Client receives and processes reply message from server
                 let reply_msg_any = clnt_side_with_srvr.recv().unwrap();
-                client.process_msg_any(Some(&srvr_side_with_clnt_tx), reply_msg_any);
+                client.process_msg_any(&srvr_side_with_clnt_context, reply_msg_any);
             }
-
-            drop(clnt_side_with_ctrl_tx);
-            drop(srvr_side_with_clnt_tx);
 
             // Controller receives Complete msg
             let complete_msg_any = ctrl_side_with_clnt.recv().unwrap();

@@ -1,4 +1,4 @@
-use actor::{Actor, ActorId, ActorInstanceId, ProcessMsgFn};
+use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
 use an_id::AnId;
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
@@ -59,8 +59,8 @@ impl Actor for Server {
     fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
         self.self_tx = Some(sender);
     }
-    fn process_msg_any(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg: BoxMsgAny) {
-        (self.current_state)(self, reply_tx, msg);
+    fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
+        (self.current_state)(self, context, msg);
     }
 
     fn done(&self) -> bool {
@@ -129,14 +129,13 @@ impl Server {
         self.current_state = dest;
     }
 
-    pub fn state0(&mut self, reply_tx: Option<&Sender<BoxMsgAny>>, msg_any: BoxMsgAny) {
+    pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
-            println!("{}:State0: msg={msg:?}", self.name);
-            let reply_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
-            println!("{}:State0: sending reply_msg={reply_msg:?}", self.name);
-            let tx = reply_tx.unwrap();
-            tx.send(reply_msg).unwrap();
+            //println!("{}:State0: msg={msg:?}", self.name);
+            let rsp_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
+            //println!("{}:State0: sending reply_msg={rsp_msg:?}", self.name);
+            context.send_rsp(rsp_msg).unwrap();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -155,10 +154,33 @@ mod test {
 
     use crossbeam_channel::unbounded;
 
+    struct Context {
+        rsp_tx: Sender<BoxMsgAny>,
+    }
+
+    impl ActorContext for Context {
+        fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.rsp_tx.send(msg)?)
+        }
+
+        fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+            Some(self.rsp_tx.clone())
+        }
+    }
+
     #[test]
     fn test_1() {
         let (tx, rx) = unbounded();
 
+        let context = Context { rsp_tx: tx.clone() };
         let mut server = Server::new("server");
         println!("test_1: server={server:?}");
 
@@ -196,7 +218,7 @@ mod test {
 
             // Receive EchoReq and process it in server
             let echo_req_any = rx.recv().unwrap();
-            server.process_msg_any(Some(&tx), echo_req_any);
+            server.process_msg_any(&context, echo_req_any);
 
             // Receive EchoReply
             let reply_msg_any = rx.recv().unwrap();

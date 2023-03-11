@@ -1,12 +1,12 @@
 use std::thread::{self, JoinHandle};
 
-use actor::Actor;
+use actor::{Actor, ActorContext};
 use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
 
 use cmd_done::CmdDone;
 use connection_mgr::{Connection, VecConnection};
-use crossbeam_channel::Select;
-use msg_header::MsgHeader;
+use crossbeam_channel::{Select, Sender};
+use msg_header::{BoxMsgAny, MsgHeader};
 use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
 use rsp_add_actor::RspAddActor;
@@ -18,6 +18,28 @@ struct ActorExecutor {
     pub actor_vec: Vec<Box<dyn Actor>>,
     pub bi_dir_channels_vec: VecConnection, //Vec<Box<BiDirLocalChannels>>,
     done: bool,
+}
+
+struct Context {
+    rsp_tx: Sender<BoxMsgAny>,
+}
+
+impl ActorContext for Context {
+    fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+
+    fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(self.rsp_tx.send(msg)?)
+    }
+
+    fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+        Some(self.rsp_tx.clone())
+    }
 }
 
 #[allow(unused)]
@@ -134,7 +156,10 @@ impl ActorExecutor {
                             actor.get_name(),
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
-                        actor.process_msg_any(Some(&bdlcs.our_channel.tx), msg_any);
+                        let context = Context {
+                            rsp_tx: bdlcs.our_channel.tx.clone(),
+                        };
+                        actor.process_msg_any(&context, msg_any);
                         println!(
                             "AE:{}: retf process_msg_any[{actor_idx}] {}",
                             ae.name,
