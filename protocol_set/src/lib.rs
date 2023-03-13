@@ -1,11 +1,12 @@
 use an_id::AnId;
 use protocol::{Protocol, ProtocolId};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProtocolSetId(pub AnId);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProtocolSet {
     // Name of this ProtocolSet
     pub name: String,

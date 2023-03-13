@@ -2,6 +2,7 @@ use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
@@ -25,10 +26,10 @@ pub trait ActorContext {
     fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>>;
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActorId(pub AnId);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActorInstanceId(pub AnId);
 
 impl Default for ActorInstanceId {

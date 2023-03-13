@@ -1,10 +1,11 @@
 use an_id::AnId;
 use msg_header::MsgId;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProtocolId(pub AnId);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Protocol {
     pub name: String,
     pub id: ProtocolId,

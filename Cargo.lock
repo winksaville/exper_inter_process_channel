@@ -10,6 +10,8 @@ dependencies = [
  "crossbeam-channel",
  "msg_header",
  "protocol_set",
+ "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -739,6 +741,8 @@ version = "0.1.0"
 dependencies = [
  "an_id",
  "msg_header",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -748,6 +752,8 @@ dependencies = [
  "an_id",
  "msg_header",
  "protocol",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
