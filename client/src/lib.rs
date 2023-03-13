@@ -3,7 +3,7 @@ use an_id::{anid, paste};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
-    echo_requester_protocol, EchoReply, EchoReq, ECHO_REPLY_ID, ECHO_REQ_ID,
+    echo_requester_protocol, EchoReq, EchoRsp, ECHO_REQ_ID, ECHO_RSP_ID,
 };
 use echo_start_complete_protocol::{
     echo_start_complete_protocol, EchoComplete, EchoStart, ECHO_START_ID,
@@ -32,7 +32,7 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 ///
 /// After instantiating the Controller issues an EchoStart with a ping_count.
 /// The Client will then ping the partner with an EchoReq and expects
-/// the partner to respond with an EchoReply. After pinging the expected
+/// the partner to respond with an EchoRsp. After pinging the expected
 /// number of times the Client will repspond to the Controller with
 /// EchoDone.
 ///
@@ -186,14 +186,14 @@ impl Client {
     }
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
-        if let Some(msg) = msg_any.downcast_ref::<EchoReply>() {
-            assert_eq!(msg.header.id, ECHO_REPLY_ID);
+        if let Some(msg) = msg_any.downcast_ref::<EchoRsp>() {
+            assert_eq!(msg.header.id, ECHO_RSP_ID);
             println!("{}:State0: {msg:?}", self.name);
             self.send_echo_req_or_complete(msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
-            let rsp_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
+            let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
@@ -317,16 +317,13 @@ mod test {
                 let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
                 println!("test_bi_dir_local_channel: received req_msg={req_msg:?}");
 
-                // Server creates and sends reply message
-                let reply_msg = Box::new(EchoReply::new(
-                    Utc::now().timestamp_nanos(),
-                    req_msg.counter,
-                ));
-                srvr_side_with_clnt.send(reply_msg).unwrap();
+                // Server creates and sends rsp message
+                let rsp_msg = Box::new(EchoRsp::new(Utc::now().timestamp_nanos(), req_msg.counter));
+                srvr_side_with_clnt.send(rsp_msg).unwrap();
 
-                // Client receives and processes reply message from server
-                let reply_msg_any = clnt_side_with_srvr.recv().unwrap();
-                client.process_msg_any(&srvr_side_with_clnt_context, reply_msg_any);
+                // Client receives and processes rsp message from server
+                let rsp_msg_any = clnt_side_with_srvr.recv().unwrap();
+                client.process_msg_any(&srvr_side_with_clnt_context, rsp_msg_any);
             }
 
             // Controller receives Complete msg

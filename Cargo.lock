@@ -271,21 +271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "echo_reply"
-version = "0.1.0"
-dependencies = [
- "an_id",
- "chrono",
- "log",
- "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "echo_req"
 version = "0.1.0"
 dependencies = [
@@ -305,8 +290,8 @@ name = "echo_requestee_protocol"
 version = "0.1.0"
 dependencies = [
  "an_id",
- "echo_reply",
  "echo_req",
+ "echo_rsp",
  "msg_header",
  "once_cell",
  "protocol",
@@ -318,11 +303,26 @@ name = "echo_requester_protocol"
 version = "0.1.0"
 dependencies = [
  "an_id",
- "echo_reply",
  "echo_req",
+ "echo_rsp",
  "msg_header",
  "once_cell",
  "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "echo_rsp"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "chrono",
+ "log",
+ "msg_header",
+ "msg_serde_json",
+ "msg_serde_macro",
+ "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -401,10 +401,10 @@ dependencies = [
  "crossbeam-channel",
  "custom_logger",
  "echo_complete",
- "echo_reply",
  "echo_req",
  "echo_requestee_protocol",
  "echo_requester_protocol",
+ "echo_rsp",
  "echo_start",
  "echo_start_complete_protocol",
  "manager",

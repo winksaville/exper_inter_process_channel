@@ -1,7 +1,7 @@
 use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
 use an_id::{anid, paste};
 use crossbeam_channel::Sender;
-use echo_requestee_protocol::{echo_requestee_protocol, EchoReply, EchoReq, ECHO_REQ_ID};
+use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
@@ -132,8 +132,8 @@ impl Server {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             //println!("{}:State0: msg={msg:?}", self.name);
-            let rsp_msg = Box::new(EchoReply::new(msg.req_timestamp_ns, msg.counter));
-            //println!("{}:State0: sending reply_msg={rsp_msg:?}", self.name);
+            let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
+            //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
@@ -192,7 +192,7 @@ mod test {
         struct Times {
             now_ns: i64,
             req_timestamp_ns: i64,
-            reply_timestamp_ns: i64,
+            rsp_timestamp_ns: i64,
             last_ns: i64,
         }
 
@@ -202,7 +202,7 @@ mod test {
         let zero_times = Times {
             now_ns: 0,
             req_timestamp_ns: 0,
-            reply_timestamp_ns: 0,
+            rsp_timestamp_ns: 0,
             last_ns: 0,
         };
         let mut times = [zero_times; LOOP_COUNT];
@@ -219,15 +219,15 @@ mod test {
             let echo_req_any = rx.recv().unwrap();
             server.process_msg_any(&context, echo_req_any);
 
-            // Receive EchoReply
-            let reply_msg_any = rx.recv().unwrap();
-            let reply_msg = reply_msg_any.downcast_ref::<EchoReply>().unwrap();
+            // Receive EchoRsp
+            let rsp_msg_any = rx.recv().unwrap();
+            let rsp_msg = rsp_msg_any.downcast_ref::<EchoRsp>().unwrap();
 
             // Mark done
             times[i].last_ns = Utc::now().timestamp_nanos();
             times[i].now_ns = now_ns;
-            times[i].req_timestamp_ns = reply_msg.req_timestamp_ns;
-            times[i].reply_timestamp_ns = reply_msg.reply_timestamp_ns;
+            times[i].req_timestamp_ns = rsp_msg.req_timestamp_ns;
+            times[i].rsp_timestamp_ns = rsp_msg.rsp_timestamp_ns;
         }
 
         // Display all times
@@ -251,8 +251,8 @@ mod test {
         let ignoring = LOOP_COUNT / 5;
         for i in 0..LOOP_COUNT {
             let t0 = times[i].req_timestamp_ns - times[i].now_ns;
-            let t1 = times[i].reply_timestamp_ns - times[i].req_timestamp_ns;
-            let t2 = times[i].last_ns - times[i].reply_timestamp_ns;
+            let t1 = times[i].rsp_timestamp_ns - times[i].req_timestamp_ns;
+            let t2 = times[i].last_ns - times[i].rsp_timestamp_ns;
             let rtt = times[i].last_ns - times[i].now_ns;
 
             if i >= ignoring {

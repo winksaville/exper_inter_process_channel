@@ -21,7 +21,7 @@ echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
 echo_start = { path="msgs/echo_start" }
 echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
-echo_reply = { path="msgs/echo_reply" }
+echo_rsp = { path="msgs/echo_rsp" }
 msg_header = { path="msg_header" }
 msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msgs/msg1" }
@@ -60,7 +60,7 @@ members = [
     "msgs/req_add_actor",
     "msgs/rsp_add_actor",
     "msgs/echo_complete",
-    "msgs/echo_reply",
+    "msgs/echo_rsp",
     "msgs/echo_req",
     "msgs/echo_start",
     "name_id",

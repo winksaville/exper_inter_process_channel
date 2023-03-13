@@ -193,7 +193,7 @@ mod tests {
     use client::Client;
     use cmd_done::CmdDone;
     use crossbeam_channel::{unbounded, Receiver, Sender};
-    use echo_requestee_protocol::{EchoReply, EchoReq};
+    use echo_requestee_protocol::{EchoRsp, EchoReq};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use msg_header::BoxMsgAny;
     use server::Server;
@@ -232,8 +232,8 @@ mod tests {
 
         println!("test_add_one_actor: wait EchoRsp");
         let msg_any = s1_bdlc.recv().unwrap();
-        let msg_rsp = msg_any.downcast_ref::<EchoReply>().unwrap();
-        println!("test_add_one_actor: recv EchoReply={msg_rsp:?}");
+        let msg_rsp = msg_any.downcast_ref::<EchoRsp>().unwrap();
+        println!("test_add_one_actor: recv EchoRsp={msg_rsp:?}");
         assert_eq!(msg_rsp.counter, 1);
 
         println!("test_add_one_actor: send CmdDone");

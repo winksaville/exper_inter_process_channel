@@ -6,16 +6,16 @@ use once_cell::sync::Lazy;
 use protocol::{Protocol, ProtocolId};
 
 // Re-exports
-pub use echo_reply::*;
 pub use echo_req::*;
+pub use echo_rsp::*;
 
 const ECHO_REQUESTEE_PROTOCOL_ID: ProtocolId =
     ProtocolId(anid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183"));
 const ECHO_REQUESTEE_PROTOCOL_NAME: &str = "echo_requestee_protocol";
 static ECHO_REQUESTEE_PROTOCOL_MESSAGES: Lazy<Vec<MsgId>> =
-    Lazy::new(|| vec![ECHO_REQ_ID, ECHO_REPLY_ID]);
+    Lazy::new(|| vec![ECHO_REQ_ID, ECHO_RSP_ID]);
 
-static ECHO_REQ_REPLY_PROTOCOL: Lazy<EchoRequesteeProtocol> = Lazy::new(|| {
+static ECHO_REQ_RSP_PROTOCOL: Lazy<EchoRequesteeProtocol> = Lazy::new(|| {
     Protocol::new(
         ECHO_REQUESTEE_PROTOCOL_NAME,
         ECHO_REQUESTEE_PROTOCOL_ID,
@@ -26,7 +26,7 @@ static ECHO_REQ_REPLY_PROTOCOL: Lazy<EchoRequesteeProtocol> = Lazy::new(|| {
 pub type EchoRequesteeProtocol = Protocol;
 
 pub fn echo_requestee_protocol() -> &'static EchoRequesteeProtocol {
-    &ECHO_REQ_REPLY_PROTOCOL
+    &ECHO_REQ_RSP_PROTOCOL
 }
 
 #[cfg(test)]
