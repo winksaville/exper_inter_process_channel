@@ -1,5 +1,5 @@
 use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
-use an_id::AnId;
+use an_id::{anid, paste};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
@@ -10,15 +10,13 @@ use echo_start_complete_protocol::{
 };
 use msg1::Msg1;
 use msg2::Msg2;
+use msg_header::{BoxMsgAny, MsgHeader};
 use protocol::{Protocol, ProtocolId};
 use protocol_set::{ProtocolSet, ProtocolSetId};
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
 };
-use uuid::uuid;
-
-use msg_header::{BoxMsgAny, MsgHeader};
 
 // State information
 #[derive(Debug)]
@@ -109,9 +107,9 @@ impl Debug for Client {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CLIENT_ACTOR_ID: ActorId = ActorId(AnId(uuid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed")));
+const CLIENT_ACTOR_ID: ActorId = ActorId(anid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
 const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(AnId(uuid!("1a7b43ed-4676-42cd-9969-72283f258ef1")));
+    ProtocolSetId(anid!("1a7b43ed-4676-42cd-9969-72283f258ef1"));
 
 impl Client {
     pub fn new(name: &str) -> Self {

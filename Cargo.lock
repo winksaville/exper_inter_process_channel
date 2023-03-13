@@ -739,7 +739,6 @@ version = "0.1.0"
 dependencies = [
  "an_id",
  "msg_header",
- "uuid",
 ]
 
 [[package]]

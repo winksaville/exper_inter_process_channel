@@ -1,9 +1,21 @@
 //! For the framework this is "guranteed" to be unique
 //! across all systems using it. Currently it's a Uuid
 //! but that could change hence this New Type.
+pub use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
+pub use uuid::uuid;
 use uuid::Uuid;
+
+#[macro_export]
+macro_rules! anid {
+    ($id_str:literal) => {
+        paste! {
+            #[allow(unused)]
+            an_id::AnId(uuid::uuid!($id_str))
+        }
+    };
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AnId(pub Uuid);

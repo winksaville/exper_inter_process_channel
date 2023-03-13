@@ -1,17 +1,16 @@
 //! Protocol implemented by entities that send requests
 //! and receive responses.
-use an_id::AnId;
+use an_id::{anid, paste};
 use msg_header::MsgId;
 use once_cell::sync::Lazy;
 use protocol::{Protocol, ProtocolId};
-use uuid::uuid;
 
 // Re-exports
 pub use echo_reply::*;
 pub use echo_req::*;
 
 const ECHO_REQUESTEE_PROTOCOL_ID: ProtocolId =
-    ProtocolId(AnId(uuid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183")));
+    ProtocolId(anid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183"));
 const ECHO_REQUESTEE_PROTOCOL_NAME: &str = "echo_requestee_protocol";
 static ECHO_REQUESTEE_PROTOCOL_MESSAGES: Lazy<Vec<MsgId>> =
     Lazy::new(|| vec![ECHO_REQ_ID, ECHO_REPLY_ID]);

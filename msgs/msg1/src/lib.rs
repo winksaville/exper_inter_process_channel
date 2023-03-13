@@ -1,12 +1,11 @@
-use an_id::AnId;
+use an_id::{anid, paste};
 use msg_header::{BoxMsgAny, MsgHeader, MsgId};
 use msg_serde_json::get_id_str_from_buf;
 use serde::{Deserialize, Serialize};
-use uuid::uuid;
 
 // From: https://www.uuidgenerator.net/version4
 pub const MSG1_ID_STR: &str = "a88ba7e7-0930-4df6-bb24-240338bf8eb5";
-pub const MSG1_ID: MsgId = MsgId(AnId(uuid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5")));
+pub const MSG1_ID: MsgId = MsgId(anid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5"));
 pub const MSG1_NAME: &str = "Msg1";
 
 // Message 1
