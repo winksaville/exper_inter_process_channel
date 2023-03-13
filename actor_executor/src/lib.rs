@@ -193,7 +193,7 @@ mod tests {
     use client::Client;
     use cmd_done::CmdDone;
     use crossbeam_channel::{unbounded, Receiver, Sender};
-    use echo_requestee_protocol::{EchoRsp, EchoReq};
+    use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use msg_header::BoxMsgAny;
     use server::Server;

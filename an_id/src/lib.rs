@@ -23,7 +23,7 @@ pub struct AnId(pub Uuid);
 impl Debug for AnId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
-            write!(f, "InstanceId({})", self.0)
+            write!(f, "AnId({})", self.0)
         } else {
             write!(f, "{}", &self.0.to_string()[0..8])
         }
