@@ -1,3 +1,4 @@
+use an_id::AnId;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use std::{
     collections::HashMap,
@@ -7,7 +8,7 @@ use std::{
     thread,
 };
 
-use msg_header::{BoxMsgAny, MsgHeader, MsgId};
+use msg_header::{BoxMsgAny, MsgHeader};
 use msg_serde_json::{get_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
 fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
@@ -54,7 +55,7 @@ impl IpchnlDeserializer {
 
     pub fn add_from_serde_json_buf(
         &mut self,
-        msg_id: MsgId,
+        msg_id: AnId,
         from_serde_json_buf: FromSerdeJsonBuf,
     ) -> Option<FromSerdeJsonBuf> {
         self.msg_deser_map
@@ -162,10 +163,10 @@ impl IpchnlDeserializer {
 }
 
 struct IpchnlSerializer {
-    pub name: String,                                   // Name of this serializer
-    pub deser_ip_address_port: String,                  // IP Address of IpchnlDeserialize
-    pub rx: Receiver<BoxMsgAny>,                        // A channel to receive messages
-    msg_serializer_map: HashMap<MsgId, ToSerdeJsonBuf>, // Map of MsgId to a ToSerdeJsonBuf function
+    pub name: String,                                  // Name of this serializer
+    pub deser_ip_address_port: String,                 // IP Address of IpchnlDeserialize
+    pub rx: Receiver<BoxMsgAny>,                       // A channel to receive messages
+    msg_serializer_map: HashMap<AnId, ToSerdeJsonBuf>, // Map of AnId to a ToSerdeJsonBuf function
 }
 
 #[allow(unused)]
@@ -175,13 +176,13 @@ impl IpchnlSerializer {
             name: name.to_owned(),
             deser_ip_address_port: deser_ip_address_port.to_owned(),
             rx,
-            msg_serializer_map: HashMap::<MsgId, ToSerdeJsonBuf>::new(),
+            msg_serializer_map: HashMap::<AnId, ToSerdeJsonBuf>::new(),
         }
     }
 
     pub fn add_to_serde_json_buf(
         &mut self,
-        msg_id: MsgId,
+        msg_id: AnId,
         to_serde_json_buf: ToSerdeJsonBuf,
     ) -> Option<ToSerdeJsonBuf> {
         self.msg_serializer_map.insert(msg_id, to_serde_json_buf)

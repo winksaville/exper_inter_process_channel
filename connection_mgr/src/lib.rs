@@ -11,14 +11,14 @@ use std::cell::UnsafeCell;
 
 use crossbeam_channel::unbounded;
 
-use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
+use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::BiDirLocalChannel;
 
-use an_id::{anid, paste};
+use an_id::{anid, paste, AnId};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
-use protocol::{Protocol, ProtocolId};
-use protocol_set::{ProtocolSet, ProtocolSetId};
+use protocol::Protocol;
+use protocol_set::ProtocolSet;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -114,8 +114,8 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 // State machine for channel to network
 pub struct ConnectionMgr {
     pub name: String,
-    pub actor_id: ActorId,
-    pub instance_id: ActorInstanceId,
+    pub actor_id: AnId,
+    pub instance_id: AnId,
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
@@ -134,11 +134,11 @@ impl Actor for ConnectionMgr {
         &self.name
     }
 
-    fn get_actor_id(&self) -> &ActorId {
+    fn get_actor_id(&self) -> &AnId {
         &self.actor_id
     }
 
-    fn get_instance_id(&self) -> &ActorInstanceId {
+    fn get_instance_id(&self) -> &AnId {
         &self.instance_id
     }
 
@@ -180,23 +180,22 @@ impl Debug for ConnectionMgr {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CM_ACTOR_ID: ActorId = ActorId(anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833"));
-const CM_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb"));
+const CM_ACTOR_ID: AnId = anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833");
+const CM_PROTOCOL_SET_ID: AnId = anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb");
 
 impl ConnectionMgr {
     pub fn new(name: &str) -> Self {
         // Create the ConnectionMgr ProtocolSet.
         println!("ConnectionMgr::new({})", name);
         let requestee_protocol = echo_requestee_protocol();
-        let mut cm_pm = HashMap::<ProtocolId, Protocol>::new();
-        cm_pm.insert(requestee_protocol.id.clone(), requestee_protocol.clone());
+        let mut cm_pm = HashMap::<AnId, Protocol>::new();
+        cm_pm.insert(requestee_protocol.id, requestee_protocol.clone());
         let ps = ProtocolSet::new("connection_mgr_ps", CM_PROTOCOL_SET_ID, cm_pm);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CM_ACTOR_ID,
-            instance_id: ActorInstanceId::new(),
+            instance_id: AnId::new(),
             protocol_set: ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),

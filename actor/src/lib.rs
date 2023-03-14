@@ -2,7 +2,6 @@ use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
 use protocol_set::ProtocolSet;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
@@ -24,24 +23,6 @@ pub trait ActorContext {
 
     // The rsp_tx can be missing if so return Option
     fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>>;
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ActorId(pub AnId);
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ActorInstanceId(pub AnId);
-
-impl Default for ActorInstanceId {
-    fn default() -> Self {
-        ActorInstanceId::new()
-    }
-}
-
-impl ActorInstanceId {
-    pub fn new() -> Self {
-        ActorInstanceId(AnId::new())
-    }
 }
 
 pub trait ActorChannel {
@@ -93,8 +74,8 @@ pub trait Actor: Send + Debug + Sync {
     }
 
     fn get_name(&self) -> &str;
-    fn get_actor_id(&self) -> &ActorId;
-    fn get_instance_id(&self) -> &ActorInstanceId;
+    fn get_actor_id(&self) -> &AnId;
+    fn get_instance_id(&self) -> &AnId;
     fn get_protocol_set(&self) -> &ProtocolSet;
     fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>);
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny);

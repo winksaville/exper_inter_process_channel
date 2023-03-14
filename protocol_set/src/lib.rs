@@ -1,10 +1,7 @@
 use an_id::AnId;
-use protocol::{Protocol, ProtocolId};
+use protocol::Protocol;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ProtocolSetId(pub AnId);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProtocolSet {
@@ -12,18 +9,14 @@ pub struct ProtocolSet {
     pub name: String,
 
     // Id for this ProtocolSet
-    pub id: ProtocolSetId,
+    pub id: AnId,
 
-    /// HashMap from a ProtocolId to a Protocol
-    pub protocols_map: HashMap<ProtocolId, Protocol>,
+    /// HashMap from a AnId to a Protocol
+    pub protocols_map: HashMap<AnId, Protocol>,
 }
 
 impl ProtocolSet {
-    pub fn new(
-        name: &str,
-        id: ProtocolSetId,
-        protocols_map: HashMap<ProtocolId, Protocol>,
-    ) -> Self {
+    pub fn new(name: &str, id: AnId, protocols_map: HashMap<AnId, Protocol>) -> Self {
         Self {
             name: name.to_string(),
             id,
@@ -35,21 +28,20 @@ impl ProtocolSet {
 #[cfg(test)]
 mod test {
     use super::*;
-    use msg_header::MsgId;
 
     #[test]
     fn test_protocol() {
         println!("test_protocol");
 
-        let protocol1_id = ProtocolId(AnId::new());
-        let protocol1_msgs = vec![MsgId(AnId::new())];
+        let protocol1_id = AnId::new();
+        let protocol1_msgs = vec![AnId::new()];
         let protocol1 = Protocol::new("protocol1", protocol1_id.clone(), protocol1_msgs.clone());
 
-        let protocol2_id = ProtocolId(AnId::new());
-        let protocol2_msgs = vec![MsgId(AnId::new())];
+        let protocol2_id = AnId::new();
+        let protocol2_msgs = vec![AnId::new()];
         let protocol2 = Protocol::new("protocol2", protocol2_id.clone(), protocol2_msgs.clone());
 
-        let protocol_set_id = ProtocolSetId(AnId::new());
+        let protocol_set_id = AnId::new();
         let mut protocols_map = HashMap::new();
         assert!(protocols_map
             .insert(protocol1_id.clone(), protocol1.clone())

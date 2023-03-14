@@ -1,18 +1,16 @@
 //! Protocol implemented by entities that send requests
 //! and receive responses.
-use an_id::{anid, paste};
-use msg_header::MsgId;
+use an_id::{anid, paste, AnId};
 use once_cell::sync::Lazy;
-use protocol::{Protocol, ProtocolId};
+use protocol::Protocol;
 
 // Re-exports
 pub use echo_req::*;
 pub use echo_rsp::*;
 
-const ECHO_REQUESTEE_PROTOCOL_ID: ProtocolId =
-    ProtocolId(anid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183"));
+const ECHO_REQUESTEE_PROTOCOL_ID: AnId = anid!("16e9c5a6-cf3f-4813-b0e2-1c3c54058183");
 const ECHO_REQUESTEE_PROTOCOL_NAME: &str = "echo_requestee_protocol";
-static ECHO_REQUESTEE_PROTOCOL_MESSAGES: Lazy<Vec<MsgId>> =
+static ECHO_REQUESTEE_PROTOCOL_MESSAGES: Lazy<Vec<AnId>> =
     Lazy::new(|| vec![ECHO_REQ_ID, ECHO_RSP_ID]);
 
 static ECHO_REQ_RSP_PROTOCOL: Lazy<EchoRequesteeProtocol> = Lazy::new(|| {

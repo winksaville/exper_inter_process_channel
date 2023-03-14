@@ -11,7 +11,6 @@ use uuid::Uuid;
 macro_rules! anid {
     ($id_str:literal) => {
         paste! {
-            #[allow(unused)]
             an_id::AnId(uuid::uuid!($id_str))
         }
     };

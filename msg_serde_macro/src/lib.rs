@@ -14,7 +14,7 @@ macro_rules! msg_serde_macro {
             pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
 
             #[allow(unused)]
-            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::anid!($id_str));
+            pub const [ <$name:snake:upper _ID> ] : an_id::AnId = an_id::anid!($id_str);
         }
 
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -28,7 +28,7 @@ macro_rules! msg_serde_macro {
 
         #[allow(unused)]
         impl $name {
-            pub fn id(&self) -> msg_header::MsgId {
+            pub fn id(&self) -> an_id::AnId {
                 self.header.id
             }
 
@@ -92,7 +92,7 @@ macro_rules! msg_serde_macro {
             pub const [ <$name:snake:upper _ID_STR> ] : &str = $id_str;
 
             #[allow(unused)]
-            pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::anid!($id_str));
+            pub const [ <$name:snake:upper _ID> ] : an_id::AnId = an_id::anid!($id_str);
         }
 
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -112,12 +112,12 @@ macro_rules! msg_serde_macro {
             pub fn new() -> Self {
                 Self {
                     header: msg_header::MsgHeader {
-                        id: msg_header::MsgId(an_id::anid!($id_str)),
+                        id: an_id::anid!($id_str),
                     },
                 }
             }
 
-            pub fn id(&self) -> msg_header::MsgId {
+            pub fn id(&self) -> an_id::AnId {
                 self.header.id
             }
 

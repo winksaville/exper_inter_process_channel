@@ -1,9 +1,9 @@
-use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
-use an_id::{anid, paste};
+use actor::{Actor, ActorContext, ProcessMsgFn};
+use an_id::{anid, paste, AnId};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
-use protocol::{Protocol, ProtocolId};
-use protocol_set::{ProtocolSet, ProtocolSetId};
+use protocol::Protocol;
+use protocol_set::ProtocolSet;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -23,8 +23,8 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 // State machine for channel to network
 pub struct Server {
     pub name: String,
-    pub actor_id: ActorId,
-    pub instance_id: ActorInstanceId,
+    pub actor_id: AnId,
+    pub instance_id: AnId,
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
@@ -43,11 +43,11 @@ impl Actor for Server {
         &self.name
     }
 
-    fn get_actor_id(&self) -> &ActorId {
+    fn get_actor_id(&self) -> &AnId {
         &self.actor_id
     }
 
-    fn get_instance_id(&self) -> &ActorInstanceId {
+    fn get_instance_id(&self) -> &AnId {
         &self.instance_id
     }
 
@@ -88,23 +88,22 @@ impl Debug for Server {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const SERVER_ACTOR_ID: ActorId = ActorId(anid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892"));
-const SERVER_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(anid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f"));
+const SERVER_ACTOR_ID: AnId = anid!("d9a4c51e-c42e-4f2e-ae6c-96f62217d892");
+const SERVER_PROTOCOL_SET_ID: AnId = anid!("4c797cb5-08ff-4970-9a6b-17c5d296f69f");
 
 impl Server {
     pub fn new(name: &str) -> Self {
         // Create the server ProtocolSet, `server_ps`.
         println!("Server::new({})", name);
         let erep = echo_requestee_protocol();
-        let mut server_pm = HashMap::<ProtocolId, Protocol>::new();
-        server_pm.insert(erep.id.clone(), erep.clone());
+        let mut server_pm = HashMap::<AnId, Protocol>::new();
+        server_pm.insert(erep.id, erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: SERVER_ACTOR_ID,
-            instance_id: ActorInstanceId::new(),
+            instance_id: AnId::new(),
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),

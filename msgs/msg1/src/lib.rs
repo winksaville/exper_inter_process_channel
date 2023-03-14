@@ -1,11 +1,11 @@
-use an_id::{anid, paste};
-use msg_header::{BoxMsgAny, MsgHeader, MsgId};
+use an_id::{anid, paste, AnId};
+use msg_header::{BoxMsgAny, MsgHeader};
 use msg_serde_json::get_id_str_from_buf;
 use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4
 pub const MSG1_ID_STR: &str = "a88ba7e7-0930-4df6-bb24-240338bf8eb5";
-pub const MSG1_ID: MsgId = MsgId(anid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5"));
+pub const MSG1_ID: AnId = anid!("a88ba7e7-0930-4df6-bb24-240338bf8eb5");
 pub const MSG1_NAME: &str = "Msg1";
 
 // Message 1
@@ -34,7 +34,7 @@ impl Msg1 {
         }
     }
 
-    pub fn id(&self) -> MsgId {
+    pub fn id(&self) -> AnId {
         self.header.id
     }
 
@@ -126,7 +126,7 @@ mod test {
 
         // Use HashMap to serialize
         let ser = Msg1::to_serde_json_buf;
-        let mut hm_ser = HashMap::<MsgId, ToSerdeJsonBuf>::new();
+        let mut hm_ser = HashMap::<AnId, ToSerdeJsonBuf>::new();
         hm_ser.insert(msg1.id(), ser);
         println!("hm_ser.len()={}", hm_ser.len());
 

@@ -8,23 +8,18 @@
 //! better to use IPFS CIDs which are 256bit (32 bytes).
 use std::{collections::HashMap, error::Error, fmt::Debug};
 
-use actor::{Actor, ActorId, ActorInstanceId};
+use actor::Actor;
 use an_id::AnId;
-use protocol::ProtocolId;
-use protocol_set::ProtocolSetId;
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ManagerId(pub AnId);
 
 // Manager
 pub struct Manager {
     name: String,
-    id: ManagerId,
+    id: AnId,
     actors: Vec<Box<dyn Actor>>,
-    actors_map_by_instance_id: HashMap<ActorInstanceId, usize>,
-    actors_map_by_actor_id: HashMap<ActorId, Vec<usize>>,
-    actors_map_by_protocol_id: HashMap<ProtocolId, Vec<usize>>,
-    actors_map_by_protocol_set_id: HashMap<ProtocolSetId, Vec<usize>>,
+    actors_map_by_instance_id: HashMap<AnId, usize>,
+    actors_map_by_actor_id: HashMap<AnId, Vec<usize>>,
+    actors_map_by_protocol_id: HashMap<AnId, Vec<usize>>,
+    actors_map_by_protocol_set_id: HashMap<AnId, Vec<usize>>,
 }
 
 impl Debug for Manager {
@@ -60,7 +55,7 @@ impl Debug for Manager {
 // format string. Also this is caught by `cargo +nightly clippy`.
 #[allow(clippy::uninlined_format_args)]
 impl Manager {
-    pub fn new(name: &str, id: ManagerId) -> Self {
+    pub fn new(name: &str, id: AnId) -> Self {
         Self {
             name: name.to_string(),
             id,
@@ -83,7 +78,7 @@ impl Manager {
 
         if let Some(idx) = self
             .actors_map_by_instance_id
-            .insert(actor.get_instance_id().clone(), idx)
+            .insert(*actor.get_instance_id(), idx)
         {
             return Err(format!(
                 "{}-{}::add_actor {} instance_id:{} : Actor already added at idx: {}",
@@ -115,7 +110,7 @@ impl Manager {
         } else {
             // First time seeing this actor_id, add vector with one item
             self.actors_map_by_actor_id
-                .insert(actor.get_actor_id().clone(), vec![idx]);
+                .insert(*actor.get_actor_id(), vec![idx]);
         }
     }
 
@@ -128,7 +123,7 @@ impl Manager {
                 v.push(idx);
             } else {
                 // First time seeing this protocol_id, add vector with one item
-                self.actors_map_by_protocol_id.insert(k.clone(), vec![idx]);
+                self.actors_map_by_protocol_id.insert(*k, vec![idx]);
             }
         }
     }
@@ -142,7 +137,7 @@ impl Manager {
         } else {
             // First time seeing this protocol_set_id, add vector with one item
             self.actors_map_by_protocol_set_id
-                .insert(protocol_set_id.clone(), vec![idx]);
+                .insert(*protocol_set_id, vec![idx]);
         }
     }
 }
@@ -159,7 +154,7 @@ mod test {
     #[test]
     fn test_manager() {
         println!("test_manager");
-        let mut manager = Manager::new("a_manager", ManagerId(AnId::new()));
+        let mut manager = Manager::new("a_manager", AnId::new());
 
         let (tx, rx) = unbounded::<BoxMsgAny>();
         let client = Client::new("client");

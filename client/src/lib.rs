@@ -1,5 +1,5 @@
-use actor::{Actor, ActorContext, ActorId, ActorInstanceId, ProcessMsgFn};
-use an_id::{anid, paste};
+use actor::{Actor, ActorContext, ProcessMsgFn};
+use an_id::{anid, paste, AnId};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
@@ -11,8 +11,8 @@ use echo_start_complete_protocol::{
 use msg1::Msg1;
 use msg2::Msg2;
 use msg_header::{BoxMsgAny, MsgHeader};
-use protocol::{Protocol, ProtocolId};
-use protocol_set::{ProtocolSet, ProtocolSetId};
+use protocol::Protocol;
+use protocol_set::ProtocolSet;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -39,8 +39,8 @@ type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 /// Errors and not handled gracefully, this is just demo.
 pub struct Client {
     pub name: String,
-    pub actor_id: ActorId,
-    pub instance_id: ActorInstanceId,
+    pub actor_id: AnId,
+    pub instance_id: AnId,
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
@@ -61,11 +61,11 @@ impl Actor for Client {
         &self.name
     }
 
-    fn get_actor_id(&self) -> &ActorId {
+    fn get_actor_id(&self) -> &AnId {
         &self.actor_id
     }
 
-    fn get_instance_id(&self) -> &ActorInstanceId {
+    fn get_instance_id(&self) -> &AnId {
         &self.instance_id
     }
 
@@ -107,9 +107,8 @@ impl Debug for Client {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CLIENT_ACTOR_ID: ActorId = ActorId(anid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed"));
-const CLIENT_PROTOCOL_SET_ID: ProtocolSetId =
-    ProtocolSetId(anid!("1a7b43ed-4676-42cd-9969-72283f258ef1"));
+const CLIENT_ACTOR_ID: AnId = anid!("02960323-48ef-4e9e-b3b7-d8a3ad6b49ed");
+const CLIENT_PROTOCOL_SET_ID: AnId = anid!("1a7b43ed-4676-42cd-9969-72283f258ef1");
 
 impl Client {
     pub fn new(name: &str) -> Self {
@@ -117,16 +116,16 @@ impl Client {
         let errp = echo_requester_protocol();
         let erep = echo_requestee_protocol();
         let escp = echo_start_complete_protocol();
-        let mut client_pm = HashMap::<ProtocolId, Protocol>::new();
-        client_pm.insert(errp.id.clone(), errp.clone());
-        client_pm.insert(erep.id.clone(), erep.clone());
-        client_pm.insert(escp.id.clone(), escp.clone());
+        let mut client_pm = HashMap::<AnId, Protocol>::new();
+        client_pm.insert(errp.id, errp.clone());
+        client_pm.insert(erep.id, erep.clone());
+        client_pm.insert(escp.id, escp.clone());
 
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CLIENT_ACTOR_ID,
-            instance_id: ActorInstanceId::new(),
+            instance_id: AnId::new(),
             protocol_set: client_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
