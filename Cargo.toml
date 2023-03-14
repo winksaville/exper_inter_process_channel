@@ -18,7 +18,7 @@ protocol = { path="protocol" }
 echo_start_complete_protocol = { path="protocols/echo_start_complete_protocol" }
 echo_requester_protocol = { path="protocols/echo_requester_protocol" }
 echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
-#con_mgr_add_actor = { path="msgs/con_mgr_add_actor" }
+con_mgr_add_actor = { path="msgs/con_mgr_add_actor" }
 echo_start = { path="msgs/echo_start" }
 echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
@@ -32,6 +32,8 @@ req_their_bi_dir_channel = { path="msgs/req_their_bi_dir_channel" }
 rsp_their_bi_dir_channel = { path="msgs/rsp_their_bi_dir_channel" }
 req_add_actor = { path="msgs/req_add_actor" }
 rsp_add_actor = { path="msgs/rsp_add_actor" }
+req_protocol_set = { path="msgs/req_protocol_set" }
+rsp_protocol_set = { path="msgs/rsp_protocol_set" }
 name_id = { path="name_id" }
 an_id = { path="an_id" }
 client = { path="client" }
@@ -56,11 +58,13 @@ members = [
     "msgs/msg1",
     "msgs/msg2",
     "msgs/cmd_done",
-#    "msgs/con_mgr_add_actor",
+    "msgs/con_mgr_add_actor",
     "msgs/req_their_bi_dir_channel",
     "msgs/rsp_their_bi_dir_channel",
     "msgs/req_add_actor",
     "msgs/rsp_add_actor",
+    "msgs/req_protocol_set",
+    "msgs/rsp_protocol_set",
     "msgs/echo_complete",
     "msgs/echo_rsp",
     "msgs/echo_req",
