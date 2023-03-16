@@ -24,6 +24,8 @@ msg_serde_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
     id: AnId,
     instance_id: AnId,
     protocol_set_id: AnId,
+    // As ProtocolSet is immutable, see is #13
+    //   https://github.com/winksaville/exper_inter_process_channel/issues/13
     protocol_set: Option<ProtocolSet>
 });
 
@@ -33,7 +35,7 @@ impl ConMgrRegisterActorReq {
         id: &AnId,
         instance_id: &AnId,
         protocol_set_id: &AnId,
-        protocol_set: Option<ProtocolSet>,
+        protocol_set: Option<&ProtocolSet>,
     ) -> Self {
         Self {
             header: msg_header::MsgHeader {
@@ -43,7 +45,7 @@ impl ConMgrRegisterActorReq {
             id: *id,
             instance_id: *instance_id,
             protocol_set_id: *protocol_set_id,
-            protocol_set,
+            protocol_set: if let Some(ps) = protocol_set { Some(ps.clone()) } else { None },
         }
     }
 }

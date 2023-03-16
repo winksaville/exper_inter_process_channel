@@ -125,6 +125,8 @@ dependencies = [
  "actor_bi_dir_channel",
  "an_id",
  "chrono",
+ "cmd_init_protocol",
+ "con_mgr_register_actor",
  "crossbeam-channel",
  "echo_requestee_protocol",
  "echo_requester_protocol",
@@ -149,6 +151,32 @@ dependencies = [
  "msg_serde_macro",
  "serde",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "cmd_init"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "log",
+ "msg_header",
+ "msg_serde_json",
+ "msg_serde_macro",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "cmd_init_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "cmd_init",
+ "msg_header",
+ "once_cell",
+ "protocol",
  "uuid",
 ]
 
@@ -419,6 +447,7 @@ dependencies = [
  "an_id",
  "client",
  "cmd_done",
+ "cmd_init_protocol",
  "con_mgr_register_actor",
  "connection_mgr",
  "crossbeam-channel",

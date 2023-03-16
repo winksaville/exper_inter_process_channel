@@ -18,6 +18,7 @@ protocol = { path="protocol" }
 echo_start_complete_protocol = { path="protocols/echo_start_complete_protocol" }
 echo_requester_protocol = { path="protocols/echo_requester_protocol" }
 echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
+cmd_init_protocol = { path="protocols/cmd_init_protocol" }
 con_mgr_register_actor = { path="protocols/con_mgr_register_actor" }
 echo_start = { path="msgs/echo_start" }
 echo_complete = { path="msgs/echo_complete" }
@@ -66,6 +67,7 @@ members = [
     "msgs/echo_start",
     "name_id",
     "an_id",
+    "protocols/cmd_init_protocol",
     "protocols/con_mgr_register_actor",
     "protocols/echo_start_complete_protocol",
     "protocols/echo_requester_protocol",
