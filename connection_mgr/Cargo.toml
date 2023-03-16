@@ -11,6 +11,7 @@ license.workspace = true
 msg_header = { path="../msg_header" }
 protocol_set = { path="../protocol_set" }
 echo_requestee_protocol = { version = "0.1.0", path = "../protocols/echo_requestee_protocol" }
+con_mgr_register_actor = { version = "0.1.0", path = "../protocols/con_mgr_register_actor" }
 actor = { path="../actor" }
 chrono = "0.4.23"
 protocol = { version = "0.1.0", path = "../protocol" }

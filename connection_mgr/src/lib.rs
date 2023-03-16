@@ -9,6 +9,7 @@
 //! Note: this is a separate file because it uses UnsafeCell.
 use std::cell::UnsafeCell;
 
+use con_mgr_register_actor::{con_mgr_register_actor_protocol, ConMgrRegisterActorReq};
 use crossbeam_channel::unbounded;
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
@@ -187,9 +188,14 @@ impl ConnectionMgr {
     pub fn new(name: &str) -> Self {
         // Create the ConnectionMgr ProtocolSet.
         println!("ConnectionMgr::new({})", name);
-        let requestee_protocol = echo_requestee_protocol();
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
+        let requestee_protocol = echo_requestee_protocol();
         cm_pm.insert(requestee_protocol.id, requestee_protocol.clone());
+        let con_mgr_reg_actor_protoocl = con_mgr_register_actor_protocol();
+        cm_pm.insert(
+            con_mgr_reg_actor_protoocl.id,
+            con_mgr_reg_actor_protoocl.clone(),
+        );
         let ps = ProtocolSet::new("connection_mgr_ps", CM_PROTOCOL_SET_ID, cm_pm);
 
         let mut this = Self {
@@ -220,7 +226,9 @@ impl ConnectionMgr {
     }
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
-        if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
+        if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
+            println!("{}:State0: msg={msg:?}", self.name);
+        } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             //println!("{}:State0: msg={msg:?}", self.name);
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));

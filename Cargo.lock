@@ -163,7 +163,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "con_mgr_add_actor"
+name = "con_mgr_register_actor"
 version = "0.1.0"
 dependencies = [
  "actor",
@@ -173,6 +173,7 @@ dependencies = [
  "msg_header",
  "msg_serde_json",
  "msg_serde_macro",
+ "once_cell",
  "protocol",
  "protocol_set",
  "serde",
@@ -188,6 +189,7 @@ dependencies = [
  "actor_bi_dir_channel",
  "an_id",
  "chrono",
+ "con_mgr_register_actor",
  "crossbeam-channel",
  "echo_requestee_protocol",
  "msg_header",
@@ -417,7 +419,7 @@ dependencies = [
  "an_id",
  "client",
  "cmd_done",
- "con_mgr_add_actor",
+ "con_mgr_register_actor",
  "connection_mgr",
  "crossbeam-channel",
  "custom_logger",
@@ -437,10 +439,8 @@ dependencies = [
  "protocol",
  "protocol_set",
  "req_add_actor",
- "req_protocol_set",
  "req_their_bi_dir_channel",
  "rsp_add_actor",
- "rsp_protocol_set",
  "rsp_their_bi_dir_channel",
  "serde",
  "serde_json",
@@ -836,24 +836,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "req_protocol_set"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "chrono",
- "log",
- "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
- "protocol",
- "protocol_set",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "req_their_bi_dir_channel"
 version = "0.1.0"
 dependencies = [
@@ -879,24 +861,6 @@ dependencies = [
  "log",
  "msg_header",
  "msg_local_macro",
- "uuid",
-]
-
-[[package]]
-name = "rsp_protocol_set"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "chrono",
- "log",
- "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
- "protocol",
- "protocol_set",
- "serde",
- "serde_json",
  "uuid",
 ]
 
