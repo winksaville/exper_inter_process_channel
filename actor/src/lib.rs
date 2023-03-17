@@ -1,3 +1,4 @@
+use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
@@ -9,19 +10,24 @@ pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
 // These methods may only be invoked from a single threaded
 // entity, which by definition Actors are.
 pub trait ActorContext {
-    // There must always be a connection manager
+    /// The "their" BiDirLocalChannel of a Connection for communicating with "us"
+    fn their_bdlc_with_us(&self) -> BiDirLocalChannel;
+
+    /// Send message to connection manager
     fn send_conn_mgr(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
-    // You must always be able to send a message to yourself
-    // although, maybe in a test case it could be a NOP?
+    // Send a message to yourself, in a test case it could be a NOP!
     fn send_self(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
-    // You can always send a response, but if there is no
-    // rsp_tx then the message will just be dropped.
-    // Guard this with a `context.has_rsp_tx()` to check.
+    /// Send a response message to the entity that issued request, if there
+    /// is no Sender then the message will be silently dropped????
     fn send_rsp(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
-    // The rsp_tx can be missing if so return Option
+    /// Currently used by /client actor defined here so that
+    /// Client.controller_tx can be set and the EchoComplete
+    /// can be sent when the echo sequence is complete. When
+    /// we can dynamically create "connections" I don't this
+    /// this shouldn't be necessary.
     fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>>;
 }
 

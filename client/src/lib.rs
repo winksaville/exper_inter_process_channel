@@ -223,13 +223,13 @@ impl Client {
             println!("{}:State0: {msg:?}", self.name);
             assert_eq!(msg.header.id, CMD_INIT_ID);
 
-            // Register with con_mgr
+            // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
                 &self.name,
                 &self.actor_id,
                 &self.instance_id,
-                &self.protocol_set.id,
-                Some(&self.protocol_set),
+                &self.protocol_set,
+                context.their_bdlc_with_us(),
             ));
             context.send_conn_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
@@ -254,17 +254,21 @@ mod test {
     use con_mgr_register_actor::{
         ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
     };
-    use crossbeam_channel::unbounded;
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
     use msg1::MSG1_ID;
     use msg_header::MsgHeader;
 
     struct Context {
         con_mgr_tx: Sender<BoxMsgAny>,
+        their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
+        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+            self.their_bdlc_with_us.clone()
+        }
+
         fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(self.con_mgr_tx.send(msg)?)
         }
@@ -284,35 +288,36 @@ mod test {
 
     #[test]
     fn test_cmd_init() {
-        let (tx, rx) = unbounded::<BoxMsgAny>();
+        let (client_bdlc, test_cmd_init_bdlc) = BiDirLocalChannel::new();
 
         // Both con_mgr_tx and rsp_tx are "this" test
-        let context = Context {
-            con_mgr_tx: tx.clone(),
-            rsp_tx: tx.clone(),
+        let client_context = Context {
+            con_mgr_tx: client_bdlc.tx.clone(),
+            their_bdlc_with_us: test_cmd_init_bdlc.clone(),
+            rsp_tx: client_bdlc.tx.clone(),
         };
 
         let mut client = Client::new("client");
-        client.set_self_sender(tx);
+        client.set_self_sender(client_bdlc.tx.clone());
 
         // First message must be CmdInit and client send
         let msg = Box::new(CmdInit::new());
-        client.process_msg_any(&context, msg);
+        client.process_msg_any(&client_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
         // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
-        let con_mgr_msg_any = rx.recv().unwrap();
+        let con_mgr_msg_any = test_cmd_init_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
             ConMgrRegisterActorStatus::Success,
         ));
-        client.process_msg_any(&context, msg);
+        client.process_msg_any(&client_context, msg);
 
         // Send Msg2 expect Msg1 back
         let msg = Box::new(Msg2::new());
-        client.process_msg_any(&context, msg);
-        let recv_msg = rx.recv().unwrap();
+        client.process_msg_any(&client_context, msg);
+        let recv_msg = test_cmd_init_bdlc.rx.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg),
             &MSG1_ID
@@ -328,6 +333,7 @@ mod test {
         let (ctrl_with_clnt, clnt_with_ctrl) = BiDirLocalChannel::new();
         let ctrl_with_clnt_context = Context {
             con_mgr_tx: clnt_with_ctrl.clone_tx(),
+            their_bdlc_with_us: ctrl_with_clnt.clone(),
             rsp_tx: clnt_with_ctrl.clone_tx(),
         };
 
@@ -339,11 +345,13 @@ mod test {
         for ping_count in [0, 1, 5] {
             let clnt_with_ctrl_context = Context {
                 con_mgr_tx: clnt_with_ctrl.clone_tx(),
+                their_bdlc_with_us: ctrl_with_clnt.clone(),
                 rsp_tx: clnt_with_ctrl.clone_tx(),
             };
 
             let srvr_with_clnt_context = Context {
                 con_mgr_tx: srvr_with_clnt.clone_tx(),
+                their_bdlc_with_us: clnt_with_srvr.clone(),
                 rsp_tx: srvr_with_clnt.clone_tx(),
             };
 

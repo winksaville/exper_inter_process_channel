@@ -7,9 +7,12 @@
 //! of a channel would not be possible, this will eliminate that need.
 //!
 //! Note: this is a separate file because it uses UnsafeCell.
-use std::cell::UnsafeCell;
+use std::{cell::UnsafeCell, error::Error};
 
-use con_mgr_register_actor::{con_mgr_register_actor_protocol, ConMgrRegisterActorReq};
+use con_mgr_register_actor::{
+    con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
+    ConMgrRegisterActorStatus,
+};
 use crossbeam_channel::unbounded;
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
@@ -29,8 +32,8 @@ use msg_header::{BoxMsgAny, MsgHeader};
 
 #[derive(Debug, Clone)]
 pub struct Connection {
-    pub their_channel: BiDirLocalChannel,
-    pub our_channel: BiDirLocalChannel,
+    pub their_bdlc_with_us: BiDirLocalChannel,
+    pub our_bdlc_with_them: BiDirLocalChannel,
 }
 
 impl Default for Connection {
@@ -48,12 +51,12 @@ impl Connection {
         let (right_tx, left_rx) = unbounded();
 
         Self {
-            their_channel: BiDirLocalChannel {
+            their_bdlc_with_us: BiDirLocalChannel {
                 self_tx: right_tx.clone(),
                 tx: left_tx.clone(),
                 rx: left_rx,
             },
-            our_channel: BiDirLocalChannel {
+            our_bdlc_with_them: BiDirLocalChannel {
                 self_tx: left_tx,
                 tx: right_tx,
                 rx: right_rx,
@@ -122,6 +125,12 @@ pub struct ConMgr {
     pub state_info_hash: StateInfoMap<Self>,
 
     self_tx: Option<Sender<BoxMsgAny>>,
+    vec_of_actor_bdlc: Vec<BiDirLocalChannel>,
+    actors_map_by_instance_id: HashMap<AnId, usize>,
+    actors_map_by_name: HashMap<String, Vec<usize>>,
+    actors_map_by_id: HashMap<AnId, Vec<usize>>,
+    actors_map_by_protocol_id: HashMap<AnId, Vec<usize>>,
+    actors_map_by_protocol_set_id: HashMap<AnId, Vec<usize>>,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -174,8 +183,10 @@ impl Debug for ConMgr {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name} }}",
-            self.name, self.name, self.state_info_hash
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}, actors:  }}",
+            self.name,
+            self.name,
+            self.state_info_hash, //self.actors
         )
     }
 }
@@ -206,6 +217,12 @@ impl ConMgr {
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
             self_tx: None,
+            vec_of_actor_bdlc: Vec::new(),
+            actors_map_by_instance_id: HashMap::new(),
+            actors_map_by_name: HashMap::new(),
+            actors_map_by_id: HashMap::new(),
+            actors_map_by_protocol_id: HashMap::new(),
+            actors_map_by_protocol_set_id: HashMap::new(),
         };
 
         this.add_state(Self::state0, "state0");
@@ -225,9 +242,88 @@ impl ConMgr {
         self.current_state = dest;
     }
 
+    /// Add an Actor.
+    pub fn add_actor(&mut self, msg: &ConMgrRegisterActorReq) -> Result<(), Box<dyn Error>> {
+        #[cfg(debug)]
+        println!("Clone only in debug configuration");
+        #[cfg(debug)]
+        let actor_clone_for_panic = actor.clone();
+
+        let idx = self.vec_of_actor_bdlc.len();
+
+        if let Some(idx) = self.actors_map_by_instance_id.insert(msg.instance_id, idx) {
+            return Err(format!(
+                "{}-{}::add_actor {} instance_id:{} : Actor already added at idx: {}",
+                self.name, self.actor_id, msg.name, msg.instance_id, idx
+            )
+            .into());
+        }
+
+        self.vec_of_actor_bdlc.push(msg.bdlc.clone());
+
+        self.add_map_by_name(idx, &msg.name);
+        self.add_map_by_id(idx, &msg.id);
+        self.add_map_by_protocol_set(idx, &msg.protocol_set);
+
+        Ok(())
+    }
+
+    fn add_map_by_name(&mut self, idx: usize, name: &str) {
+        if let Some(v) = self.actors_map_by_name.get_mut(name) {
+            // Add another actor with that name
+            v.push(idx);
+        } else {
+            // First time seeing this name, add to vector with one item
+            self.actors_map_by_name.insert(name.to_owned(), vec![idx]);
+        }
+    }
+
+    fn add_map_by_id(&mut self, idx: usize, id: &AnId) {
+        if let Some(v) = self.actors_map_by_id.get_mut(id) {
+            // Add another idx
+            v.push(idx);
+        } else {
+            // First time seeing this actor_id, add vector with one item
+            self.actors_map_by_id.insert(*id, vec![idx]);
+        }
+    }
+
+    fn add_map_by_protocol_set(&mut self, idx: usize, ps: &ProtocolSet) {
+        if let Some(v) = self.actors_map_by_protocol_set_id.get_mut(&ps.id) {
+            // Add another idx
+            v.push(idx);
+        } else {
+            // First time seeing this protocol_set, add vector with one item
+            self.actors_map_by_protocol_set_id.insert(ps.id, vec![idx]);
+
+            self.add_map_by_protocol_id(idx, ps);
+        }
+    }
+
+    fn add_map_by_protocol_id(&mut self, idx: usize, ps: &ProtocolSet) {
+        let protocol_map = &ps.protocols_map;
+
+        for k in protocol_map.keys() {
+            if let Some(v) = self.actors_map_by_protocol_id.get_mut(k) {
+                v.push(idx);
+            } else {
+                // First time seeing this protocol_id, add vector with one item
+                self.actors_map_by_protocol_id.insert(*k, vec![idx]);
+            }
+        }
+    }
+
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
+            let status = if self.add_actor(msg).is_ok() {
+                ConMgrRegisterActorStatus::Success
+            } else {
+                ConMgrRegisterActorStatus::ActorAlreadyRegistered
+            };
+            context
+                .send_rsp(Box::new(ConMgrRegisterActorRsp::new(status)))
+                .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
             //println!("{}:State0: msg={msg:?}", self.name);
@@ -246,17 +342,20 @@ impl ConMgr {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use actor_bi_dir_channel::ActorBiDirChannel;
     use chrono::Utc;
 
-    use super::*;
-
-    use crossbeam_channel::unbounded;
-
     struct Context {
+        their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
+        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+            self.their_bdlc_with_us.clone()
+        }
+
         fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
@@ -276,9 +375,14 @@ mod test {
 
     #[test]
     fn test_1() {
-        let (tx, rx) = unbounded();
+        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
 
-        let context = Context { rsp_tx: tx.clone() };
+        //let (tx, rx) = unbounded();
+
+        let context = Context {
+            their_bdlc_with_us: their_bdlc_with_us.clone(),
+            rsp_tx: our_bdlc_with_them.tx.clone(),
+        };
         let mut conn_mgr = ConMgr::new("conn_mgr");
         println!("test_1: conn_mgr={conn_mgr:?}");
 
@@ -312,14 +416,14 @@ mod test {
 
             // Create EchoReq and send it
             let echo_req: BoxMsgAny = Box::new(EchoReq::new(1));
-            tx.send(echo_req).unwrap();
+            their_bdlc_with_us.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
-            let echo_req_any = rx.recv().unwrap();
+            let echo_req_any = our_bdlc_with_them.recv().unwrap();
             conn_mgr.process_msg_any(&context, echo_req_any);
 
-            // Receive Echoeply
-            let rsp_msg_any = rx.recv().unwrap();
+            // Receive EchoRsp
+            let rsp_msg_any = their_bdlc_with_us.recv().unwrap();
             let rsp_msg = rsp_msg_any.downcast_ref::<EchoRsp>().unwrap();
 
             // Mark done
@@ -383,6 +487,5 @@ mod test {
         println!("  t1 = {}ns", sum_t1 / avg_count);
         println!("  t2 = {}ns", sum_t2 / avg_count);
         println!(" rtt = {}ns", sum_rtt / avg_count);
-        drop(tx);
     }
 }

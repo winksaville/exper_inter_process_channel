@@ -6,6 +6,7 @@ version = 3
 name = "actor"
 version = "0.1.0"
 dependencies = [
+ "actor_bi_dir_channel",
  "an_id",
  "crossbeam-channel",
  "msg_header",
@@ -212,13 +213,13 @@ name = "con_mgr_register_actor"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "actor_bi_dir_channel",
  "an_id",
  "chrono",
  "echo_requestee_protocol",
  "log",
  "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
+ "msg_local_macro",
  "once_cell",
  "protocol",
  "protocol_set",
@@ -968,6 +969,7 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "actor",
+ "actor_bi_dir_channel",
  "an_id",
  "chrono",
  "crossbeam-channel",

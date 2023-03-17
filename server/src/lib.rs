@@ -146,17 +146,21 @@ impl Server {
 
 #[cfg(test)]
 mod test {
+    use actor_bi_dir_channel::BiDirLocalChannel;
     use chrono::Utc;
 
     use super::*;
 
-    use crossbeam_channel::unbounded;
-
     struct Context {
+        their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
+        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+            self.their_bdlc_with_us.clone()
+        }
+
         fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
@@ -176,11 +180,15 @@ mod test {
 
     #[test]
     fn test_1() {
-        let (tx, rx) = unbounded();
+        let (server_bdlc, test_1_bdlc) = BiDirLocalChannel::new();
 
-        let context = Context { rsp_tx: tx.clone() };
+        let server_context = Context {
+            their_bdlc_with_us: test_1_bdlc.clone(),
+            rsp_tx: server_bdlc.tx.clone(),
+        };
+
         let mut server = Server::new("server");
-        println!("test_1: server={server:?}");
+        println!("test_1: {server:?}");
 
         // Warm up reading time stamp
         let first_now_ns = Utc::now().timestamp_nanos();
@@ -197,7 +205,7 @@ mod test {
 
         // We'll do 11 loop and throw out the first loop
         // as that is slow
-        const LOOP_COUNT: usize = 100;
+        const LOOP_COUNT: usize = 10; //100;
         let zero_times = Times {
             now_ns: 0,
             req_timestamp_ns: 0,
@@ -212,14 +220,14 @@ mod test {
 
             // Create EchoReq and send it
             let echo_req: BoxMsgAny = Box::new(EchoReq::new(1));
-            tx.send(echo_req).unwrap();
+            test_1_bdlc.tx.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
-            let echo_req_any = rx.recv().unwrap();
-            server.process_msg_any(&context, echo_req_any);
+            let echo_req_any = server_bdlc.rx.recv().unwrap();
+            server.process_msg_any(&server_context, echo_req_any);
 
             // Receive EchoRsp
-            let rsp_msg_any = rx.recv().unwrap();
+            let rsp_msg_any = test_1_bdlc.rx.recv().unwrap();
             let rsp_msg = rsp_msg_any.downcast_ref::<EchoRsp>().unwrap();
 
             // Mark done
@@ -283,6 +291,5 @@ mod test {
         println!("  t1 = {}ns", sum_t1 / avg_count);
         println!("  t2 = {}ns", sum_t2 / avg_count);
         println!(" rtt = {}ns", sum_rtt / avg_count);
-        drop(tx);
     }
 }

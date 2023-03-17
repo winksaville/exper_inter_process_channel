@@ -21,10 +21,15 @@ struct ActorExecutor {
 }
 
 struct Context {
+    their_bdlc_with_us: BiDirLocalChannel,
     rsp_tx: Sender<BoxMsgAny>,
 }
 
 impl ActorContext for Context {
+    fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+        self.their_bdlc_with_us.clone()
+    }
+
     fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
         Ok(())
     }
@@ -48,7 +53,7 @@ impl ActorExecutor {
     // allows messages to be sent and received from the AeActor.
     pub fn start(name: &str) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
         let ae_actor_bi_dir_channels = Connection::new();
-        let their_bi_dir_channel = Box::new(ae_actor_bi_dir_channels.their_channel.clone());
+        let their_bdlc_with_us = Box::new(ae_actor_bi_dir_channels.their_bdlc_with_us.clone());
 
         // Convert name to string so it can be moved into the thread
         let name = name.to_string();
@@ -63,7 +68,7 @@ impl ActorExecutor {
             println!("AE:{}:+", ae.name);
 
             let mut selector = Select::new();
-            let oper_idx = selector.recv(ae_actor_bi_dir_channels.our_channel.get_recv());
+            let oper_idx = selector.recv(ae_actor_bi_dir_channels.our_bdlc_with_them.get_recv());
             assert_eq!(oper_idx, 0);
 
             while !ae.done {
@@ -73,7 +78,7 @@ impl ActorExecutor {
 
                 if oper_idx == 0 {
                     // This messageis for the AE itself
-                    let rx = ae_actor_bi_dir_channels.our_channel.get_recv();
+                    let rx = ae_actor_bi_dir_channels.our_bdlc_with_them.get_recv();
 
                     let result = oper.recv(rx);
                     match result {
@@ -102,11 +107,11 @@ impl ActorExecutor {
                                 let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
 
                                 println!("AE:{}: selector.recv(our_channel.get_recv())", ae.name);
-                                selector.recv(bdlcs.our_channel.get_recv());
+                                selector.recv(bdlcs.our_bdlc_with_them.get_recv());
 
                                 // Send the response message with their_channel
                                 let msg_rsp = Box::new(RspAddActor::new(Box::new(
-                                    bdlcs.their_channel.clone(),
+                                    bdlcs.their_bdlc_with_us.clone(),
                                 )));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
                                 msg.rsp_tx.send(msg_rsp);
@@ -122,10 +127,11 @@ impl ActorExecutor {
                             } else if let Some(msg) = msg_any.downcast_ref::<ReqTheirBiDirChannel>()
                             {
                                 println!("AE:{}: msg={msg:?}", ae.name);
-                                let bdc = ae.bi_dir_channels_vec.get(msg.handle);
-                                let their_channel = bdc.their_channel.clone();
-                                let msg_rsp =
-                                    Box::new(RspTheirBiDirChannel::new(Box::new(their_channel)));
+                                let connection = ae.bi_dir_channels_vec.get(msg.handle);
+                                let their_bdlc_with_us = connection.their_bdlc_with_us.clone();
+                                let msg_rsp = Box::new(RspTheirBiDirChannel::new(Box::new(
+                                    their_bdlc_with_us,
+                                )));
 
                                 // send msg_rsp
                                 println!("AE:{}: send msg_rsp={msg_rsp:?}", ae.name);
@@ -145,7 +151,7 @@ impl ActorExecutor {
                         actor.get_name(),
                     );
                     let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
-                    let rx = bdlcs.our_channel.get_recv();
+                    let rx = bdlcs.our_bdlc_with_them.get_recv();
                     if let Ok(msg_any) = oper.recv(rx).map_err(|why| {
                         // TODO: What should we do here?
                         panic!("AE:{}: {} error on recv: {why}", ae.name, actor.get_name())
@@ -157,7 +163,8 @@ impl ActorExecutor {
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
                         let context = Context {
-                            rsp_tx: bdlcs.our_channel.tx.clone(),
+                            their_bdlc_with_us: bdlcs.their_bdlc_with_us.clone(),
+                            rsp_tx: bdlcs.our_bdlc_with_them.tx.clone(),
                         };
                         actor.process_msg_any(&context, msg_any);
                         println!(
@@ -180,7 +187,7 @@ impl ActorExecutor {
             println!("AE:{}:-", ae.name);
         });
 
-        (join_handle, their_bi_dir_channel)
+        (join_handle, their_bdlc_with_us)
     }
 
     fn name(&self) -> &str {

@@ -11,22 +11,24 @@
 //! the actors that want to register with the connection manager
 //! they send CON_MGR_REGISTER_ACTOR_REQ_ID messages and receive
 //! CON_MGR_REGISTER_ACTOR_RSP_ID messages.
+use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
-use msg_serde_macro::{msg_serde_macro, paste};
+use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
 use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4
-msg_serde_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
+msg_local_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
     name: String,
     id: AnId,
     instance_id: AnId,
-    protocol_set_id: AnId,
+    //protocol_set_id: AnId,
     // As ProtocolSet is immutable, see is #13
     //   https://github.com/winksaville/exper_inter_process_channel/issues/13
-    protocol_set: Option<ProtocolSet>
+    protocol_set: ProtocolSet, // TODO maybe make Option<ProtocolSet>
+    bdlc: BiDirLocalChannel
 });
 
 impl ConMgrRegisterActorReq {
@@ -34,8 +36,9 @@ impl ConMgrRegisterActorReq {
         name: &str,
         id: &AnId,
         instance_id: &AnId,
-        protocol_set_id: &AnId,
-        protocol_set: Option<&ProtocolSet>,
+        //protocol_set_id: &AnId,
+        protocol_set: &ProtocolSet, // Option<&ProtocolSet>,
+        bdlc: BiDirLocalChannel,
     ) -> Self {
         Self {
             header: msg_header::MsgHeader {
@@ -44,8 +47,9 @@ impl ConMgrRegisterActorReq {
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
-            protocol_set_id: *protocol_set_id,
-            protocol_set: protocol_set.cloned(),
+            //protocol_set_id: *protocol_set_id,
+            protocol_set: protocol_set.clone(),
+            bdlc,
         }
     }
 }
@@ -54,12 +58,11 @@ impl ConMgrRegisterActorReq {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ConMgrRegisterActorStatus {
     Success,
-    OtherError,
-    NeedProtocolSet,
+    ActorAlreadyRegistered,
 }
 
 // From: https://www.uuidgenerator.net/version4
-msg_serde_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
+msg_local_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
     // Should we add a transaction id here and in ConMgrReqActor?
     status: ConMgrRegisterActorStatus
 });
@@ -115,32 +118,19 @@ mod test {
 
     use super::*;
 
+    use actor_bi_dir_channel::ActorBiDirChannel;
     use echo_requestee_protocol::echo_requestee_protocol;
 
     #[test]
-    fn test_con_mgr_reg_actor_protocol_set_none() {
-        let a_id = AnId::new();
-        let a_instance_id = AnId::new();
-        let a_protocol_set_id = AnId::new();
-
-        let msg =
-            ConMgrRegisterActorReq::new("cmra1", &a_id, &a_instance_id, &a_protocol_set_id, None);
-        println!("test_con_mgr_reg_actor_protocol_set_none: msg={msg:#?}");
-
-        assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
-        assert_eq!(msg.name, "cmra1");
-        assert_eq!(msg.id, a_id);
-        assert_eq!(msg.instance_id, a_instance_id);
-        assert_eq!(msg.protocol_set_id, a_protocol_set_id);
-        assert!(msg.protocol_set.is_none());
-
-        let msg = ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success);
-        assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
-        assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
+    fn test_con_mgr_reg_actor_protocol() {
+        let errp = con_mgr_register_actor_protocol();
+        assert_eq!(errp.id, CON_MGR_REGISTER_ACTOR_PROTOCOL_ID);
+        assert_eq!(errp.name, CON_MGR_REGISTER_ACTOR_PROTOCOL_NAME);
+        assert_eq!(errp.messages, *CON_MGR_REGISTER_ACTOR_PROTOCOL_MESSAGES);
     }
 
     #[test]
-    fn test_con_mgr_reg_actor_protocol_set_some() {
+    fn test_con_mgr_reg_actor_protocol_set() {
         let a_id = AnId::new();
         let a_instance_id = AnId::new();
         let a_protocol_set_id = AnId::new();
@@ -151,29 +141,92 @@ mod test {
         pm.insert(erep.id.clone(), erep.clone());
         let ps = ProtocolSet::new("ps", a_protocol_set_id, pm);
 
-        let msg = ConMgrRegisterActorReq::new(
-            "cmra1",
-            &a_id,
-            &a_instance_id,
-            &a_protocol_set_id,
-            Some(&ps),
-        );
+        let (theirs, ours) = BiDirLocalChannel::new();
+
+        let msg = ConMgrRegisterActorReq::new("cmra1", &a_id, &a_instance_id, &ps, theirs);
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
         assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
         assert_eq!(msg.name, "cmra1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);
-        assert_eq!(msg.protocol_set_id, a_protocol_set_id);
-        assert_eq!(msg.protocol_set.is_some(), true);
-        assert_eq!(msg.protocol_set.unwrap(), ps);
+        assert_eq!(msg.protocol_set, ps);
+        let their_channel: Box<dyn ActorBiDirChannel> = Box::new(msg.bdlc.clone());
+        println!("sending");
+        their_channel.send(Box::new(1)).unwrap();
+        println!("receiving");
+        let msg_any = ours.recv().unwrap();
+        println!("received");
+        assert_eq!(*msg_any.downcast::<i32>().unwrap(), 1);
     }
 
-    #[test]
-    fn test_con_mgr_reg_actor_protocol() {
-        let errp = con_mgr_register_actor_protocol();
-        assert_eq!(errp.id, CON_MGR_REGISTER_ACTOR_PROTOCOL_ID);
-        assert_eq!(errp.name, CON_MGR_REGISTER_ACTOR_PROTOCOL_NAME);
-        assert_eq!(errp.messages, *CON_MGR_REGISTER_ACTOR_PROTOCOL_MESSAGES);
-    }
+    //#[test]
+    //fn test_con_mgr_reg_actor_protocol_set_none() {
+    //    let a_id = AnId::new();
+    //    let a_instance_id = AnId::new();
+    //    let a_protocol_set_id = AnId::new();
+
+    //    let (theirs, _ours) = BiDirLocalChannel::new();
+
+    //    let msg = ConMgrRegisterActorReq::new(
+    //        "cmra1",
+    //        &a_id,
+    //        &a_instance_id,
+    //        &a_protocol_set_id,
+    //        None,
+    //        theirs,
+    //    );
+    //    println!("test_con_mgr_reg_actor_protocol_set_none: msg={msg:#?}");
+
+    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+    //    assert_eq!(msg.name, "cmra1");
+    //    assert_eq!(msg.id, a_id);
+    //    assert_eq!(msg.instance_id, a_instance_id);
+    //    assert_eq!(msg.protocol_set_id, a_protocol_set_id);
+    //    assert!(msg.protocol_set.is_none());
+
+    //    let msg = ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success);
+    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+    //    assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
+    //}
+
+    //#[test]
+    //fn test_con_mgr_reg_actor_protocol_set_some() {
+    //    let a_id = AnId::new();
+    //    let a_instance_id = AnId::new();
+    //    let a_protocol_set_id = AnId::new();
+
+    //    // A Protocol set with echo requestee
+    //    let erep = echo_requestee_protocol();
+    //    let mut pm = HashMap::<AnId, Protocol>::new();
+    //    pm.insert(erep.id.clone(), erep.clone());
+    //    let ps = ProtocolSet::new("ps", a_protocol_set_id, pm);
+
+    //    let (theirs, ours) = BiDirLocalChannel::new();
+
+    //    let msg = ConMgrRegisterActorReq::new(
+    //        "cmra1",
+    //        &a_id,
+    //        &a_instance_id,
+    //        &a_protocol_set_id,
+    //        Some(&ps),
+    //        theirs,
+    //    );
+    //    println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
+
+    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+    //    assert_eq!(msg.name, "cmra1");
+    //    assert_eq!(msg.id, a_id);
+    //    assert_eq!(msg.instance_id, a_instance_id);
+    //    assert_eq!(msg.protocol_set_id, a_protocol_set_id);
+    //    assert_eq!(msg.protocol_set.is_some(), true);
+    //    assert_eq!(msg.protocol_set.unwrap(), ps);
+    //    let their_channel: Box<dyn ActorBiDirChannel> = Box::new(msg.bdlc.clone());
+    //    println!("sending");
+    //    their_channel.send(Box::new(1)).unwrap();
+    //    println!("receiving");
+    //    let msg_any = ours.recv().unwrap();
+    //    println!("received");
+    //    assert_eq!(*msg_any.downcast::<i32>().unwrap(), 1);
+    //}
 }
