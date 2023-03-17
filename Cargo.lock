@@ -32,7 +32,7 @@ dependencies = [
  "actor_bi_dir_channel",
  "client",
  "cmd_done",
- "connection_mgr",
+ "con_mgr",
  "crossbeam-channel",
  "echo_requestee_protocol",
  "echo_start_complete_protocol",
@@ -191,26 +191,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "con_mgr_register_actor"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "chrono",
- "log",
- "msg_header",
- "msg_serde_json",
- "msg_serde_macro",
- "once_cell",
- "protocol",
- "protocol_set",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
-name = "connection_mgr"
+name = "con_mgr"
 version = "0.1.0"
 dependencies = [
  "actor",
@@ -223,6 +204,26 @@ dependencies = [
  "msg_header",
  "protocol",
  "protocol_set",
+ "uuid",
+]
+
+[[package]]
+name = "con_mgr_register_actor"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "chrono",
+ "echo_requestee_protocol",
+ "log",
+ "msg_header",
+ "msg_serde_json",
+ "msg_serde_macro",
+ "once_cell",
+ "protocol",
+ "protocol_set",
+ "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -448,8 +449,8 @@ dependencies = [
  "client",
  "cmd_done",
  "cmd_init_protocol",
+ "con_mgr",
  "con_mgr_register_actor",
- "connection_mgr",
  "crossbeam-channel",
  "custom_logger",
  "echo_complete",

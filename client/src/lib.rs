@@ -1,7 +1,10 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
-use con_mgr_register_actor::{ConMgrRegisterActorRsp, CON_MGR_REGISTER_ACTOR_RSP_ID, ConMgrRegisterActorStatus, ConMgrRegisterActorReq};
+use con_mgr_register_actor::{
+    ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
+    CON_MGR_REGISTER_ACTOR_RSP_ID,
+};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::echo_requestee_protocol;
 use echo_requester_protocol::{
@@ -222,7 +225,11 @@ impl Client {
 
             // Register with con_mgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
-                &self.name, &self.actor_id, &self.instance_id, &self.protocol_set.id, Some(&self.protocol_set)
+                &self.name,
+                &self.actor_id,
+                &self.instance_id,
+                &self.protocol_set.id,
+                Some(&self.protocol_set),
             ));
             context.send_conn_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
@@ -244,7 +251,9 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
-    use con_mgr_register_actor::{CON_MGR_REGISTER_ACTOR_REQ_ID, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus};
+    use con_mgr_register_actor::{
+        ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
+    };
     use crossbeam_channel::unbounded;
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
     use msg1::MSG1_ID;
@@ -286,7 +295,7 @@ mod test {
         let mut client = Client::new("client");
         client.set_self_sender(tx);
 
-        // First message must be CmdInit and client send 
+        // First message must be CmdInit and client send
         let msg = Box::new(CmdInit::new());
         client.process_msg_any(&context, msg);
 
@@ -295,9 +304,11 @@ mod test {
         let con_mgr_msg_any = rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-        let msg = Box::new(ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success));
+        let msg = Box::new(ConMgrRegisterActorRsp::new(
+            ConMgrRegisterActorStatus::Success,
+        ));
         client.process_msg_any(&context, msg);
-        
+
         // Send Msg2 expect Msg1 back
         let msg = Box::new(Msg2::new());
         client.process_msg_any(&context, msg);
@@ -345,7 +356,9 @@ mod test {
             let con_mgr_msg_any = ctrl_with_clnt.recv().unwrap();
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
             assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-            let msg = Box::new(ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success));
+            let msg = Box::new(ConMgrRegisterActorRsp::new(
+                ConMgrRegisterActorStatus::Success,
+            ));
             client.process_msg_any(&ctrl_with_clnt_context, msg);
 
             // Controller sends EchoStart message to client

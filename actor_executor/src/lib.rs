@@ -4,7 +4,7 @@ use actor::{Actor, ActorContext};
 use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
 
 use cmd_done::CmdDone;
-use connection_mgr::{Connection, VecConnection};
+use con_mgr::{Connection, VecConnection};
 use crossbeam_channel::{Select, Sender};
 use msg_header::{BoxMsgAny, MsgHeader};
 use req_add_actor::ReqAddActor;

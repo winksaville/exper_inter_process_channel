@@ -113,7 +113,7 @@ pub struct StateInfo {
 type StateInfoMap<SM> = HashMap<*const ProcessMsgFn<SM>, StateInfo>;
 
 // State machine for channel to network
-pub struct ConnectionMgr {
+pub struct ConMgr {
     pub name: String,
     pub actor_id: AnId,
     pub instance_id: AnId,
@@ -125,12 +125,12 @@ pub struct ConnectionMgr {
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
-unsafe impl Send for ConnectionMgr {}
+unsafe impl Send for ConMgr {}
 
 // TODO: This Sync guarantee is valid because multiple threads will never access an Actor. ??
-unsafe impl Sync for ConnectionMgr {}
+unsafe impl Sync for ConMgr {}
 
-impl Actor for ConnectionMgr {
+impl Actor for ConMgr {
     fn get_name(&self) -> &str {
         &self.name
     }
@@ -160,7 +160,7 @@ impl Actor for ConnectionMgr {
     }
 }
 
-impl Debug for ConnectionMgr {
+impl Debug for ConMgr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let fn_ptr = self.current_state as *const ProcessMsgFn<Self>;
         let fn_ptr_string = format!("{fn_ptr:p}");
@@ -181,13 +181,13 @@ impl Debug for ConnectionMgr {
 }
 
 // From: https://www.uuidgenerator.net/version4
-const CM_ACTOR_ID: AnId = anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833");
-const CM_PROTOCOL_SET_ID: AnId = anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb");
+const CON_MGR_ACTOR_ID: AnId = anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833");
+const CON_MGR_PROTOCOL_SET_ID: AnId = anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb");
 
-impl ConnectionMgr {
+impl ConMgr {
     pub fn new(name: &str) -> Self {
-        // Create the ConnectionMgr ProtocolSet.
-        println!("ConnectionMgr::new({})", name);
+        // Create the ConMgr ProtocolSet.
+        println!("ConMgr::new({})", name);
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
         let requestee_protocol = echo_requestee_protocol();
         cm_pm.insert(requestee_protocol.id, requestee_protocol.clone());
@@ -196,11 +196,11 @@ impl ConnectionMgr {
             con_mgr_reg_actor_protoocl.id,
             con_mgr_reg_actor_protoocl.clone(),
         );
-        let ps = ProtocolSet::new("connection_mgr_ps", CM_PROTOCOL_SET_ID, cm_pm);
+        let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
         let mut this = Self {
             name: name.to_owned(),
-            actor_id: CM_ACTOR_ID,
+            actor_id: CON_MGR_ACTOR_ID,
             instance_id: AnId::new(),
             protocol_set: ps,
             current_state: Self::state0,
@@ -279,7 +279,7 @@ mod test {
         let (tx, rx) = unbounded();
 
         let context = Context { rsp_tx: tx.clone() };
-        let mut conn_mgr = ConnectionMgr::new("conn_mgr");
+        let mut conn_mgr = ConMgr::new("conn_mgr");
         println!("test_1: conn_mgr={conn_mgr:?}");
 
         // Warm up reading time stamp
