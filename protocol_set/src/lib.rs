@@ -3,7 +3,7 @@ use protocol::Protocol;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProtocolSet {
     // Name of this ProtocolSet
     pub name: String,
