@@ -45,7 +45,7 @@ impl ConMgrRegisterActorReq {
             id: *id,
             instance_id: *instance_id,
             protocol_set_id: *protocol_set_id,
-            protocol_set: if let Some(ps) = protocol_set { Some(ps.clone()) } else { None },
+            protocol_set: protocol_set.cloned(),
         }
     }
 }
@@ -111,17 +111,21 @@ pub fn con_mgr_registee_actor_protocol() -> &'static Protocol {
 #[cfg(test)]
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use super::*;
 
+    use echo_requestee_protocol::echo_requestee_protocol;
+
     #[test]
-    fn test_con_mgr_reg_actor() {
+    fn test_con_mgr_reg_actor_protocol_set_none() {
         let a_id = AnId::new();
         let a_instance_id = AnId::new();
         let a_protocol_set_id = AnId::new();
 
         let msg =
             ConMgrRegisterActorReq::new("cmra1", &a_id, &a_instance_id, &a_protocol_set_id, None);
-        println!("test_echo_req msg={msg:#?}");
+        println!("test_con_mgr_reg_actor_protocol_set_none: msg={msg:#?}");
 
         assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
         assert_eq!(msg.name, "cmra1");
@@ -133,6 +137,36 @@ mod test {
         let msg = ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success);
         assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
         assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
+    }
+
+    #[test]
+    fn test_con_mgr_reg_actor_protocol_set_some() {
+        let a_id = AnId::new();
+        let a_instance_id = AnId::new();
+        let a_protocol_set_id = AnId::new();
+
+        // A Protocol set with echo requestee
+        let erep = echo_requestee_protocol();
+        let mut pm = HashMap::<AnId, Protocol>::new();
+        pm.insert(erep.id.clone(), erep.clone());
+        let ps = ProtocolSet::new("ps", a_protocol_set_id, pm);
+
+        let msg = ConMgrRegisterActorReq::new(
+            "cmra1",
+            &a_id,
+            &a_instance_id,
+            &a_protocol_set_id,
+            Some(&ps),
+        );
+        println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
+
+        assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg.name, "cmra1");
+        assert_eq!(msg.id, a_id);
+        assert_eq!(msg.instance_id, a_instance_id);
+        assert_eq!(msg.protocol_set_id, a_protocol_set_id);
+        assert_eq!(msg.protocol_set.is_some(), true);
+        assert_eq!(msg.protocol_set.unwrap(), ps);
     }
 
     #[test]
