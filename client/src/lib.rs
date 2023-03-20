@@ -105,8 +105,8 @@ impl Debug for Client {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; ping_count: {}; }}",
-            self.name, self.name, self.state_info_hash, self.ping_count,
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; ping_count: {}; protocol_set: {:?}}}",
+            self.name, self.name, self.state_info_hash, self.ping_count, self.protocol_set
         )
     }
 }

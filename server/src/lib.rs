@@ -81,8 +81,8 @@ impl Debug for Server {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name} }}",
-            self.name, self.name, self.state_info_hash
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; protocol_set: {:?} }}",
+            self.name, self.name, self.state_info_hash, self.protocol_set
         )
     }
 }
