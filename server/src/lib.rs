@@ -1,5 +1,10 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use an_id::{anid, paste, AnId};
+use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
+use con_mgr_register_actor::{
+    ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
+    CON_MGR_REGISTER_ACTOR_RSP_ID,
+};
 use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
@@ -134,6 +139,23 @@ impl Server {
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
+        } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
+            println!("{}:State0: {msg:?}", self.name);
+            assert_eq!(msg.header.id, CMD_INIT_ID);
+
+            // Register ourselves with ConMgr
+            let msg = Box::new(ConMgrRegisterActorReq::new(
+                &self.name,
+                &self.actor_id,
+                &self.instance_id,
+                &self.protocol_set,
+                context.their_bdlc_with_us(),
+            ));
+            context.send_conn_mgr(msg).unwrap();
+        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
+            println!("{}:State0: {msg:?}", self.name);
+            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+            assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -148,10 +170,12 @@ impl Server {
 mod test {
     use actor_bi_dir_channel::BiDirLocalChannel;
     use chrono::Utc;
+    use con_mgr_register_actor::CON_MGR_REGISTER_ACTOR_REQ_ID;
 
     use super::*;
 
     struct Context {
+        con_mgr_tx: Sender<BoxMsgAny>,
         their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
@@ -161,8 +185,8 @@ mod test {
             self.their_bdlc_with_us.clone()
         }
 
-        fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(())
+        fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.con_mgr_tx.send(msg)?)
         }
 
         fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
@@ -182,7 +206,9 @@ mod test {
     fn test_1() {
         let (server_bdlc, test_1_bdlc) = BiDirLocalChannel::new();
 
+        // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
+            con_mgr_tx: server_bdlc.tx.clone(),
             their_bdlc_with_us: test_1_bdlc.clone(),
             rsp_tx: server_bdlc.tx.clone(),
         };
@@ -291,5 +317,34 @@ mod test {
         println!("  t1 = {}ns", sum_t1 / avg_count);
         println!("  t2 = {}ns", sum_t2 / avg_count);
         println!(" rtt = {}ns", sum_rtt / avg_count);
+    }
+
+    #[test]
+    fn test_cmd_init() {
+        let (server_bdlc, test_cmd_init_bdlc) = BiDirLocalChannel::new();
+
+        // Both con_mgr_tx and rsp_tx are "this" test
+        let server_context = Context {
+            con_mgr_tx: server_bdlc.tx.clone(),
+            their_bdlc_with_us: test_cmd_init_bdlc.clone(),
+            rsp_tx: server_bdlc.tx.clone(),
+        };
+
+        let mut server = Server::new("server");
+        server.set_self_sender(server_bdlc.tx.clone());
+
+        // First message must be CmdInit and client send
+        let msg = Box::new(CmdInit::new());
+        server.process_msg_any(&server_context, msg);
+
+        // ConMgr is sent ConMgrRegisterActorReq and responds with
+        // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
+        let con_mgr_msg_any = test_cmd_init_bdlc.rx.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        let msg = Box::new(ConMgrRegisterActorRsp::new(
+            ConMgrRegisterActorStatus::Success,
+        ));
+        server.process_msg_any(&server_context, msg);
     }
 }
