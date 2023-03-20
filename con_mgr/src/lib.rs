@@ -393,6 +393,7 @@ mod test {
     use echo_requestee_protocol::echo_requestee_protocol;
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;
+    use server::Server;
 
     #[test]
     fn test_1() {
@@ -541,8 +542,8 @@ mod test {
     }
 
     #[test]
-    fn test_client() {
-        println!("\ntest_client:+");
+    fn test_reg_client_server() {
+        println!("\ntest_reg_client_server:+");
 
         struct Context {
             con_mgr_tx: Sender<BoxMsgAny>,
@@ -572,14 +573,15 @@ mod test {
             }
         }
 
+        // Create connection manager
+        let mut con_mgr = ConMgr::new("con_mgr");
+        println!("test_reg_client_server: conn_mgr={con_mgr:?}");
+
         let (con_mgr_bdlc, their_bdlc_with_con_mgr) = BiDirLocalChannel::new();
         let (client_bdlc, their_bdlc_with_client) = BiDirLocalChannel::new();
 
-        let mut con_mgr = ConMgr::new("conn_mgr");
-        println!("test_client: conn_mgr={con_mgr:?}");
-
         let mut client = Client::new("client");
-        println!("test_client: client={client:?}");
+        println!("test_reg_client_server: client={client:?}");
         //client.set_self_sender(client_bdlc.tx.clone());
 
         // First message must be CmdInit and client send
@@ -598,7 +600,7 @@ mod test {
         let mut msg_any = con_mgr_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-        println!("test_client: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID");
+        println!("test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID");
 
         // Initialize ConMgr context
         context = Context {
@@ -613,7 +615,7 @@ mod test {
         msg_any = client_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
-        println!("test_client: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID");
+        println!("test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID");
 
         // Initialize Client context
         context = Context {
@@ -624,8 +626,8 @@ mod test {
         // Have the client process the ConMgrRegisterActorRsp
         client.process_msg_any(&context, msg_any);
 
-        println!("test_client: con_mgr={con_mgr:#?}");
-        println!("test_client: client: {client:?}");
+        println!("test_reg_client_server: con_mgr={con_mgr:#?}");
+        println!("test_reg_client_server: client: {client:?}");
 
         // Validate con_mgr has processed the ConMgrRegsiterActor
         assert_eq!(con_mgr.vec_of_actor_bdlc.len(), 1);
@@ -678,6 +680,95 @@ mod test {
             &vec![0]
         );
 
-        println!("test_client:-");
+        // Register Server
+        let (server_bdlc, their_bdlc_with_server) = BiDirLocalChannel::new();
+
+        let mut server = Server::new("server");
+        println!("test_reg_client_server: server={server:?}");
+        //client.set_self_sender(client_bdlc.tx.clone());
+
+        // First message must be CmdInit and client send
+        let msg = Box::new(CmdInit::new());
+
+        // Initialize Client context
+        let mut context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_server.clone(),
+            rsp_tx: their_bdlc_with_server.tx.clone(),
+        };
+        // Have the client process the CmdInit
+        server.process_msg_any(&context, msg);
+
+        // Expect the client to have sent ConMgrRegisterActorReq to con_mgr
+        let mut msg_any = con_mgr_bdlc.rx.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        println!("test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID");
+
+        // Initialize ConMgr context
+        context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_server.clone(),
+            rsp_tx: their_bdlc_with_server.tx.clone(),
+        };
+        // Have ConMgr process message
+        con_mgr.process_msg_any(&context, msg_any);
+
+        // Expect the ConMgr to return response to client with ConMgrRegisterActorRsp with success
+        msg_any = server_bdlc.rx.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
+        println!("test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID");
+
+        // Initialize Client context
+        context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_server.clone(),
+            rsp_tx: their_bdlc_with_server.tx.clone(),
+        };
+        // Have the client process the ConMgrRegisterActorRsp
+        server.process_msg_any(&context, msg_any);
+
+        println!("test_reg_client_server: con_mgr={con_mgr:#?}");
+        println!("test_reg_client_server: server: {server:?}");
+
+        // Validate con_mgr has processed the ConMgrRegsiterActor
+        assert_eq!(con_mgr.vec_of_actor_bdlc.len(), 2);
+        assert_eq!(con_mgr.actors_map_by_instance_id.len(), 2);
+        assert_eq!(
+            *con_mgr
+                .actors_map_by_instance_id
+                .get(&server.instance_id)
+                .unwrap(),
+            1
+        );
+        assert_eq!(con_mgr.actors_map_by_name.len(), 2);
+        assert_eq!(
+            con_mgr.actors_map_by_name.get(&server.name).unwrap(),
+            &vec![1]
+        );
+        assert_eq!(con_mgr.actors_map_by_id.len(), 2);
+        assert_eq!(
+            con_mgr.actors_map_by_id.get(&server.actor_id).unwrap(),
+            &vec![1]
+        );
+        assert_eq!(con_mgr.actors_map_by_protocol_set_id.len(), 2);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_set_id
+                .get(&server.protocol_set.id)
+                .unwrap(),
+            &vec![1]
+        );
+        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 3);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&echo_requestee_protocol().id)
+                .unwrap(),
+            &vec![0, 1]
+        );
+
+        println!("test_reg_client_server:-");
     }
 }

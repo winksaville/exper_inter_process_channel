@@ -209,6 +209,7 @@ dependencies = [
  "msg_header",
  "protocol",
  "protocol_set",
+ "server",
  "uuid",
 ]
 

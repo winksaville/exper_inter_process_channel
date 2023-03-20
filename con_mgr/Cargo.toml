@@ -23,6 +23,7 @@ an_id = { version = "0.1.0", path = "../an_id" }
 [dev-dependencies]
 actor = { path = "../actor" }
 client = { path = "../client" }
+server = { path = "../server" }
 cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
 echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
 echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
