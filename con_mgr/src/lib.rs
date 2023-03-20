@@ -129,8 +129,8 @@ pub struct ConMgr {
     actors_map_by_instance_id: HashMap<AnId, usize>,
     actors_map_by_name: HashMap<String, Vec<usize>>,
     actors_map_by_id: HashMap<AnId, Vec<usize>>,
-    actors_map_by_protocol_id: HashMap<AnId, Vec<usize>>,
     actors_map_by_protocol_set_id: HashMap<AnId, Vec<usize>>,
+    actors_map_by_protocol_id: HashMap<AnId, Vec<usize>>,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -173,9 +173,9 @@ impl Debug for ConMgr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let fn_ptr = self.current_state as *const ProcessMsgFn<Self>;
         let fn_ptr_string = format!("{fn_ptr:p}");
-        let state_name = if let Some(n) = self.state_info_hash.get(&fn_ptr) {
+        let state_name = if let Some(si) = self.state_info_hash.get(&fn_ptr) {
             // State does have a name
-            n.name.as_str()
+            si.name.as_str()
         } else {
             // State does NOT have a name, use address
             fn_ptr_string.as_str()
@@ -183,11 +183,29 @@ impl Debug for ConMgr {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}, actors:  }}",
-            self.name,
-            self.name,
-            self.state_info_hash, //self.actors
-        )
+            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name},",
+            self.name, self.name, self.state_info_hash,
+        )?;
+
+        write!(f, " vec_of_actor_bdlc: {:?},", self.vec_of_actor_bdlc,)?;
+        write!(
+            f,
+            " actors_map_by_instance_id: {:?},",
+            self.actors_map_by_instance_id
+        )?;
+        write!(f, " actors_map_by_name: {:?},", self.actors_map_by_name)?;
+        write!(f, " actors_map_by_id: {:?},", self.actors_map_by_id)?;
+        write!(
+            f,
+            " actors_map_by_protocol_set_id: {:?},",
+            self.actors_map_by_protocol_set_id
+        )?;
+        write!(
+            f,
+            " actors_map_by_protocol_id: {:?} ",
+            self.actors_map_by_protocol_id
+        )?;
+        write!(f, "}}",)
     }
 }
 
@@ -244,17 +262,15 @@ impl ConMgr {
 
     /// Add an Actor.
     pub fn add_actor(&mut self, msg: &ConMgrRegisterActorReq) -> Result<(), Box<dyn Error>> {
-        #[cfg(debug)]
-        println!("Clone only in debug configuration");
-        #[cfg(debug)]
-        let actor_clone_for_panic = actor.clone();
+        println!("{}::add_actor:+ msg={msg:?}", self.name);
 
         let idx = self.vec_of_actor_bdlc.len();
 
         if let Some(idx) = self.actors_map_by_instance_id.insert(msg.instance_id, idx) {
+            println!("{}::add_actor: already added at idx={idx}", self.name);
             return Err(format!(
-                "{}-{}::add_actor {} instance_id:{} : Actor already added at idx: {}",
-                self.name, self.actor_id, msg.name, msg.instance_id, idx
+                "{}-{}::add_actor {} instance_id:{} : Actor already added at idx: {idx}",
+                self.name, self.actor_id, msg.name, msg.instance_id
             )
             .into());
         }
@@ -265,15 +281,24 @@ impl ConMgr {
         self.add_map_by_id(idx, &msg.id);
         self.add_map_by_protocol_set(idx, &msg.protocol_set);
 
+        println!("{}::add_actor:- msg={msg:?}", self.name);
         Ok(())
     }
 
     fn add_map_by_name(&mut self, idx: usize, name: &str) {
         if let Some(v) = self.actors_map_by_name.get_mut(name) {
             // Add another actor with that name
+            println!(
+                "{}::add_map_by_name: another instance of name={name} push idx={idx}",
+                self.name
+            );
             v.push(idx);
         } else {
             // First time seeing this name, add to vector with one item
+            println!(
+                "{}::add_map_by_name: first instance of name={name} add vec with idx={idx}",
+                self.name
+            );
             self.actors_map_by_name.insert(name.to_owned(), vec![idx]);
         }
     }
@@ -281,9 +306,17 @@ impl ConMgr {
     fn add_map_by_id(&mut self, idx: usize, id: &AnId) {
         if let Some(v) = self.actors_map_by_id.get_mut(id) {
             // Add another idx
+            println!(
+                "{}::add_map_by_id: another instance of id={id} push idx={idx}",
+                self.name
+            );
             v.push(idx);
         } else {
             // First time seeing this actor_id, add vector with one item
+            println!(
+                "{}::add_map_by_id: first instance of id={id} add vec with idx={idx}",
+                self.name
+            );
             self.actors_map_by_id.insert(*id, vec![idx]);
         }
     }
@@ -291,9 +324,14 @@ impl ConMgr {
     fn add_map_by_protocol_set(&mut self, idx: usize, ps: &ProtocolSet) {
         if let Some(v) = self.actors_map_by_protocol_set_id.get_mut(&ps.id) {
             // Add another idx
+            println!(
+                "{}::add_map_by_protocol_id: another instance of protocol_set_id={} push idx={idx}",
+                self.name, ps.id
+            );
             v.push(idx);
         } else {
             // First time seeing this protocol_set, add vector with one item
+            println!("{}::add_map_by_protocol_id: first instance of protocol_set_id={} add vec with idx={idx}", self.name, ps.id);
             self.actors_map_by_protocol_set_id.insert(ps.id, vec![idx]);
 
             self.add_map_by_protocol_id(idx, ps);
@@ -305,9 +343,13 @@ impl ConMgr {
 
         for k in protocol_map.keys() {
             if let Some(v) = self.actors_map_by_protocol_id.get_mut(k) {
+                #[cfg(test)]
+                println!("{}::add_map_by_protocol_id: another instance of protocol_id={k} push idx={idx}", self.name);
                 v.push(idx);
             } else {
                 // First time seeing this protocol_id, add vector with one item
+                #[cfg(test)]
+                println!("{}::add_map_by_protocol_id: first instance of protocol_id={k}, add vec with idx={idx}", self.name);
                 self.actors_map_by_protocol_id.insert(*k, vec![idx]);
             }
         }
@@ -345,36 +387,44 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::ActorBiDirChannel;
     use chrono::Utc;
-
-    struct Context {
-        their_bdlc_with_us: BiDirLocalChannel,
-        rsp_tx: Sender<BoxMsgAny>,
-    }
-
-    impl ActorContext for Context {
-        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-            self.their_bdlc_with_us.clone()
-        }
-
-        fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(())
-        }
-
-        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(())
-        }
-
-        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.rsp_tx.send(msg)?)
-        }
-
-        fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
-            Some(self.rsp_tx.clone())
-        }
-    }
+    use client::Client;
+    use cmd_init_protocol::CmdInit;
+    use con_mgr_register_actor::{CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID};
+    use echo_requestee_protocol::echo_requestee_protocol;
+    use echo_requester_protocol::echo_requester_protocol;
+    use echo_start_complete_protocol::echo_start_complete_protocol;
 
     #[test]
     fn test_1() {
+        println!("\ntest_1:+");
+
+        struct Context {
+            their_bdlc_with_us: BiDirLocalChannel,
+            rsp_tx: Sender<BoxMsgAny>,
+        }
+
+        impl ActorContext for Context {
+            fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+                self.their_bdlc_with_us.clone()
+            }
+
+            fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(())
+            }
+
+            fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(())
+            }
+
+            fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(self.rsp_tx.send(msg)?)
+            }
+
+            fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+                Some(self.rsp_tx.clone())
+            }
+        }
+
         let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
 
         //let (tx, rx) = unbounded();
@@ -487,5 +537,147 @@ mod test {
         println!("  t1 = {}ns", sum_t1 / avg_count);
         println!("  t2 = {}ns", sum_t2 / avg_count);
         println!(" rtt = {}ns", sum_rtt / avg_count);
+        println!("test_1:-");
+    }
+
+    #[test]
+    fn test_client() {
+        println!("\ntest_client:+");
+
+        struct Context {
+            con_mgr_tx: Sender<BoxMsgAny>,
+            their_bdlc_with_us: BiDirLocalChannel,
+            rsp_tx: Sender<BoxMsgAny>,
+        }
+
+        impl ActorContext for Context {
+            fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+                self.their_bdlc_with_us.clone()
+            }
+
+            fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(self.con_mgr_tx.send(msg)?)
+            }
+
+            fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(())
+            }
+
+            fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+                Ok(self.rsp_tx.send(msg)?)
+            }
+
+            fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+                Some(self.rsp_tx.clone())
+            }
+        }
+
+        let (con_mgr_bdlc, their_bdlc_with_con_mgr) = BiDirLocalChannel::new();
+        let (client_bdlc, their_bdlc_with_client) = BiDirLocalChannel::new();
+
+        let mut con_mgr = ConMgr::new("conn_mgr");
+        println!("test_client: conn_mgr={con_mgr:?}");
+
+        let mut client = Client::new("client");
+        println!("test_client: client={client:?}");
+        //client.set_self_sender(client_bdlc.tx.clone());
+
+        // First message must be CmdInit and client send
+        let msg = Box::new(CmdInit::new());
+
+        // Initialize Client context
+        let mut context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_client.clone(),
+            rsp_tx: their_bdlc_with_client.tx.clone(),
+        };
+        // Have the client process the CmdInit
+        client.process_msg_any(&context, msg);
+
+        // Expect the client to have sent ConMgrRegisterActorReq to con_mgr
+        let mut msg_any = con_mgr_bdlc.rx.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        println!("test_client: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID");
+
+        // Initialize ConMgr context
+        context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_client.clone(),
+            rsp_tx: their_bdlc_with_client.tx.clone(),
+        };
+        // Have ConMgr process message
+        con_mgr.process_msg_any(&context, msg_any);
+
+        // Expect the ConMgr to return response to client with ConMgrRegisterActorRsp with success
+        msg_any = client_bdlc.rx.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
+        println!("test_client: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID");
+
+        // Initialize Client context
+        context = Context {
+            con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
+            their_bdlc_with_us: their_bdlc_with_client.clone(),
+            rsp_tx: their_bdlc_with_client.tx.clone(),
+        };
+        // Have the client process the ConMgrRegisterActorRsp
+        client.process_msg_any(&context, msg_any);
+
+        println!("test_client: con_mgr={con_mgr:#?}");
+        println!("test_client: client: {client:?}");
+
+        // Validate con_mgr has processed the ConMgrRegsiterActor
+        assert_eq!(con_mgr.vec_of_actor_bdlc.len(), 1);
+        assert_eq!(con_mgr.actors_map_by_instance_id.len(), 1);
+        assert_eq!(
+            *con_mgr
+                .actors_map_by_instance_id
+                .get(&client.instance_id)
+                .unwrap(),
+            0
+        );
+        assert_eq!(con_mgr.actors_map_by_name.len(), 1);
+        assert_eq!(
+            con_mgr.actors_map_by_name.get(&client.name).unwrap(),
+            &vec![0]
+        );
+        assert_eq!(con_mgr.actors_map_by_id.len(), 1);
+        assert_eq!(
+            con_mgr.actors_map_by_id.get(&client.actor_id).unwrap(),
+            &vec![0]
+        );
+        assert_eq!(con_mgr.actors_map_by_protocol_set_id.len(), 1);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_set_id
+                .get(&client.protocol_set.id)
+                .unwrap(),
+            &vec![0]
+        );
+        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 3);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&echo_requester_protocol().id)
+                .unwrap(),
+            &vec![0]
+        );
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&echo_requestee_protocol().id)
+                .unwrap(),
+            &vec![0]
+        );
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&echo_start_complete_protocol().id)
+                .unwrap(),
+            &vec![0]
+        );
+
+        println!("test_client:-");
     }
 }

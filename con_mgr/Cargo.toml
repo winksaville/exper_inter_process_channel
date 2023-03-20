@@ -19,3 +19,10 @@ uuid = "1.3.0"
 crossbeam-channel = "0.5.7"
 actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 an_id = { version = "0.1.0", path = "../an_id" }
+
+[dev-dependencies]
+actor = { path = "../actor" }
+client = { path = "../client" }
+cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
+echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
+echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
