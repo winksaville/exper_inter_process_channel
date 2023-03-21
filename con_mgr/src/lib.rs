@@ -1,17 +1,12 @@
-//! This file defines `struct BiDirLocalChannels` which is used
-//! for bi-directional communication between actors. In particular
-//! by defining a bi-directional channel an entity that invokes an
-//! actors `process_msg_any` has available the `rsp_tx` and it reduces
-//! the need to pass a `Channel` in messages. Most importantly when
-//! an inter process communication channel is created directly passing
-//! of a channel would not be possible, this will eliminate that need.
-//!
-//! Note: this is a separate file because it uses UnsafeCell.
+//! Connection Manager
 use std::{cell::UnsafeCell, error::Error};
 
+use con_mgr_connect_protocol::{
+    con_mgr_connect_protocol, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID,
+};
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
-    ConMgrRegisterActorStatus,
+    ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
 };
 use crossbeam_channel::unbounded;
 
@@ -225,6 +220,8 @@ impl ConMgr {
             con_mgr_reg_actor_protoocl.id,
             con_mgr_reg_actor_protoocl.clone(),
         );
+        let connnect_protocol = con_mgr_connect_protocol();
+        cm_pm.insert(connnect_protocol.id, connnect_protocol.clone());
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
         let mut this = Self {
@@ -357,6 +354,7 @@ impl ConMgr {
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
+            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
             let status = if self.add_actor(msg).is_ok() {
                 ConMgrRegisterActorStatus::Success
@@ -365,6 +363,13 @@ impl ConMgr {
             };
             context
                 .send_rsp(Box::new(ConMgrRegisterActorRsp::new(status)))
+                .unwrap();
+        }
+        if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
+            assert_eq!(msg.header.id, CON_MGR_QUERY_REQ_ID);
+            println!("{}:State0: msg={msg:?}", self.name);
+            context
+                .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.id, ECHO_REQ_ID);
@@ -396,43 +401,42 @@ mod test {
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;
     use server::Server;
+    struct Context {
+        con_mgr_tx: Sender<BoxMsgAny>,
+        their_bdlc_with_us: BiDirLocalChannel,
+        rsp_tx: Sender<BoxMsgAny>,
+    }
+
+    impl ActorContext for Context {
+        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
+            self.their_bdlc_with_us.clone()
+        }
+
+        fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.con_mgr_tx.send(msg)?)
+        }
+
+        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.rsp_tx.send(msg)?)
+        }
+
+        fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+            Some(self.rsp_tx.clone())
+        }
+    }
 
     #[test]
     fn test_1() {
         println!("\ntest_1:+");
 
-        struct Context {
-            their_bdlc_with_us: BiDirLocalChannel,
-            rsp_tx: Sender<BoxMsgAny>,
-        }
-
-        impl ActorContext for Context {
-            fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-                self.their_bdlc_with_us.clone()
-            }
-
-            fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(())
-            }
-
-            fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(())
-            }
-
-            fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(self.rsp_tx.send(msg)?)
-            }
-
-            fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
-                Some(self.rsp_tx.clone())
-            }
-        }
-
         let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
 
-        //let (tx, rx) = unbounded();
-
         let context = Context {
+            con_mgr_tx: their_bdlc_with_us.tx.clone(), // Unused
             their_bdlc_with_us: their_bdlc_with_us.clone(),
             rsp_tx: our_bdlc_with_them.tx.clone(),
         };
@@ -547,34 +551,6 @@ mod test {
     fn test_reg_client_server() {
         println!("\ntest_reg_client_server:+");
 
-        struct Context {
-            con_mgr_tx: Sender<BoxMsgAny>,
-            their_bdlc_with_us: BiDirLocalChannel,
-            rsp_tx: Sender<BoxMsgAny>,
-        }
-
-        impl ActorContext for Context {
-            fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-                self.their_bdlc_with_us.clone()
-            }
-
-            fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(self.con_mgr_tx.send(msg)?)
-            }
-
-            fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(())
-            }
-
-            fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-                Ok(self.rsp_tx.send(msg)?)
-            }
-
-            fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
-                Some(self.rsp_tx.clone())
-            }
-        }
-
         // Create connection manager
         let mut con_mgr = ConMgr::new("con_mgr");
         println!("test_reg_client_server: conn_mgr={con_mgr:?}");
@@ -584,9 +560,8 @@ mod test {
 
         let mut client = Client::new("client");
         println!("test_reg_client_server: client={client:?}");
-        //client.set_self_sender(client_bdlc.tx.clone());
 
-        // First message must be CmdInit and client send
+        // First message must be CmdInit
         let msg = Box::new(CmdInit::new());
 
         // Initialize Client context
@@ -613,7 +588,7 @@ mod test {
         // Have ConMgr process message
         con_mgr.process_msg_any(&context, msg_any);
 
-        // Expect the ConMgr to return response to client with ConMgrRegisterActorRsp with success
+        // Expect the ConMgr to return ConMgrRegisterActorRsp with success
         msg_any = client_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
@@ -687,9 +662,8 @@ mod test {
 
         let mut server = Server::new("server");
         println!("test_reg_client_server: server={server:?}");
-        //client.set_self_sender(client_bdlc.tx.clone());
 
-        // First message must be CmdInit and client send
+        // First message must be CmdInit
         let msg = Box::new(CmdInit::new());
 
         // Initialize Client context
@@ -701,7 +675,7 @@ mod test {
         // Have the client process the CmdInit
         server.process_msg_any(&context, msg);
 
-        // Expect the client to have sent ConMgrRegisterActorReq to con_mgr
+        // Expect ConMgrRegisterActorReq to con_mgr
         let mut msg_any = con_mgr_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
@@ -716,19 +690,19 @@ mod test {
         // Have ConMgr process message
         con_mgr.process_msg_any(&context, msg_any);
 
-        // Expect the ConMgr to return response to client with ConMgrRegisterActorRsp with success
+        // Expect the ConMgr to return ConMgrRegisterActorRsp with success
         msg_any = server_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
         println!("test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID");
 
-        // Initialize Client context
+        // Initialize Server context
         context = Context {
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_server.clone(),
             rsp_tx: their_bdlc_with_server.tx.clone(),
         };
-        // Have the client process the ConMgrRegisterActorRsp
+        // Have the server process the ConMgrRegisterActorRsp
         server.process_msg_any(&context, msg_any);
 
         println!("test_reg_client_server: con_mgr={con_mgr:#?}");

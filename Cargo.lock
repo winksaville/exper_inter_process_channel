@@ -201,6 +201,7 @@ dependencies = [
  "chrono",
  "client",
  "cmd_init_protocol",
+ "con_mgr_connect_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
