@@ -214,6 +214,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "con_mgr_connect_protocol"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "an_id",
+ "chrono",
+ "echo_requestee_protocol",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "once_cell",
+ "protocol",
+ "protocol_set",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "con_mgr_register_actor_protocol"
 version = "0.1.0"
 dependencies = [
@@ -456,6 +476,7 @@ dependencies = [
  "cmd_done",
  "cmd_init_protocol",
  "con_mgr",
+ "con_mgr_connect_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "custom_logger",
