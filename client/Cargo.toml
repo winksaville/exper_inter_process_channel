@@ -22,7 +22,7 @@ protocol_set = { version = "0.1.0", path = "../protocol_set" }
 crossbeam-channel = "0.5.7"
 an_id = { version = "0.1.0", path = "../an_id" }
 cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
-con_mgr_register_actor = { version = "0.1.0", path = "../protocols/con_mgr_register_actor" }
+con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
 actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 
 [dev-dependencies]

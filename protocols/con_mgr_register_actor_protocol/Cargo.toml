@@ -1,5 +1,5 @@
 [package]
-name = "con_mgr_register_actor"
+name = "con_mgr_register_actor_protocol"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true

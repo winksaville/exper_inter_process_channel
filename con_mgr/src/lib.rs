@@ -9,7 +9,7 @@
 //! Note: this is a separate file because it uses UnsafeCell.
 use std::{cell::UnsafeCell, error::Error};
 
-use con_mgr_register_actor::{
+use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
     ConMgrRegisterActorStatus,
 };
@@ -389,7 +389,9 @@ mod test {
     use chrono::Utc;
     use client::Client;
     use cmd_init_protocol::CmdInit;
-    use con_mgr_register_actor::{CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID};
+    use con_mgr_register_actor_protocol::{
+        CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID,
+    };
     use echo_requestee_protocol::echo_requestee_protocol;
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;

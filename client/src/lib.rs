@@ -1,7 +1,7 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
-use con_mgr_register_actor::{
+use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
 };
@@ -251,7 +251,7 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
-    use con_mgr_register_actor::{
+    use con_mgr_register_actor_protocol::{
         ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
     };
     use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
