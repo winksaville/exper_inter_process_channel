@@ -14,7 +14,6 @@ use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::BiDirLocalChannel;
 
 use an_id::{anid, paste, AnId};
-use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
@@ -119,7 +118,9 @@ pub struct ConMgr {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 
-    self_tx: Option<Sender<BoxMsgAny>>,
+    their_bdlc_with_us: BiDirLocalChannel,
+    our_bdlc_with_them: BiDirLocalChannel,
+
     vec_of_actor_bdlc: Vec<BiDirLocalChannel>,
     actors_map_by_instance_id: HashMap<AnId, usize>,
     actors_map_by_name: HashMap<String, Vec<usize>>,
@@ -147,16 +148,16 @@ impl Actor for ConMgr {
         &self.instance_id
     }
 
-    fn get_protocol_set(&self) -> &ProtocolSet {
-        &self.protocol_set
-    }
-
-    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
-        self.self_tx = Some(sender);
-    }
-
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
         (self.current_state)(self, context, msg);
+    }
+
+    fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.their_bdlc_with_us.clone()
+    }
+
+    fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -224,6 +225,8 @@ impl ConMgr {
         cm_pm.insert(connnect_protocol.id, connnect_protocol.clone());
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
+        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
+
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CON_MGR_ACTOR_ID,
@@ -231,7 +234,8 @@ impl ConMgr {
             protocol_set: ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            self_tx: None,
+            their_bdlc_with_us,
+            our_bdlc_with_them,
             vec_of_actor_bdlc: Vec::new(),
             actors_map_by_instance_id: HashMap::new(),
             actors_map_by_name: HashMap::new(),
@@ -397,6 +401,7 @@ mod test {
     use con_mgr_register_actor_protocol::{
         CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID,
     };
+    use crossbeam_channel::Sender;
     use echo_requestee_protocol::echo_requestee_protocol;
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;

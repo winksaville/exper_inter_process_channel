@@ -1,4 +1,5 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
+use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
@@ -52,7 +53,8 @@ pub struct Client {
     pub partner_tx: Option<Sender<BoxMsgAny>>,
     pub controller_tx: Option<Sender<BoxMsgAny>>,
     pub ping_count: u64,
-    self_tx: Option<Sender<BoxMsgAny>>,
+    their_bdlc_with_us: BiDirLocalChannel,
+    our_bdlc_with_them: BiDirLocalChannel,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -74,16 +76,16 @@ impl Actor for Client {
         &self.instance_id
     }
 
-    fn get_protocol_set(&self) -> &ProtocolSet {
-        &self.protocol_set
-    }
-
-    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
-        self.self_tx = Some(sender);
-    }
-
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
         (self.current_state)(self, context, msg);
+    }
+
+    fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.their_bdlc_with_us.clone()
+    }
+
+    fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -126,6 +128,8 @@ impl Client {
         client_pm.insert(erep.id, erep.clone());
         client_pm.insert(escp.id, escp.clone());
 
+        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
+
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
         let mut this = Self {
             name: name.to_owned(),
@@ -137,7 +141,8 @@ impl Client {
             partner_tx: None,
             controller_tx: None,
             ping_count: 0,
-            self_tx: None,
+            their_bdlc_with_us,
+            our_bdlc_with_them,
         };
 
         this.add_state(Self::state0, "state0");
@@ -218,7 +223,9 @@ impl Client {
             // Got a Msg2 so self send a Msg1 so our test passes :)
             println!("{}:State0: {msg:?}", self.name);
             let msg1 = Box::<Msg1>::default();
-            self.self_tx.as_ref().unwrap().send(msg1).unwrap();
+
+            //self.self_tx.as_ref().unwrap().send(msg1).unwrap();
+            context.send_rsp(msg1).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
             assert_eq!(msg.header.id, CMD_INIT_ID);
@@ -298,7 +305,6 @@ mod test {
         };
 
         let mut client = Client::new("client");
-        client.set_self_sender(client_bdlc.tx.clone());
 
         // First message must be CmdInit and client send
         let msg = Box::new(CmdInit::new());

@@ -2,7 +2,6 @@ use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
-use protocol_set::ProtocolSet;
 use std::fmt::Debug;
 
 pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
@@ -82,9 +81,9 @@ pub trait Actor: Send + Debug + Sync {
     fn get_name(&self) -> &str;
     fn get_actor_id(&self) -> &AnId;
     fn get_instance_id(&self) -> &AnId;
-    fn get_protocol_set(&self) -> &ProtocolSet;
-    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>);
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny);
+    fn their_bdlc_with_us(&self) -> BiDirLocalChannel;
+    fn our_bdlc_with_them(&self) -> BiDirLocalChannel;
     fn done(&self) -> bool;
 }
 

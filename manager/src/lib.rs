@@ -95,8 +95,8 @@ impl Manager {
         self.actors.push(boxed_actor);
 
         self.add_map_by_actor_id(idx);
-        self.add_map_by_protocol_id(idx);
-        self.add_map_by_protocol_set_id(idx);
+        //self.add_map_by_protocol_id(idx);
+        //self.add_map_by_protocol_set_id(idx);
 
         Ok(())
     }
@@ -114,32 +114,32 @@ impl Manager {
         }
     }
 
-    fn add_map_by_protocol_id(&mut self, idx: usize) {
-        let actor = &self.actors[idx];
-        let protocol_map = &actor.get_protocol_set().protocols_map;
+    //fn add_map_by_protocol_id(&mut self, idx: usize) {
+    //    let actor = &self.actors[idx];
+    //    let protocol_map = &actor.get_protocol_set().protocols_map;
 
-        for k in protocol_map.keys() {
-            if let Some(v) = self.actors_map_by_protocol_id.get_mut(k) {
-                v.push(idx);
-            } else {
-                // First time seeing this protocol_id, add vector with one item
-                self.actors_map_by_protocol_id.insert(*k, vec![idx]);
-            }
-        }
-    }
+    //    for k in protocol_map.keys() {
+    //        if let Some(v) = self.actors_map_by_protocol_id.get_mut(k) {
+    //            v.push(idx);
+    //        } else {
+    //            // First time seeing this protocol_id, add vector with one item
+    //            self.actors_map_by_protocol_id.insert(*k, vec![idx]);
+    //        }
+    //    }
+    //}
 
-    fn add_map_by_protocol_set_id(&mut self, idx: usize) {
-        let actor = &self.actors[idx];
+    //fn add_map_by_protocol_set_id(&mut self, idx: usize) {
+    //    let actor = &self.actors[idx];
 
-        let protocol_set_id = &actor.get_protocol_set().id;
-        if let Some(v) = self.actors_map_by_protocol_set_id.get_mut(protocol_set_id) {
-            v.push(idx);
-        } else {
-            // First time seeing this protocol_set_id, add vector with one item
-            self.actors_map_by_protocol_set_id
-                .insert(*protocol_set_id, vec![idx]);
-        }
-    }
+    //    let protocol_set_id = &actor.get_protocol_set().id;
+    //    if let Some(v) = self.actors_map_by_protocol_set_id.get_mut(protocol_set_id) {
+    //        v.push(idx);
+    //    } else {
+    //        // First time seeing this protocol_set_id, add vector with one item
+    //        self.actors_map_by_protocol_set_id
+    //            .insert(*protocol_set_id, vec![idx]);
+    //    }
+    //}
 }
 
 #[cfg(test)]

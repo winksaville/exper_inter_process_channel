@@ -1,11 +1,11 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
+use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
 };
-use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
@@ -34,7 +34,8 @@ pub struct Server {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 
-    self_tx: Option<Sender<BoxMsgAny>>,
+    their_bdlc_with_us: BiDirLocalChannel,
+    our_bdlc_with_them: BiDirLocalChannel,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -56,15 +57,16 @@ impl Actor for Server {
         &self.instance_id
     }
 
-    fn get_protocol_set(&self) -> &ProtocolSet {
-        &self.protocol_set
-    }
-
-    fn set_self_sender(&mut self, sender: Sender<BoxMsgAny>) {
-        self.self_tx = Some(sender);
-    }
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
         (self.current_state)(self, context, msg);
+    }
+
+    fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.their_bdlc_with_us.clone()
+    }
+
+    fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
+        self.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -105,6 +107,8 @@ impl Server {
         server_pm.insert(erep.id, erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
+        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
+
         let mut this = Self {
             name: name.to_owned(),
             actor_id: SERVER_ACTOR_ID,
@@ -112,7 +116,8 @@ impl Server {
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            self_tx: None,
+            their_bdlc_with_us,
+            our_bdlc_with_them,
         };
 
         this.add_state(Self::state0, "state0");
@@ -171,6 +176,7 @@ mod test {
     use actor_bi_dir_channel::BiDirLocalChannel;
     use chrono::Utc;
     use con_mgr_register_actor_protocol::CON_MGR_REGISTER_ACTOR_REQ_ID;
+    use crossbeam_channel::Sender;
 
     use super::*;
 
@@ -331,7 +337,6 @@ mod test {
         };
 
         let mut server = Server::new("server");
-        server.set_self_sender(server_bdlc.tx.clone());
 
         // First message must be CmdInit and client send
         let msg = Box::new(CmdInit::new());

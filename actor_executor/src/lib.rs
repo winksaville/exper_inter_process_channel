@@ -5,7 +5,7 @@ use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
 
 use cmd_done::CmdDone;
 use con_mgr::{Connection, VecConnection};
-use crossbeam_channel::{Select, Sender};
+use crossbeam_channel::{unbounded, Select, Sender};
 use msg_header::{BoxMsgAny, MsgHeader};
 use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
@@ -17,10 +17,12 @@ struct ActorExecutor {
     pub name: String,
     pub actor_vec: Vec<Box<dyn Actor>>,
     pub bi_dir_channels_vec: VecConnection, //Vec<Box<BiDirLocalChannels>>,
+    con_mgr_tx: Sender<BoxMsgAny>,
     done: bool,
 }
 
 struct Context {
+    con_mgr_tx: Sender<BoxMsgAny>,
     their_bdlc_with_us: BiDirLocalChannel,
     rsp_tx: Sender<BoxMsgAny>,
 }
@@ -30,8 +32,8 @@ impl ActorContext for Context {
         self.their_bdlc_with_us.clone()
     }
 
-    fn send_conn_mgr(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
+    fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(self.con_mgr_tx.send(msg)?)
     }
 
     fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
@@ -54,6 +56,7 @@ impl ActorExecutor {
     pub fn start(name: &str) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
         let ae_actor_bi_dir_channels = Connection::new();
         let their_bdlc_with_us = Box::new(ae_actor_bi_dir_channels.their_bdlc_with_us.clone());
+        let (con_mgr_tx, _) = unbounded::<BoxMsgAny>();
 
         // Convert name to string so it can be moved into the thread
         let name = name.to_string();
@@ -63,6 +66,7 @@ impl ActorExecutor {
                 name: name.to_string(),
                 actor_vec: Vec::new(),
                 bi_dir_channels_vec: VecConnection::new(),
+                con_mgr_tx: con_mgr_tx.clone(),
                 done: false,
             };
             println!("AE:{}:+", ae.name);
@@ -162,7 +166,10 @@ impl ActorExecutor {
                             actor.get_name(),
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
+                        let cm = ae.con_mgr_tx.clone();
+                        //let cm = ae.con_mgr_tx.unwrap().clone();
                         let context = Context {
+                            con_mgr_tx: cm,
                             their_bdlc_with_us: bdlcs.their_bdlc_with_us.clone(),
                             rsp_tx: bdlcs.our_bdlc_with_them.tx.clone(),
                         };
