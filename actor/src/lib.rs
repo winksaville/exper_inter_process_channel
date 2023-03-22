@@ -1,4 +1,4 @@
-use actor_bi_dir_channel::BiDirLocalChannel;
+use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use an_id::AnId;
 use crossbeam_channel::Sender;
 use msg_header::BoxMsgAny;
@@ -82,6 +82,7 @@ pub trait Actor: Send + Debug + Sync {
     fn get_actor_id(&self) -> &AnId;
     fn get_instance_id(&self) -> &AnId;
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny);
+    fn connection(&self) -> Connection;
     fn their_bdlc_with_us(&self) -> BiDirLocalChannel;
     fn our_bdlc_with_them(&self) -> BiDirLocalChannel;
     fn done(&self) -> bool;

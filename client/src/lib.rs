@@ -87,9 +87,14 @@ impl Actor for Client {
         self.connection.our_bdlc_with_them.clone()
     }
 
+    fn connection(&self) -> Connection {
+        self.connection.clone()
+    }
+
     fn done(&self) -> bool {
         false
     }
+
 }
 
 impl Debug for Client {

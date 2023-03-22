@@ -81,6 +81,10 @@ impl Actor for ConMgr {
         self.connection.our_bdlc_with_them.clone()
     }
 
+    fn connection(&self) -> Connection {
+        self.connection.clone()
+    }
+
     fn done(&self) -> bool {
         false
     }
