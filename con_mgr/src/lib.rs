@@ -3,6 +3,7 @@ use std::error::Error;
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
+use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_connect_protocol::{
     con_mgr_connect_protocol, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID,
 };
@@ -139,6 +140,8 @@ impl ConMgr {
         // Create the ConMgr ProtocolSet.
         println!("ConMgr::new({})", name);
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
+        let ci_protocol = cmd_init_protocol();
+        cm_pm.insert(ci_protocol.id, ci_protocol.clone());
         let requestee_protocol = echo_requestee_protocol();
         cm_pm.insert(requestee_protocol.id, requestee_protocol.clone());
         let con_mgr_reg_actor_protoocl = con_mgr_register_actor_protocol();
@@ -189,6 +192,10 @@ impl ConMgr {
 
         let idx = self.vec_of_actor_bdlc.len();
 
+        println!(
+            "{}::add_actor: add_map_by_instance_id={} idx={idx}",
+            self.name, msg.instance_id
+        );
         if let Some(idx) = self.actors_map_by_instance_id.insert(msg.instance_id, idx) {
             println!("{}::add_actor: already added at idx={idx}", self.name);
             return Err(format!(
@@ -303,6 +310,9 @@ impl ConMgr {
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
+        } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
+            println!("{}:State0: {msg:?} nothing to do", self.name);
+            assert_eq!(msg.header.id, CMD_INIT_ID);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -561,7 +571,14 @@ mod test {
                 .unwrap(),
             &vec![0]
         );
-        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 3);
+        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 4);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&cmd_init_protocol().id)
+                .unwrap(),
+            &vec![0]
+        );
         assert_eq!(
             con_mgr
                 .actors_map_by_protocol_id
@@ -663,7 +680,14 @@ mod test {
                 .unwrap(),
             &vec![1]
         );
-        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 3);
+        assert_eq!(con_mgr.actors_map_by_protocol_id.len(), 4);
+        assert_eq!(
+            con_mgr
+                .actors_map_by_protocol_id
+                .get(&cmd_init_protocol().id)
+                .unwrap(),
+            &vec![0, 1]
+        );
         assert_eq!(
             con_mgr
                 .actors_map_by_protocol_id

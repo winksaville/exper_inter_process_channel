@@ -18,6 +18,7 @@ cmd_done = { version = "0.1.0", path = "../msgs/cmd_done" }
 req_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/req_their_bi_dir_channel" }
 rsp_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/rsp_their_bi_dir_channel" }
 con_mgr = { version = "0.1.0", path = "../con_mgr" }
+cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
 
 [dev-dependencies]
 cmd_done = { path = "../msgs/cmd_done" }

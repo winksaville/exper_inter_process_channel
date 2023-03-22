@@ -1,7 +1,7 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::Connection;
 use an_id::{anid, paste, AnId};
-use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
+use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
@@ -94,7 +94,6 @@ impl Actor for Client {
     fn done(&self) -> bool {
         false
     }
-
 }
 
 impl Debug for Client {
@@ -124,10 +123,12 @@ const CLIENT_PROTOCOL_SET_ID: AnId = anid!("1a7b43ed-4676-42cd-9969-72283f258ef1
 impl Client {
     pub fn new(name: &str) -> Self {
         // Create the client ProtocolSet, `client_ps`
+        let mut client_pm = HashMap::<AnId, Protocol>::new();
+        let cip = cmd_init_protocol();
         let errp = echo_requester_protocol();
         let erep = echo_requestee_protocol();
         let escp = echo_start_complete_protocol();
-        let mut client_pm = HashMap::<AnId, Protocol>::new();
+        client_pm.insert(cip.id, cip.clone());
         client_pm.insert(errp.id, errp.clone());
         client_pm.insert(erep.id, erep.clone());
         client_pm.insert(escp.id, escp.clone());

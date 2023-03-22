@@ -33,6 +33,7 @@ dependencies = [
  "actor_bi_dir_channel",
  "client",
  "cmd_done",
+ "cmd_init_protocol",
  "con_mgr",
  "crossbeam-channel",
  "echo_requestee_protocol",

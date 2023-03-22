@@ -4,6 +4,7 @@ use actor::{Actor, ActorContext};
 use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel, Connection, VecConnection};
 
 use cmd_done::CmdDone;
+use cmd_init_protocol::CmdInit;
 use crossbeam_channel::{Select, Sender};
 use msg_header::{BoxMsgAny, MsgHeader};
 use req_add_actor::ReqAddActor;
@@ -99,16 +100,17 @@ impl ActorExecutor {
                                 // It is a MsgReqAeAddActor, now downcast to concrete message so we can push it to actor_vec
                                 let msg = msg_any.downcast::<ReqAddActor>().unwrap();
                                 println!("AE:{}: msg={msg:?}", ae.name);
+
+                                // Push actor
                                 let actor_idx = ae.actor_vec.len();
                                 ae.actor_vec.push(msg.actor);
 
-                                // Create the bdlcs and add to bi_dir_channels_vec
-                                println!("AE:{}: create BiDirLocalChannels", ae.name);
-                                let bdlcs = Connection::new();
-
+                                // Push the actors bdlcs
                                 assert_eq!(ae.bi_dir_channels_vec.len(), actor_idx);
+                                ae.bi_dir_channels_vec
+                                    .push(ae.actor_vec[actor_idx].connection());
 
-                                ae.bi_dir_channels_vec.push(bdlcs);
+                                // Get a reference to the actors bdlcs
                                 let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
 
                                 println!("AE:{}: selector.recv(our_channel.get_recv())", ae.name);
@@ -120,6 +122,10 @@ impl ActorExecutor {
                                 )));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
                                 msg.rsp_tx.send(msg_rsp);
+
+                                // Issue a CmdInit
+                                let msg = Box::new(CmdInit::new());
+                                bdlcs.our_bdlc_with_them.self_tx.send(msg).unwrap(); // TODO: Ignore error on release builds so we don't panic?
 
                                 println!(
                                     "AE:{}: added new receiver for {}",
@@ -216,54 +222,59 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add_one_actor() {
-        println!("\ntest_add_one_actor:+");
+    fn test_add_con_mgr_and_server() {
+        println!("\ntest_add_con_mgr_and_server:+");
         let (tx, rx) = unbounded::<BoxMsgAny>();
 
-        let con_mgr = ConMgr::new("cm1");
+        let con_mgr = Box::new(ConMgr::new("cm1"));
+        let con_mgr_name = con_mgr.get_name().to_owned();
 
         // Start an ActorExecutor
         let (aex1_join_handle, aex1_bdlc) =
             ActorExecutor::start("aex1", con_mgr.their_bdlc_with_us());
-        println!("test_add_one_actor: aex1_bdlc={aex1_bdlc:?}");
+        println!("test_add_con_mgr_and_server: aex1_bdlc={aex1_bdlc:?}");
 
-        // Create Actor Server
-        let s1 = Box::new(Server::new("s1"));
-        println!("test_add_one_actor: create s1={s1:?}");
-
-        let s1_name = s1.get_name().to_owned();
-
-        // Add s1 to the executor
-        let msg = Box::new(ReqAddActor::new(s1, tx));
+        // Add con_mgr to ActorExecutor
+        let msg = Box::new(ReqAddActor::new(con_mgr, tx.clone()));
         aex1_bdlc.send(msg).unwrap();
-        println!("test_add_one_actor: sent {} to aex1", s1_name);
-
+        println!("test_add_con_mgr_and_server: sent {} to aex1", con_mgr_name);
         let msg_any = rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
-        println!("test_add_one_actor: recvd rsp_add_actor={msg:?}");
+        println!("test_add_con_mgr_and_server: recvd rsp_add_actor={msg:?}");
+
+        // Add Server s1 to ActorExecutor
+        let s1 = Box::new(Server::new("s1"));
+        println!("test_add_con_mgr_and_server: create s1={s1:?}");
+        let s1_name = s1.get_name().to_owned();
+        let msg = Box::new(ReqAddActor::new(s1, tx));
+        aex1_bdlc.send(msg).unwrap();
+        println!("test_add_con_mgr_and_server: sent {} to aex1", s1_name);
+        let msg_any = rx.recv().unwrap();
+        let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
+        println!("test_add_con_mgr_and_server: recvd rsp_add_actor={msg:?}");
 
         let s1_bdlc = &msg.bdlc;
 
-        println!("test_add_one_actor: send EchoReq");
+        println!("test_add_con_mgr_and_server: send EchoReq");
         s1_bdlc.send(Box::new(EchoReq::new(1))).unwrap();
-        println!("test_add_one_actor: sent EchoReq");
+        println!("test_add_con_mgr_and_server: sent EchoReq");
 
-        println!("test_add_one_actor: wait EchoRsp");
+        println!("test_add_con_mgr_and_server: wait EchoRsp");
         let msg_any = s1_bdlc.recv().unwrap();
         let msg_rsp = msg_any.downcast_ref::<EchoRsp>().unwrap();
-        println!("test_add_one_actor: recv EchoRsp={msg_rsp:?}");
+        println!("test_add_con_mgr_and_server: recv EchoRsp={msg_rsp:?}");
         assert_eq!(msg_rsp.counter, 1);
 
-        println!("test_add_one_actor: send CmdDone");
+        println!("test_add_con_mgr_and_server: send CmdDone");
         let msg = Box::new(CmdDone::new());
         aex1_bdlc.send(msg).unwrap();
-        println!("test_add_one_actor: sent CmdDone");
+        println!("test_add_con_mgr_and_server: sent CmdDone");
 
-        println!("test_add_one_actor: join aex1 to complete");
+        println!("test_add_con_mgr_and_server: join aex1 to complete");
         aex1_join_handle.join().unwrap();
-        println!("test_add_one_actor: join aex1 to completed");
+        println!("test_add_con_mgr_and_server: join aex1 to completed");
 
-        println!("test_add_one_actor:-");
+        //println!("test_add_con_mgr_and_server:-");
     }
 
     fn add_actor(
