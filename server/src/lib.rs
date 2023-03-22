@@ -1,5 +1,5 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
-use actor_bi_dir_channel::BiDirLocalChannel;
+use actor_bi_dir_channel::Connection;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
@@ -34,8 +34,7 @@ pub struct Server {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 
-    their_bdlc_with_us: BiDirLocalChannel,
-    our_bdlc_with_them: BiDirLocalChannel,
+    connection: Connection,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -62,11 +61,11 @@ impl Actor for Server {
     }
 
     fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.their_bdlc_with_us.clone()
+        self.connection.their_bdlc_with_us.clone()
     }
 
     fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.our_bdlc_with_them.clone()
+        self.connection.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -107,8 +106,6 @@ impl Server {
         server_pm.insert(erep.id, erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
-        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
-
         let mut this = Self {
             name: name.to_owned(),
             actor_id: SERVER_ACTOR_ID,
@@ -116,8 +113,7 @@ impl Server {
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            their_bdlc_with_us,
-            our_bdlc_with_them,
+            connection: Connection::new(),
         };
 
         this.add_state(Self::state0, "state0");

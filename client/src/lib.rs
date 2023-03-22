@@ -1,5 +1,5 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
-use actor_bi_dir_channel::BiDirLocalChannel;
+use actor_bi_dir_channel::Connection;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
@@ -53,8 +53,7 @@ pub struct Client {
     pub partner_tx: Option<Sender<BoxMsgAny>>,
     pub controller_tx: Option<Sender<BoxMsgAny>>,
     pub ping_count: u64,
-    their_bdlc_with_us: BiDirLocalChannel,
-    our_bdlc_with_them: BiDirLocalChannel,
+    connection: Connection,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -81,11 +80,11 @@ impl Actor for Client {
     }
 
     fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.their_bdlc_with_us.clone()
+        self.connection.their_bdlc_with_us.clone()
     }
 
     fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.our_bdlc_with_them.clone()
+        self.connection.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -128,8 +127,6 @@ impl Client {
         client_pm.insert(erep.id, erep.clone());
         client_pm.insert(escp.id, escp.clone());
 
-        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
-
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
         let mut this = Self {
             name: name.to_owned(),
@@ -141,8 +138,7 @@ impl Client {
             partner_tx: None,
             controller_tx: None,
             ping_count: 0,
-            their_bdlc_with_us,
-            our_bdlc_with_them,
+            connection: Connection::new(),
         };
 
         this.add_state(Self::state0, "state0");

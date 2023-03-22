@@ -1,6 +1,8 @@
 //! Connection Manager
-use std::{cell::UnsafeCell, error::Error};
+use std::error::Error;
 
+use actor::{Actor, ActorContext, ProcessMsgFn};
+use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use con_mgr_connect_protocol::{
     con_mgr_connect_protocol, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID,
 };
@@ -8,10 +10,6 @@ use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
     ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
 };
-use crossbeam_channel::unbounded;
-
-use actor::{Actor, ActorContext, ProcessMsgFn};
-use actor_bi_dir_channel::BiDirLocalChannel;
 
 use an_id::{anid, paste, AnId};
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
@@ -23,82 +21,6 @@ use std::{
 };
 
 use msg_header::{BoxMsgAny, MsgHeader};
-
-#[derive(Debug, Clone)]
-pub struct Connection {
-    pub their_bdlc_with_us: BiDirLocalChannel,
-    pub our_bdlc_with_them: BiDirLocalChannel,
-}
-
-impl Default for Connection {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Connection {
-    pub fn new() -> Self {
-        // left_tx -----> right_rx
-        let (left_tx, right_rx) = unbounded();
-
-        // left_rx <---- right_tx
-        let (right_tx, left_rx) = unbounded();
-
-        Self {
-            their_bdlc_with_us: BiDirLocalChannel {
-                self_tx: right_tx.clone(),
-                tx: left_tx.clone(),
-                rx: left_rx,
-            },
-            our_bdlc_with_them: BiDirLocalChannel {
-                self_tx: left_tx,
-                tx: right_tx,
-                rx: right_rx,
-            },
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct VecConnection(UnsafeCell<Vec<Connection>>);
-
-impl Default for VecConnection {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl VecConnection {
-    pub fn new() -> Self {
-        Self(UnsafeCell::new(Vec::new()))
-    }
-
-    // Panic's if idx is out of bounds
-    pub fn get(&self, idx: usize) -> &Connection {
-        unsafe {
-            let v = &*self.0.get();
-            &v[idx]
-        }
-    }
-
-    pub fn push(&self, bdlcs: Connection) {
-        unsafe {
-            let ptr = &mut *self.0.get();
-            ptr.push(bdlcs);
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        unsafe {
-            let v = &*self.0.get();
-            v.len()
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
 
 // State information
 #[derive(Debug)]
@@ -118,8 +40,7 @@ pub struct ConMgr {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
 
-    their_bdlc_with_us: BiDirLocalChannel,
-    our_bdlc_with_them: BiDirLocalChannel,
+    connection: Connection,
 
     vec_of_actor_bdlc: Vec<BiDirLocalChannel>,
     actors_map_by_instance_id: HashMap<AnId, usize>,
@@ -153,11 +74,11 @@ impl Actor for ConMgr {
     }
 
     fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.their_bdlc_with_us.clone()
+        self.connection.their_bdlc_with_us.clone()
     }
 
     fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.our_bdlc_with_them.clone()
+        self.connection.our_bdlc_with_them.clone()
     }
 
     fn done(&self) -> bool {
@@ -225,8 +146,6 @@ impl ConMgr {
         cm_pm.insert(connnect_protocol.id, connnect_protocol.clone());
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
-        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
-
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CON_MGR_ACTOR_ID,
@@ -234,8 +153,7 @@ impl ConMgr {
             protocol_set: ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            their_bdlc_with_us,
-            our_bdlc_with_them,
+            connection: Connection::new(),
             vec_of_actor_bdlc: Vec::new(),
             actors_map_by_instance_id: HashMap::new(),
             actors_map_by_name: HashMap::new(),

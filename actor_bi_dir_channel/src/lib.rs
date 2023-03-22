@@ -1,3 +1,5 @@
+use std::cell::UnsafeCell;
+
 use crossbeam_channel::{unbounded, Receiver, Sender};
 
 use msg_header::BoxMsgAny;
@@ -78,6 +80,82 @@ impl ActorBiDirChannel for BiDirLocalChannel {
         self.rx
             .recv()
             .map_err(|err| format!("Error recv: {err}").into())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Connection {
+    pub their_bdlc_with_us: BiDirLocalChannel,
+    pub our_bdlc_with_them: BiDirLocalChannel,
+}
+
+impl Default for Connection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Connection {
+    pub fn new() -> Self {
+        // left_tx -----> right_rx
+        let (left_tx, right_rx) = unbounded();
+
+        // left_rx <---- right_tx
+        let (right_tx, left_rx) = unbounded();
+
+        Self {
+            their_bdlc_with_us: BiDirLocalChannel {
+                self_tx: right_tx.clone(),
+                tx: left_tx.clone(),
+                rx: left_rx,
+            },
+            our_bdlc_with_them: BiDirLocalChannel {
+                self_tx: left_tx,
+                tx: right_tx,
+                rx: right_rx,
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct VecConnection(UnsafeCell<Vec<Connection>>);
+
+impl Default for VecConnection {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl VecConnection {
+    pub fn new() -> Self {
+        Self(UnsafeCell::new(Vec::new()))
+    }
+
+    // Panic's if idx is out of bounds
+    pub fn get(&self, idx: usize) -> &Connection {
+        unsafe {
+            let v = &*self.0.get();
+            &v[idx]
+        }
+    }
+
+    pub fn push(&self, bdlcs: Connection) {
+        unsafe {
+            let ptr = &mut *self.0.get();
+            ptr.push(bdlcs);
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        unsafe {
+            let v = &*self.0.get();
+            v.len()
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

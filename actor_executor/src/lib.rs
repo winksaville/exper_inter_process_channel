@@ -1,11 +1,10 @@
 use std::thread::{self, JoinHandle};
 
 use actor::{Actor, ActorContext};
-use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
+use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel, Connection, VecConnection};
 
 use cmd_done::CmdDone;
-use con_mgr::{Connection, VecConnection};
-use crossbeam_channel::{unbounded, Select, Sender};
+use crossbeam_channel::{Select, Sender};
 use msg_header::{BoxMsgAny, MsgHeader};
 use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
@@ -16,8 +15,8 @@ use rsp_their_bi_dir_channel::RspTheirBiDirChannel;
 struct ActorExecutor {
     pub name: String,
     pub actor_vec: Vec<Box<dyn Actor>>,
-    pub bi_dir_channels_vec: VecConnection, //Vec<Box<BiDirLocalChannels>>,
-    con_mgr_tx: Sender<BoxMsgAny>,
+    pub bi_dir_channels_vec: VecConnection,
+    con_mgr_bdlc: BiDirLocalChannel,
     done: bool,
 }
 
@@ -53,10 +52,12 @@ impl ActorContext for Context {
 impl ActorExecutor {
     // Returns a thread::JoinHandle and a Box<dyn ActorBiDirChannel> which
     // allows messages to be sent and received from the AeActor.
-    pub fn start(name: &str) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
+    pub fn start(
+        name: &str,
+        con_mgr_bdlc: BiDirLocalChannel,
+    ) -> (JoinHandle<()>, Box<BiDirLocalChannel>) {
         let ae_actor_bi_dir_channels = Connection::new();
         let their_bdlc_with_us = Box::new(ae_actor_bi_dir_channels.their_bdlc_with_us.clone());
-        let (con_mgr_tx, _) = unbounded::<BoxMsgAny>();
 
         // Convert name to string so it can be moved into the thread
         let name = name.to_string();
@@ -66,7 +67,7 @@ impl ActorExecutor {
                 name: name.to_string(),
                 actor_vec: Vec::new(),
                 bi_dir_channels_vec: VecConnection::new(),
-                con_mgr_tx: con_mgr_tx.clone(),
+                con_mgr_bdlc,
                 done: false,
             };
             println!("AE:{}:+", ae.name);
@@ -166,10 +167,9 @@ impl ActorExecutor {
                             actor.get_name(),
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
-                        let cm = ae.con_mgr_tx.clone();
-                        //let cm = ae.con_mgr_tx.unwrap().clone();
+                        let cm = ae.con_mgr_bdlc.clone();
                         let context = Context {
-                            con_mgr_tx: cm,
+                            con_mgr_tx: ae.con_mgr_bdlc.tx.clone(),
                             their_bdlc_with_us: bdlcs.their_bdlc_with_us.clone(),
                             rsp_tx: bdlcs.our_bdlc_with_them.tx.clone(),
                         };
@@ -206,6 +206,7 @@ impl ActorExecutor {
 mod tests {
     use client::Client;
     use cmd_done::CmdDone;
+    use con_mgr::ConMgr;
     use crossbeam_channel::{unbounded, Receiver, Sender};
     use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
@@ -219,8 +220,11 @@ mod tests {
         println!("\ntest_add_one_actor:+");
         let (tx, rx) = unbounded::<BoxMsgAny>();
 
+        let con_mgr = ConMgr::new("cm1");
+
         // Start an ActorExecutor
-        let (aex1_join_handle, aex1_bdlc) = ActorExecutor::start("aex1");
+        let (aex1_join_handle, aex1_bdlc) =
+            ActorExecutor::start("aex1", con_mgr.their_bdlc_with_us());
         println!("test_add_one_actor: aex1_bdlc={aex1_bdlc:?}");
 
         // Create Actor Server
@@ -281,8 +285,11 @@ mod tests {
         println!("\ntest_add_two_actors:+");
         let (tx, rx) = unbounded::<BoxMsgAny>();
 
+        let con_mgr = ConMgr::new("cm1");
+
         // Start an ActorExecutor
-        let (aex1_join_handle, aex1_bdlc) = ActorExecutor::start("aex1");
+        let (aex1_join_handle, aex1_bdlc) =
+            ActorExecutor::start("aex1", con_mgr.their_bdlc_with_us());
         println!("test_add_two_actors: aex1_bdlc={aex1_bdlc:?}");
 
         let s1_name = "s1";
