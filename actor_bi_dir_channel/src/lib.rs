@@ -97,23 +97,10 @@ impl Default for Connection {
 
 impl Connection {
     pub fn new() -> Self {
-        // left_tx -----> right_rx
-        let (left_tx, right_rx) = unbounded();
-
-        // left_rx <---- right_tx
-        let (right_tx, left_rx) = unbounded();
-
+        let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
         Self {
-            their_bdlc_with_us: BiDirLocalChannel {
-                self_tx: right_tx.clone(),
-                tx: left_tx.clone(),
-                rx: left_rx,
-            },
-            our_bdlc_with_them: BiDirLocalChannel {
-                self_tx: left_tx,
-                tx: right_tx,
-                rx: right_rx,
-            },
+            their_bdlc_with_us,
+            our_bdlc_with_them,
         }
     }
 }
@@ -215,5 +202,56 @@ mod test {
         // Verify both left and right recv are empty
         assert!(left.rx.try_recv().is_err());
         assert!(right.rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn test_actor_connection() {
+        let connection = Connection::new();
+
+        let msg_1 = Box::new(Msg1::new(1));
+
+        // Verify their_bdlc_with_us can send to self
+        connection.their_bdlc_with_us.send_self(msg_1.clone()).unwrap();
+        let recv_msg_1_any = connection.their_bdlc_with_us.recv().unwrap();
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
+        let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
+        assert_eq!(recv_msg_1.v, msg_1.v);
+
+        // Verify our_bdlc_with_them can send to self and receive on our_bdlc_with_them.recv
+        connection.our_bdlc_with_them.send_self(msg_1.clone()).unwrap();
+        let recv_msg_1_any = connection.our_bdlc_with_them.recv().unwrap();
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
+        let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
+        assert_eq!(recv_msg_1.v, msg_1.v);
+
+        // Verify their_bdlc_with_us can send to our_bdlc_with_them
+        connection.their_bdlc_with_us.send(msg_1.clone()).unwrap();
+        let recv_msg_1_any = connection.our_bdlc_with_them.recv().unwrap();
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
+        let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
+        assert_eq!(recv_msg_1.v, msg_1.v);
+
+        // Verify our_bdlc_with_them can send to their_bdlc_with_us
+        connection.our_bdlc_with_them.send(msg_1.clone()).unwrap();
+        let recv_msg_1_any = connection.their_bdlc_with_us.recv().unwrap();
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
+            &msg_1.header.id
+        );
+        let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
+        assert_eq!(recv_msg_1.v, msg_1.v);
+
+        // Verify both their_bdlc_with_us and our_bdlc_with_them recv are empty
+        assert!(connection.their_bdlc_with_us.rx.try_recv().is_err());
+        assert!(connection.our_bdlc_with_them.rx.try_recv().is_err());
     }
 }
