@@ -5,7 +5,7 @@ use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_connect_protocol::{
-    con_mgr_connect_protocol, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID,
+    con_mgr_connect_protocol, ConMgrConnectReq, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID, CON_MGR_CONNECT_REQ_ID,
 };
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
@@ -13,6 +13,7 @@ use con_mgr_register_actor_protocol::{
 };
 
 use an_id::{anid, paste, AnId};
+use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
@@ -49,6 +50,10 @@ pub struct ConMgr {
     actors_map_by_id: HashMap<AnId, Vec<usize>>,
     actors_map_by_protocol_set_id: HashMap<AnId, Vec<usize>>,
     actors_map_by_protocol_id: HashMap<AnId, Vec<usize>>,
+
+    /// The Key is an actors instance_id and the
+    /// Value is a sender to its actor_executor
+    sender_to_actor_executor_map_by_actor_instance_id: HashMap<AnId, Sender<BoxMsgAny>>,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -105,8 +110,8 @@ impl Debug for ConMgr {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name},",
-            self.name, self.name, self.state_info_hash,
+            "{} {{ id: {} instance_id: {} state_info_hash: {:?}; current_state: {state_name}",
+            self.name, self.actor_id, self.instance_id, self.state_info_hash
         )?;
 
         write!(f, " vec_of_actor_bdlc: {:?},", self.vec_of_actor_bdlc,)?;
@@ -167,6 +172,7 @@ impl ConMgr {
             actors_map_by_id: HashMap::new(),
             actors_map_by_protocol_id: HashMap::new(),
             actors_map_by_protocol_set_id: HashMap::new(),
+            sender_to_actor_executor_map_by_actor_instance_id: HashMap::new(),
         };
 
         this.add_state(Self::state0, "state0");
@@ -204,6 +210,8 @@ impl ConMgr {
             )
             .into());
         }
+
+        self.sender_to_actor_executor_map_by_actor_instance_id.insert(msg.instance_id, msg.actor_executor_tx.clone());
 
         self.vec_of_actor_bdlc.push(msg.bdlc.clone());
 
@@ -287,8 +295,8 @@ impl ConMgr {
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
-            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
+            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
             let status = if self.add_actor(msg).is_ok() {
                 ConMgrRegisterActorStatus::Success
             } else {
@@ -297,16 +305,27 @@ impl ConMgr {
             context
                 .send_rsp(Box::new(ConMgrRegisterActorRsp::new(status)))
                 .unwrap();
-        }
-        if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
+        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
+            println!("{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!", self.name);
             assert_eq!(msg.header.id, CON_MGR_QUERY_REQ_ID);
+            context
+                .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
+                .unwrap();
+        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
+            assert_eq!(msg.header.id, CON_MGR_CONNECT_REQ_ID);
+
+            // Look up instance id and find what actor
+
+            // Forward the connect req to actors executor (AE) with and have the AE
+            // connect and respond to the requester.
+
             context
                 .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
-            assert_eq!(msg.header.id, ECHO_REQ_ID);
             //println!("{}:State0: msg={msg:?}", self.name);
+            assert_eq!(msg.header.id, ECHO_REQ_ID);
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
@@ -339,17 +358,22 @@ mod test {
     use echo_start_complete_protocol::echo_start_complete_protocol;
     use server::Server;
     struct Context {
+        actor_executor_tx: Sender<BoxMsgAny>,
         con_mgr_tx: Sender<BoxMsgAny>,
         their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
-        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-            self.their_bdlc_with_us.clone()
+        fn actor_executor_tx(&self) -> &Sender<BoxMsgAny> {
+            &self.actor_executor_tx
         }
 
-        fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        fn their_bdlc_with_us(&self) -> &BiDirLocalChannel {
+            &self.their_bdlc_with_us
+        }
+
+        fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(self.con_mgr_tx.send(msg)?)
         }
 
@@ -373,6 +397,7 @@ mod test {
         let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
 
         let context = Context {
+            actor_executor_tx: their_bdlc_with_us.tx.clone(), // Unused
             con_mgr_tx: their_bdlc_with_us.tx.clone(), // Unused
             their_bdlc_with_us: their_bdlc_with_us.clone(),
             rsp_tx: our_bdlc_with_them.tx.clone(),
@@ -503,6 +528,7 @@ mod test {
 
         // Initialize Client context
         let mut context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_client.clone(),
             rsp_tx: their_bdlc_with_client.tx.clone(),
@@ -518,6 +544,7 @@ mod test {
 
         // Initialize ConMgr context
         context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_client.clone(),
             rsp_tx: their_bdlc_with_client.tx.clone(),
@@ -533,6 +560,7 @@ mod test {
 
         // Initialize Client context
         context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_client.clone(),
             rsp_tx: their_bdlc_with_client.tx.clone(),
@@ -612,6 +640,7 @@ mod test {
 
         // Initialize Client context
         let mut context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_server.clone(),
             rsp_tx: their_bdlc_with_server.tx.clone(),
@@ -627,6 +656,7 @@ mod test {
 
         // Initialize ConMgr context
         context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_server.clone(),
             rsp_tx: their_bdlc_with_server.tx.clone(),
@@ -642,6 +672,7 @@ mod test {
 
         // Initialize Server context
         context = Context {
+            actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_server.clone(),
             rsp_tx: their_bdlc_with_server.tx.clone(),

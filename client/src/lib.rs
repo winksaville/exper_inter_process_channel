@@ -2,6 +2,7 @@ use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::Connection;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
+use con_mgr_connect_protocol::{ConMgrConnectReq, ConMgrConnectRsp, CON_MGR_CONNECT_RSP_ID, ConMgrConnectStatus};
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
@@ -50,8 +51,9 @@ pub struct Client {
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
+    pub partner_instance_id: Option<AnId>,
     pub partner_tx: Option<Sender<BoxMsgAny>>,
-    pub controller_tx: Option<Sender<BoxMsgAny>>,
+    pub controller_tx: Option<Sender<BoxMsgAny>>, // TODO: Change to instance_id and create a connection?
     pub ping_count: u64,
     connection: Connection,
 }
@@ -110,8 +112,8 @@ impl Debug for Client {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; ping_count: {}; protocol_set: {:?}}}",
-            self.name, self.name, self.state_info_hash, self.ping_count, self.protocol_set
+            "{} {{ id: {} instance_id: {} state_info_hash: {:?}; current_state: {state_name}; ping_count: {}; protocol_set: {:?}}}",
+            self.name, self.actor_id, self.instance_id, self.state_info_hash, self.ping_count, self.protocol_set
         )
     }
 }
@@ -141,6 +143,7 @@ impl Client {
             protocol_set: client_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
+            partner_instance_id: None,
             partner_tx: None,
             controller_tx: None,
             ping_count: 0,
@@ -196,6 +199,12 @@ impl Client {
         }
     }
 
+    fn send_con_mgr_connect_req(&mut self, context: &dyn ActorContext, instance_id: &AnId) {
+        let msg = Box::new(ConMgrConnectReq::new( &instance_id, context.their_bdlc_with_us()));
+        println!("{}:send_con_mgr_req: instance_id={instance_id:?}", self.name);
+        context.send_con_mgr(msg).unwrap();
+    }
+
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoRsp>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -211,15 +220,25 @@ impl Client {
             println!("{}:State0: msg={msg:?}", self.name);
             assert_eq!(msg.header.id, ECHO_START_ID);
             if let Some(tx) = context.clone_rsp_tx() {
-                self.partner_tx = Some(msg.partner_tx.clone());
+                self.partner_instance_id = Some(msg.partner_instance_id.clone());
                 self.controller_tx = Some(tx);
                 self.ping_count = msg.ping_count;
-                self.send_echo_req_or_complete(1);
+                self.send_con_mgr_connect_req(context, &msg.partner_instance_id);
             } else {
                 println!(
                     "{}:State0: Error no controller_tx, can't start msg={msg:?}",
                     self.name
                 );
+            }
+        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectRsp>() {
+            println!("{}:State0: msg={msg:?}", self.name);
+            assert_eq!(msg.header.id, CON_MGR_CONNECT_RSP_ID);
+            if msg.status == ConMgrConnectStatus::Success {
+                println!("{}:State0: Successfully connected to partner start echoing", self.name);
+                self.partner_tx = msg.partner_tx.clone();
+                self.send_echo_req_or_complete(1);
+            } else {
+                println!("{}:State0: FAILED to connect to partner NO echoing, status: {:?}", self.name, msg.status);
             }
         } else if let Some(msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1 so our test passes :)
@@ -239,8 +258,9 @@ impl Client {
                 &self.instance_id,
                 &self.protocol_set,
                 context.their_bdlc_with_us(),
+                context.actor_executor_tx(),
             ));
-            context.send_conn_mgr(msg).unwrap();
+            context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
             assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
@@ -260,6 +280,7 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
+    use con_mgr_connect_protocol::CON_MGR_CONNECT_REQ_ID;
     use con_mgr_register_actor_protocol::{
         ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
     };
@@ -268,17 +289,22 @@ mod test {
     use msg_header::MsgHeader;
 
     struct Context {
+        actor_executor_tx: Sender<BoxMsgAny>,
         con_mgr_tx: Sender<BoxMsgAny>,
         their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
-        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-            self.their_bdlc_with_us.clone()
+        fn actor_executor_tx(&self) -> &Sender<BoxMsgAny> {
+            &self.actor_executor_tx
         }
 
-        fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        fn their_bdlc_with_us(&self) -> &BiDirLocalChannel {
+            &self.their_bdlc_with_us
+        }
+
+        fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(self.con_mgr_tx.send(msg)?)
         }
 
@@ -301,6 +327,7 @@ mod test {
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let client_context = Context {
+            actor_executor_tx: test_cmd_init_bdlc.tx.clone(),
             con_mgr_tx: client_bdlc.tx.clone(),
             their_bdlc_with_us: test_cmd_init_bdlc.clone(),
             rsp_tx: client_bdlc.tx.clone(),
@@ -340,6 +367,7 @@ mod test {
         // BiDirLocalChannel between ctrl and clnt
         let (ctrl_with_clnt, clnt_with_ctrl) = BiDirLocalChannel::new();
         let ctrl_with_clnt_context = Context {
+            actor_executor_tx: clnt_with_ctrl.tx.clone(),
             con_mgr_tx: clnt_with_ctrl.clone_tx(),
             their_bdlc_with_us: ctrl_with_clnt.clone(),
             rsp_tx: clnt_with_ctrl.clone_tx(),
@@ -350,15 +378,19 @@ mod test {
 
         let mut client = Client::new("client");
 
+        let test_instance_id = AnId::new();
+
         for ping_count in [0, 1, 5] {
             let clnt_with_ctrl_context = Context {
+                actor_executor_tx: clnt_with_ctrl.tx.clone(),
                 con_mgr_tx: clnt_with_ctrl.clone_tx(),
                 their_bdlc_with_us: ctrl_with_clnt.clone(),
                 rsp_tx: clnt_with_ctrl.clone_tx(),
             };
 
             let srvr_with_clnt_context = Context {
-                con_mgr_tx: srvr_with_clnt.clone_tx(),
+                actor_executor_tx: clnt_with_ctrl.tx.clone(),
+                con_mgr_tx: clnt_with_ctrl.clone_tx(),
                 their_bdlc_with_us: clnt_with_srvr.clone(),
                 rsp_tx: srvr_with_clnt.clone_tx(),
             };
@@ -379,13 +411,27 @@ mod test {
 
             // Controller sends EchoStart message to client
             println!("\ntest_bi_dir_local_channel: ping_count={ping_count}");
-            let tx = clnt_with_srvr.clone_tx();
-            let start_msg = Box::new(EchoStart::new(tx, ping_count));
+            let start_msg = Box::new(EchoStart::new(&test_instance_id, ping_count));
             ctrl_with_clnt.send(start_msg).unwrap();
 
             // Client receives EchoStart msg from control
+            println!("test_bi_dir_local_channel: client process EchoStart");
             let start_msg_any = clnt_with_ctrl.recv().unwrap();
             client.process_msg_any(&clnt_with_ctrl_context, start_msg_any);
+
+            // Client requests con_mgr to connect to partner
+            println!("test_bi_dir_local_channel: client issues to con_mgr a ConMgrConnectReq");
+            let connect_req_msg_any = ctrl_with_clnt.recv().unwrap();
+            let connect_req_msg= connect_req_msg_any.downcast_ref::<ConMgrConnectReq>().unwrap();
+            assert_eq!(&CON_MGR_CONNECT_REQ_ID, MsgHeader::get_msg_id_from_boxed_msg_any(&connect_req_msg_any));
+            assert_eq!(connect_req_msg.instance_id, test_instance_id);
+
+            // ConMgr forwards the request to the actors associated executor who connects the partner to the client
+            // and the client receives the ConMgrConnectRsp
+            println!("test_bi_dir_local_channel: client receives a ConMgrConnectRsp");
+            let tx = clnt_with_srvr.clone_tx();
+            let msg = Box::new(ConMgrConnectRsp::new(ConMgrConnectStatus::Success, Some(tx)));
+            client.process_msg_any(&clnt_with_ctrl_context, msg);
 
             for i in 0..ping_count {
                 println!(

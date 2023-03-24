@@ -9,10 +9,11 @@
 //!
 //! The CON_MGR_REGISTEE_ACTOR_PROTOCOL is implemented by
 //! the actors that want to register with the connection manager
-//! they send CON_MGR_REGISTER_ACTOR_REQ_ID messages and receive
-//! CON_MGR_REGISTER_ACTOR_RSP_ID messages.
+//! they send CON_MGR_REGISTER_ACTOR_RSP_ID messages.
 use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
+use crossbeam_channel::Sender;
+use msg_header::BoxMsgAny;
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
@@ -28,7 +29,8 @@ msg_local_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
     // As ProtocolSet is immutable, see is #13
     //   https://github.com/winksaville/exper_inter_process_channel/issues/13
     protocol_set: ProtocolSet, // TODO maybe make Option<ProtocolSet>
-    bdlc: BiDirLocalChannel
+    bdlc: BiDirLocalChannel,
+    actor_executor_tx: Sender<BoxMsgAny>
 });
 
 impl ConMgrRegisterActorReq {
@@ -36,9 +38,9 @@ impl ConMgrRegisterActorReq {
         name: &str,
         id: &AnId,
         instance_id: &AnId,
-        //protocol_set_id: &AnId,
-        protocol_set: &ProtocolSet, // Option<&ProtocolSet>,
-        bdlc: BiDirLocalChannel,
+        protocol_set: &ProtocolSet,
+        bdlc: &BiDirLocalChannel,
+        actor_executor_tx: &Sender<BoxMsgAny>,
     ) -> Self {
         Self {
             header: msg_header::MsgHeader {
@@ -47,9 +49,9 @@ impl ConMgrRegisterActorReq {
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
-            //protocol_set_id: *protocol_set_id,
             protocol_set: protocol_set.clone(),
-            bdlc,
+            bdlc: bdlc.clone(),
+            actor_executor_tx: actor_executor_tx.clone(),
         }
     }
 }
@@ -143,7 +145,14 @@ mod test {
 
         let (theirs, ours) = BiDirLocalChannel::new();
 
-        let msg = ConMgrRegisterActorReq::new("cmra1", &a_id, &a_instance_id, &ps, theirs);
+        let msg = ConMgrRegisterActorReq::new(
+            "cmra1",
+            &a_id,
+            &a_instance_id,
+            &ps,
+            &theirs,
+            &ours.tx.clone(),
+        );
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
         assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);

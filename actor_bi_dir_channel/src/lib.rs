@@ -154,7 +154,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_actor_bi_dir_local_channel() {
+    fn test_bi_dir_local_channel() {
         let (left, right) = BiDirLocalChannel::new();
 
         let msg_1 = Box::new(Msg1::new(1));
@@ -205,7 +205,7 @@ mod test {
     }
 
     #[test]
-    fn test_actor_connection() {
+    fn test_connection() {
         let connection = Connection::new();
 
         let msg_1 = Box::new(Msg1::new(1));

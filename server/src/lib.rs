@@ -91,8 +91,8 @@ impl Debug for Server {
 
         write!(
             f,
-            "{} {{ name: {}, state_info_hash: {:?}; current_state: {state_name}; protocol_set: {:?} }}",
-            self.name, self.name, self.state_info_hash, self.protocol_set
+            "{} {{ id: {} instance_id: {} state_info_hash: {:?}; current_state: {state_name}; protocol_set: {:?}}}",
+            self.name, self.actor_id, self.instance_id, self.state_info_hash, self.protocol_set
         )
     }
 }
@@ -156,9 +156,10 @@ impl Server {
                 &self.actor_id,
                 &self.instance_id,
                 &self.protocol_set,
-                context.their_bdlc_with_us(),
+                &context.their_bdlc_with_us(),
+                context.actor_executor_tx(),
             ));
-            context.send_conn_mgr(msg).unwrap();
+            context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
             assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
@@ -183,17 +184,22 @@ mod test {
     use super::*;
 
     struct Context {
+        actor_executor_tx: Sender<BoxMsgAny>,
         con_mgr_tx: Sender<BoxMsgAny>,
         their_bdlc_with_us: BiDirLocalChannel,
         rsp_tx: Sender<BoxMsgAny>,
     }
 
     impl ActorContext for Context {
-        fn their_bdlc_with_us(&self) -> BiDirLocalChannel {
-            self.their_bdlc_with_us.clone()
+        fn actor_executor_tx(&self) -> &Sender<BoxMsgAny> {
+            &self.actor_executor_tx
         }
 
-        fn send_conn_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        fn their_bdlc_with_us(&self) -> &BiDirLocalChannel {
+            &self.their_bdlc_with_us
+        }
+
+        fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(self.con_mgr_tx.send(msg)?)
         }
 
@@ -216,6 +222,7 @@ mod test {
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
+            actor_executor_tx: server_bdlc.tx.clone(),
             con_mgr_tx: server_bdlc.tx.clone(),
             their_bdlc_with_us: test_1_bdlc.clone(),
             rsp_tx: server_bdlc.tx.clone(),
@@ -333,6 +340,7 @@ mod test {
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
+            actor_executor_tx: server_bdlc.tx.clone(),
             con_mgr_tx: server_bdlc.tx.clone(),
             their_bdlc_with_us: test_cmd_init_bdlc.clone(),
             rsp_tx: server_bdlc.tx.clone(),

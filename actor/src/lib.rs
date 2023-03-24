@@ -9,13 +9,16 @@ pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
 // These methods may only be invoked from a single threaded
 // entity, which by definition Actors are.
 pub trait ActorContext {
+    /// Returns a reference to this actors executor tx
+    fn actor_executor_tx(&self) -> &Sender<BoxMsgAny>;
+
     /// The "their" BiDirLocalChannel of a Connection for communicating with "us"
-    fn their_bdlc_with_us(&self) -> BiDirLocalChannel;
+    fn their_bdlc_with_us(&self) -> &BiDirLocalChannel;
 
     /// Send message to connection manager
-    fn send_conn_mgr(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
+    fn send_con_mgr(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
-    // Send a message to yourself, in a test case it could be a NOP!
+    /// Send a message to yourself, in a test case it could be a NOP!
     fn send_self(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
     /// Send a response message to the entity that issued request, if there

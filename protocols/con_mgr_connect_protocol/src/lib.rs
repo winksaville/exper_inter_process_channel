@@ -5,8 +5,11 @@
 //! for applicable actors using "name", "id", "protoocol"
 //! and/or "protocol_set" and then use ConMgrConnectReq with an instance_id
 //! retunred by ConMgrQueryRsp.
+use crossbeam_channel::Sender;
+
 use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
+use msg_header::BoxMsgAny;
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
@@ -76,17 +79,17 @@ pub fn con_mgr_query_protocol() -> &'static Protocol {
 // From: https://www.uuidgenerator.net/version4
 msg_local_macro!(ConMgrConnectReq "94757aed-87bc-4b8a-bbd6-e4ac4ca04233" {
     instance_id: AnId,
-    bdlc: BiDirLocalChannel
+    their_bdlc_with_us: BiDirLocalChannel
 });
 
 impl ConMgrConnectReq {
-    pub fn new(instance_id: &AnId, bdlc: BiDirLocalChannel) -> Self {
+    pub fn new(instance_id: &AnId, their_bdlc_with_us: &BiDirLocalChannel) -> Self {
         Self {
             header: msg_header::MsgHeader {
                 id: CON_MGR_CONNECT_REQ_ID,
             },
             instance_id: *instance_id,
-            bdlc,
+            their_bdlc_with_us: their_bdlc_with_us.clone(),
         }
     }
 }
@@ -102,16 +105,19 @@ pub enum ConMgrConnectStatus {
 
 // From: https://www.uuidgenerator.net/version4
 msg_local_macro!(ConMgrConnectRsp "8d735bca-1be0-4c66-b52f-2a18bb310bcf" {
-    status: ConMgrConnectStatus
+    status: ConMgrConnectStatus,
+    partner_tx: Option<Sender<BoxMsgAny>>
 });
 
 impl ConMgrConnectRsp {
-    pub fn new(status: ConMgrConnectStatus) -> Self {
+    pub fn new(status: ConMgrConnectStatus, partner_tx: Option<Sender<BoxMsgAny>>) -> Self {
+        assert_eq!(status == ConMgrConnectStatus::Success, partner_tx.is_some());
         Self {
             header: msg_header::MsgHeader {
                 id: CON_MGR_CONNECT_RSP_ID,
             },
             status,
+            partner_tx,
         }
     }
 }
