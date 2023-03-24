@@ -208,17 +208,17 @@ impl Client {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.id, ECHO_RSP_ID);
+            assert_eq!(msg.header.msg_id, ECHO_RSP_ID);
             self.send_echo_req_or_complete(msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, ECHO_REQ_ID);
+            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, ECHO_START_ID);
+            assert_eq!(msg.header.msg_id, ECHO_START_ID);
             if let Some(tx) = context.clone_rsp_tx() {
                 self.partner_instance_id = Some(msg.partner_instance_id.clone());
                 self.controller_tx = Some(tx);
@@ -232,7 +232,7 @@ impl Client {
             }
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectRsp>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, CON_MGR_CONNECT_RSP_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_CONNECT_RSP_ID);
             if msg.status == ConMgrConnectStatus::Success {
                 println!("{}:State0: Successfully connected to partner start echoing", self.name);
                 self.partner_tx = msg.partner_tx.clone();
@@ -249,7 +249,7 @@ impl Client {
             context.send_rsp(msg1).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.id, CMD_INIT_ID);
+            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
@@ -263,7 +263,7 @@ impl Client {
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_RSP_ID);
             assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
@@ -457,7 +457,7 @@ mod test {
             let complete_msg_any = ctrl_with_clnt.recv().unwrap();
             let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
             println!("test_bi_dir_local_channel: received complete msg={complete_msg:?}");
-            assert_eq!(complete_msg.header.id, ECHO_COMPLETE_ID);
+            assert_eq!(complete_msg.header.msg_id, ECHO_COMPLETE_ID);
         }
     }
 }

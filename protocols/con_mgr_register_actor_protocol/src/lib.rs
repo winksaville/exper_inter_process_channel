@@ -13,7 +13,7 @@
 use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
 use crossbeam_channel::Sender;
-use msg_header::BoxMsgAny;
+use msg_header::{BoxMsgAny, MsgHeader};
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
@@ -43,9 +43,7 @@ impl ConMgrRegisterActorReq {
         actor_executor_tx: &Sender<BoxMsgAny>,
     ) -> Self {
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_REGISTER_ACTOR_REQ_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_REGISTER_ACTOR_REQ_ID),
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
@@ -72,9 +70,7 @@ msg_local_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
 impl ConMgrRegisterActorRsp {
     pub fn new(status: ConMgrRegisterActorStatus) -> Self {
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_REGISTER_ACTOR_RSP_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_REGISTER_ACTOR_RSP_ID),
             status,
         }
     }
@@ -155,7 +151,7 @@ mod test {
         );
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
-        assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
         assert_eq!(msg.name, "cmra1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);

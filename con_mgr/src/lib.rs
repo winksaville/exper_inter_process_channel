@@ -296,7 +296,7 @@ impl ConMgr {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
             let status = if self.add_actor(msg).is_ok() {
                 ConMgrRegisterActorStatus::Success
             } else {
@@ -307,13 +307,13 @@ impl ConMgr {
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
             println!("{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!", self.name);
-            assert_eq!(msg.header.id, CON_MGR_QUERY_REQ_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_QUERY_REQ_ID);
             context
                 .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, CON_MGR_CONNECT_REQ_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_CONNECT_REQ_ID);
 
             // Look up instance id and find what actor
 
@@ -325,13 +325,13 @@ impl ConMgr {
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             //println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.id, ECHO_REQ_ID);
+            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?} nothing to do", self.name);
-            assert_eq!(msg.header.id, CMD_INIT_ID);
+            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(

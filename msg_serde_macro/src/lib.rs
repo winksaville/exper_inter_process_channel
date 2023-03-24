@@ -28,8 +28,12 @@ macro_rules! msg_serde_macro {
 
         #[allow(unused)]
         impl $name {
-            pub fn id(&self) -> an_id::AnId {
-                self.header.id
+            pub fn msg_id(&self) -> &an_id::AnId {
+                &self.header.msg_id
+            }
+
+            pub fn src_id(&self) -> &Option<an_id::AnId> {
+                &self.header.src_id
             }
 
             pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
@@ -41,7 +45,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
-                let id = msg_serde_json::get_id_str_from_buf(buf);
+                let id = msg_serde_json::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
                         match serde_json::from_str::<Self>(s) {
@@ -111,14 +115,16 @@ macro_rules! msg_serde_macro {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    header: msg_header::MsgHeader {
-                        id: an_id::anid!($id_str),
-                    },
+                    header: msg_header::MsgHeader::new_msg_id_only(an_id::anid!($id_str)),
                 }
             }
 
-            pub fn id(&self) -> an_id::AnId {
-                self.header.id
+            pub fn msg_id(&self) -> &an_id::AnId {
+                &self.header.msg_id
+            }
+
+            pub fn src_id(&self) -> &Option<an_id::AnId> {
+                &self.header.src_id
             }
 
             pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
@@ -130,7 +136,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
-                let id = msg_serde_json::get_id_str_from_buf(buf);
+                let id = msg_serde_json::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
                         match serde_json::from_str::<Self>(s) {
@@ -192,8 +198,8 @@ mod test {
         let msg_a_vec = MsgA::to_serde_json_buf(msg_a_any_1).unwrap();
         let msg_a_any_2 = MsgA::from_serde_json_buf(&msg_a_vec).unwrap();
         let msg_a_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
-        assert_eq!(msg_a_deser.header.id, MSG_A_ID);
-        assert_eq!(msg_a_deser.header.id.to_string(), MSG_A_ID_STR);
+        assert_eq!(msg_a_deser.header.msg_id, MSG_A_ID);
+        assert_eq!(msg_a_deser.header.msg_id.to_string(), MSG_A_ID_STR);
     }
 
     msg_serde_macro!(MsgB "5cd57392-151a-4460-8a2f-86c79ddad18a" {
@@ -204,7 +210,7 @@ mod test {
     impl MsgB {
         pub fn new(num: u64, a_str: &str) -> Self {
             Self {
-                header: msg_header::MsgHeader { id: MSG_B_ID },
+                header: msg_header::MsgHeader::new_msg_id_only(MSG_B_ID),
                 a_u64: num,
                 a_string: a_str.to_string(),
             }
@@ -215,18 +221,20 @@ mod test {
     fn test_with_fields() {
         let msg_b = Box::new(MsgB::new(123, "hi"));
         println!("test_with_fields msg_b={msg_b:?}");
-        assert_eq!(msg_b.header.id, MSG_B_ID);
+        assert_eq!(msg_b.header.msg_id, MSG_B_ID);
+        assert_eq!(msg_b.header.src_id, None);
         assert_eq!(msg_b.a_u64, 123);
         assert_eq!(msg_b.a_string, "hi");
-        assert_eq!(msg_b.header.id.to_string(), MSG_B_ID_STR);
+        assert_eq!(msg_b.header.msg_id.to_string(), MSG_B_ID_STR);
 
         let msg_b_any_1: BoxMsgAny = msg_b.clone();
         let msg_b_vec = MsgB::to_serde_json_buf(msg_b_any_1).unwrap();
         let msg_b_any_2 = MsgB::from_serde_json_buf(&msg_b_vec).unwrap();
         let msg_b_deser = MsgB::from_box_msg_any(&msg_b_any_2).unwrap();
-        assert_eq!(msg_b_deser.header.id, MSG_B_ID);
+        assert_eq!(msg_b_deser.header.msg_id, MSG_B_ID);
+        assert_eq!(msg_b_deser.header.src_id, None);
         assert_eq!(msg_b_deser.a_u64, 123);
         assert_eq!(msg_b_deser.a_string, "hi");
-        assert_eq!(msg_b_deser.header.id.to_string(), MSG_B_ID_STR);
+        assert_eq!(msg_b_deser.header.msg_id.to_string(), MSG_B_ID_STR);
     }
 }

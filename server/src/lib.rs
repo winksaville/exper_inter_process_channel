@@ -141,14 +141,14 @@ impl Server {
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
-            assert_eq!(msg.header.id, ECHO_REQ_ID);
+            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
             //println!("{}:State0: msg={msg:?}", self.name);
             let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.id, CMD_INIT_ID);
+            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
@@ -162,7 +162,7 @@ impl Server {
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_RSP_ID);
             assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);

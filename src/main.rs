@@ -9,7 +9,7 @@ use std::{
 };
 
 use msg_header::{BoxMsgAny, MsgHeader};
-use msg_serde_json::{get_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
+use msg_serde_json::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
 fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
     let b0 = buf[0] as u16;
@@ -117,7 +117,7 @@ impl IpchnlDeserializer {
                                     break;
                                 }
 
-                                let id_str = get_id_str_from_buf(&msg_buf);
+                                let id_str = get_msg_id_str_from_buf(&msg_buf);
                                 println!("{}::deserializer stream: id_str={id_str}", &self_name);
                                 let fn_from_serde_json_buf = msg_deser_map.get(id_str).unwrap();
                                 let msg_serde_box_msg_any =

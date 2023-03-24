@@ -9,7 +9,7 @@ use crossbeam_channel::Sender;
 
 use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
-use msg_header::BoxMsgAny;
+use msg_header::{BoxMsgAny, MsgHeader};
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
@@ -31,9 +31,7 @@ impl ConMgrQueryReq {
         protocol_set_id: Option<AnId>,
     ) -> Self {
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_QUERY_REQ_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_QUERY_REQ_ID),
             name: name.map(|s| s.to_owned()),
             id,
             protocol_id,
@@ -50,9 +48,7 @@ msg_local_macro!(ConMgrQueryRsp "162306ca-10b5-4bc9-9537-f7d8c53c7d0a" {
 impl ConMgrQueryRsp {
     pub fn new(instance_ids: &[AnId]) -> Self {
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_CONNECT_RSP_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_QUERY_RSP_ID),
             instance_ids: instance_ids.to_owned(),
         }
     }
@@ -85,9 +81,7 @@ msg_local_macro!(ConMgrConnectReq "94757aed-87bc-4b8a-bbd6-e4ac4ca04233" {
 impl ConMgrConnectReq {
     pub fn new(instance_id: &AnId, their_bdlc_with_us: &BiDirLocalChannel) -> Self {
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_CONNECT_REQ_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_REQ_ID),
             instance_id: *instance_id,
             their_bdlc_with_us: their_bdlc_with_us.clone(),
         }
@@ -113,9 +107,7 @@ impl ConMgrConnectRsp {
     pub fn new(status: ConMgrConnectStatus, partner_tx: Option<Sender<BoxMsgAny>>) -> Self {
         assert_eq!(status == ConMgrConnectStatus::Success, partner_tx.is_some());
         Self {
-            header: msg_header::MsgHeader {
-                id: CON_MGR_CONNECT_RSP_ID,
-            },
+            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_RSP_ID),
             status,
             partner_tx,
         }

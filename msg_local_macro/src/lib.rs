@@ -28,8 +28,12 @@ macro_rules! msg_local_macro_not_cloneable {
 
         #[allow(unused)]
         impl $name {
-            pub fn id(&self) -> an_id::AnId {
-                self.header.id
+            pub fn msg_id(&self) -> &an_id::AnId {
+                &self.header.msg_id
+            }
+
+            pub fn src_id(&self) -> &Option<an_id::AnId> {
+                &self.header.src_id
             }
 
             pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
@@ -65,8 +69,12 @@ macro_rules! msg_local_macro {
 
         #[allow(unused)]
         impl $name {
-            pub fn id(&self) -> an_id::AnId {
-                self.header.id
+            pub fn msg_id(&self) -> &an_id::AnId {
+                &self.header.msg_id
+            }
+
+            pub fn src_id(&self) -> &Option<an_id::AnId> {
+                &self.header.src_id
             }
 
             pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
@@ -104,14 +112,16 @@ macro_rules! msg_local_macro {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    header: msg_header::MsgHeader {
-                        id: msg_header::MsgId(an_id::anid!($id_str));
-                    },
+                    header: msg_header::MsgHeader::new_msg_id_only(an_id::anid!($id_str));
                 }
             }
 
-            pub fn id(&self) -> msg_header::MsgId {
-                self.header.id
+            pub fn msg_id(&self) -> &an_id::AnId {
+                &self.header.msg_id
+            }
+
+            pub fn src_id(&self) -> &Option<an_id::AnId> {
+                &self.header.src_id
             }
 
             pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
@@ -129,7 +139,7 @@ macro_rules! msg_local_macro {
 mod test {
     use crossbeam_channel::{unbounded, Sender};
 
-    use msg_header::BoxMsgAny;
+    use msg_header::{BoxMsgAny, MsgHeader};
 
     use super::*;
 
@@ -143,7 +153,7 @@ mod test {
     impl MsgLclA {
         pub fn new(num: u64, a_str: &str, tx: Sender<BoxMsgAny>) -> Self {
             Self {
-                header: msg_header::MsgHeader { id: MSG_LCL_A_ID },
+                header: MsgHeader::new_msg_id_only(MSG_LCL_A_ID),
                 a_u64: num,
                 a_string: a_str.to_string(),
                 a_sender: tx,
@@ -157,20 +167,20 @@ mod test {
 
         let msg_lcl_a_0 = Box::new(MsgLclA::new(123, "hi", tx.clone()));
         println!("test_with_fields msg_lcl_a_0={msg_lcl_a_0:?}");
-        assert_eq!(msg_lcl_a_0.header.id, MSG_LCL_A_ID);
+        assert_eq!(msg_lcl_a_0.header.msg_id, MSG_LCL_A_ID);
         assert_eq!(msg_lcl_a_0.a_u64, 123);
         assert_eq!(msg_lcl_a_0.a_string, "hi");
-        assert_eq!(msg_lcl_a_0.header.id.to_string(), MSG_LCL_A_ID_STR);
+        assert_eq!(msg_lcl_a_0.header.msg_id.to_string(), MSG_LCL_A_ID_STR);
 
         // Send the tx
         tx.send(msg_lcl_a_0.clone()).unwrap();
         let msg_lcl_a_any = rx.recv().unwrap();
         let msg_lcl_a_1 = MsgLclA::from_box_msg_any(&msg_lcl_a_any).unwrap();
         println!("test_with_fields msg_lcl_a_1={msg_lcl_a_1:?}");
-        assert_eq!(msg_lcl_a_1.header.id, MSG_LCL_A_ID);
+        assert_eq!(msg_lcl_a_1.header.msg_id, MSG_LCL_A_ID);
         assert_eq!(msg_lcl_a_1.a_u64, 123);
         assert_eq!(msg_lcl_a_1.a_string, "hi");
-        assert_eq!(msg_lcl_a_1.header.id.to_string(), MSG_LCL_A_ID_STR);
+        assert_eq!(msg_lcl_a_1.header.msg_id.to_string(), MSG_LCL_A_ID_STR);
 
         // Use the sent tx
         let sent_tx = msg_lcl_a_1.a_sender.clone();
@@ -181,9 +191,9 @@ mod test {
         let msg_lcl_a_any = rx.recv().unwrap();
         let msg_lcl_a_2 = MsgLclA::from_box_msg_any(&msg_lcl_a_any).unwrap();
         println!("test_with_fields msg_lcl_a_2={msg_lcl_a_2:?}");
-        assert_eq!(msg_lcl_a_2.header.id, MSG_LCL_A_ID);
+        assert_eq!(msg_lcl_a_2.header.msg_id, MSG_LCL_A_ID);
         assert_eq!(msg_lcl_a_2.a_u64, 123);
         assert_eq!(msg_lcl_a_2.a_string, "hi");
-        assert_eq!(msg_lcl_a_2.header.id.to_string(), MSG_LCL_A_ID_STR);
+        assert_eq!(msg_lcl_a_2.header.msg_id.to_string(), MSG_LCL_A_ID_STR);
     }
 }

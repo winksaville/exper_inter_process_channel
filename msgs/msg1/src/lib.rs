@@ -1,6 +1,6 @@
 use an_id::{anid, paste, AnId};
 use msg_header::{BoxMsgAny, MsgHeader};
-use msg_serde_json::get_id_str_from_buf;
+use msg_serde_json::get_msg_id_str_from_buf;
 use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4
@@ -29,13 +29,17 @@ impl Default for Msg1 {
 impl Msg1 {
     pub fn new(v: u64) -> Self {
         Self {
-            header: MsgHeader { id: MSG1_ID },
+            header: MsgHeader::new_msg_id_only(MSG1_ID),
             v,
         }
     }
 
-    pub fn id(&self) -> AnId {
-        self.header.id
+    pub fn msg_id(&self) -> &AnId {
+        &self.header.msg_id
+    }
+
+    pub fn src_id(&self) -> &Option<AnId> {
+        &self.header.src_id
     }
 
     pub fn from_box_msg_any(msg: &BoxMsgAny) -> Option<&Msg1> {
@@ -47,7 +51,7 @@ impl Msg1 {
     }
 
     pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<BoxMsgAny> {
-        let id = get_id_str_from_buf(buf);
+        let id = get_msg_id_str_from_buf(buf);
         //if id == &*MSG1_ID_STRING {
         if id == MSG1_ID_STR {
             if let Ok(s) = std::str::from_utf8(buf) {
@@ -92,7 +96,7 @@ impl Msg1 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use msg_serde_json::{get_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
+    use msg_serde_json::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
     use std::{
         any::{Any, TypeId},
         collections::HashMap,
@@ -108,8 +112,8 @@ mod test {
         let msg1_deser = bma1_deser.downcast_ref::<Msg1>().unwrap();
         println!("test_msg1_to_from_serde_json_buf: msg1_deser={msg1_deser:?}");
         assert_eq!(&msg1, msg1_deser);
-        assert_eq!(msg1.header.id, MSG1_ID);
-        assert_eq!(msg1.header.id, msg1_deser.header.id);
+        assert_eq!(msg1.header.msg_id, MSG1_ID);
+        assert_eq!(msg1.header.msg_id, msg1_deser.header.msg_id);
         println!(
             "test_msg1_to_from_serde_json_buf: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
             TypeId::of::<Msg1>(),
@@ -127,7 +131,7 @@ mod test {
         // Use HashMap to serialize
         let ser = Msg1::to_serde_json_buf;
         let mut hm_ser = HashMap::<AnId, ToSerdeJsonBuf>::new();
-        hm_ser.insert(msg1.id(), ser);
+        hm_ser.insert(*msg1.msg_id(), ser);
         println!("hm_ser.len()={}", hm_ser.len());
 
         // Use another HashMap to deserialize
@@ -141,13 +145,13 @@ mod test {
         let msg1_box_msg_any: BoxMsgAny = Box::new(msg1.clone());
 
         // Serialize using the to_serde_json_buf funtion
-        let fn_to_serde_json_buf = hm_ser.get(&msg1.id()).unwrap();
+        let fn_to_serde_json_buf = hm_ser.get(&msg1.msg_id()).unwrap();
         let msg1_buf = (*fn_to_serde_json_buf)(msg1_box_msg_any).unwrap();
         println!("msg1_buf {:p} {msg1_buf:x?}", &*msg1_buf);
         println!("msg1_buf uf8={:?}", std::str::from_utf8(&msg1_buf).unwrap());
 
         // Deserialize using the from_serde_json_buf function
-        let id_str = get_id_str_from_buf(&msg1_buf);
+        let id_str = get_msg_id_str_from_buf(&msg1_buf);
         println!("id_str={id_str}");
         let fn_from_serde_json_buf = hm_deser.get(id_str).unwrap();
         let msg1_serde_box_msg_any = (*fn_from_serde_json_buf)(&msg1_buf).unwrap();
