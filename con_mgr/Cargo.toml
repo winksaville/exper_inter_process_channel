@@ -21,6 +21,7 @@ actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 an_id = { version = "0.1.0", path = "../an_id" }
 con_mgr_connect_protocol = { version = "0.1.0", path = "../protocols/con_mgr_connect_protocol" }
 cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
+once_cell = "1.17.1"
 
 [dev-dependencies]
 actor = { path = "../actor" }

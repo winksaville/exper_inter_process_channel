@@ -1,11 +1,12 @@
 //! Connection Manager
-use std::error::Error;
+use std::{error::Error, sync::RwLock};
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_connect_protocol::{
-    con_mgr_connect_protocol, ConMgrConnectReq, ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID, CON_MGR_CONNECT_REQ_ID,
+    con_mgr_connect_protocol, ConMgrConnectReq, ConMgrQueryReq, ConMgrQueryRsp,
+    CON_MGR_CONNECT_REQ_ID, CON_MGR_QUERY_REQ_ID,
 };
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
@@ -23,6 +24,22 @@ use std::{
 };
 
 use msg_header::{BoxMsgAny, MsgHeader};
+
+use once_cell::sync::Lazy;
+
+static RSP_TX_HASHMAP: Lazy<RwLock<HashMap<AnId, Sender<BoxMsgAny>>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+pub fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) {
+    let mut wlocked_hashmap = RSP_TX_HASHMAP.write().unwrap(); // TODO: remove unwrap
+    let r = wlocked_hashmap.insert(*instance_id, rsp_tx.clone());
+    assert!(r.is_none());
+}
+
+pub fn rsp_tx_map_get(instance_id: &AnId) -> Option<Sender<BoxMsgAny>> {
+    let rlocked_hashmap = RSP_TX_HASHMAP.read().unwrap(); // TODO: remove unwrap
+    rlocked_hashmap.get(instance_id).cloned()
+}
 
 // State information
 #[derive(Debug)]
@@ -45,6 +62,7 @@ pub struct ConMgr {
     connection: Connection,
 
     vec_of_actor_bdlc: Vec<BiDirLocalChannel>,
+    //rsp_tx_by_instance_id: RwLock<HashMap<AnId, Sender<BoxMsgAny>>>,
     actors_map_by_instance_id: HashMap<AnId, usize>,
     actors_map_by_name: HashMap<String, Vec<usize>>,
     actors_map_by_id: HashMap<AnId, Vec<usize>>,
@@ -158,6 +176,8 @@ impl ConMgr {
         cm_pm.insert(connnect_protocol.id, connnect_protocol.clone());
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
+        println!("ConMgr::new({}): rsp_tx_hashmap={:?}", name, RSP_TX_HASHMAP);
+
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CON_MGR_ACTOR_ID,
@@ -211,9 +231,15 @@ impl ConMgr {
             .into());
         }
 
-        self.sender_to_actor_executor_map_by_actor_instance_id.insert(msg.instance_id, msg.actor_executor_tx.clone());
+        self.sender_to_actor_executor_map_by_actor_instance_id
+            .insert(msg.instance_id, msg.actor_executor_tx.clone());
 
         self.vec_of_actor_bdlc.push(msg.bdlc.clone());
+        rsp_tx_map_insert(&msg.instance_id, &msg.bdlc.tx);
+        println!(
+            "{}::add_actor: rsp_tx_hashmap_insert={:?}",
+            self.name, RSP_TX_HASHMAP
+        );
 
         self.add_map_by_name(idx, &msg.name);
         self.add_map_by_id(idx, &msg.id);
@@ -306,7 +332,10 @@ impl ConMgr {
                 .send_rsp(Box::new(ConMgrRegisterActorRsp::new(status)))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
-            println!("{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!", self.name);
+            println!(
+                "{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!",
+                self.name
+            );
             assert_eq!(msg.header.msg_id, CON_MGR_QUERY_REQ_ID);
             context
                 .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
@@ -398,7 +427,7 @@ mod test {
 
         let context = Context {
             actor_executor_tx: their_bdlc_with_us.tx.clone(), // Unused
-            con_mgr_tx: their_bdlc_with_us.tx.clone(), // Unused
+            con_mgr_tx: their_bdlc_with_us.tx.clone(),        // Unused
             their_bdlc_with_us: their_bdlc_with_us.clone(),
             rsp_tx: our_bdlc_with_them.tx.clone(),
         };
