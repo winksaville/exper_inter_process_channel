@@ -21,23 +21,18 @@ pub struct MsgHeader {
 impl Default for MsgHeader {
     fn default() -> Self {
         println!("MsgHeader::Default::default");
-        MsgHeader::default()
+        Self::new(AnId::new(), None)
     }
 }
 
 impl MsgHeader {
-    pub fn default() -> Self {
-        println!("MsgHeader::default");
-        Self::new(AnId::new(), None)
-    }
-
     pub fn new(msg_id: AnId, src_id: Option<AnId>) -> Self {
-        println!("MsgHeader::new");
+        //println!("MsgHeader::new");
         Self { msg_id, src_id }
     }
 
     pub fn new_msg_id_only(msg_id: AnId) -> Self {
-        println!("MsgHeader::new_msg_id_only");
+        //println!("MsgHeader::new_msg_id_only");
         Self::new(msg_id, None)
     }
 
