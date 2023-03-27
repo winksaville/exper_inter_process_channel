@@ -35,6 +35,7 @@ msg_local_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
 
 impl ConMgrRegisterActorReq {
     pub fn new(
+        src_id: &AnId,
         name: &str,
         id: &AnId,
         instance_id: &AnId,
@@ -43,7 +44,7 @@ impl ConMgrRegisterActorReq {
         actor_executor_tx: &Sender<BoxMsgAny>,
     ) -> Self {
         Self {
-            header: MsgHeader::new_msg_id_only(CON_MGR_REGISTER_ACTOR_REQ_ID),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, Some(*src_id)),
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
@@ -68,9 +69,9 @@ msg_local_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
 });
 
 impl ConMgrRegisterActorRsp {
-    pub fn new(status: ConMgrRegisterActorStatus) -> Self {
+    pub fn new(src_id: &AnId, status: ConMgrRegisterActorStatus) -> Self {
         Self {
-            header: MsgHeader::new_msg_id_only(CON_MGR_REGISTER_ACTOR_RSP_ID),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_RSP_ID, Some(*src_id)),
             status,
         }
     }
@@ -129,6 +130,7 @@ mod test {
 
     #[test]
     fn test_con_mgr_reg_actor_protocol_set() {
+        let a_src_id = AnId::new();
         let a_id = AnId::new();
         let a_instance_id = AnId::new();
         let a_protocol_set_id = AnId::new();
@@ -142,6 +144,7 @@ mod test {
         let (theirs, ours) = BiDirLocalChannel::new();
 
         let msg = ConMgrRegisterActorReq::new(
+            &a_src_id,
             "cmra1",
             &a_id,
             &a_instance_id,
@@ -152,6 +155,7 @@ mod test {
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
         assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg.header.src_id, Some(a_src_id));
         assert_eq!(msg.name, "cmra1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);

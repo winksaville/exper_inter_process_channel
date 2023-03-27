@@ -37,11 +37,25 @@ impl MsgHeader {
     }
 
     pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &AnId {
+        // TODO: Consider validating that the msg_header or AnId. One way 
+        // would be to have a "global" hashmap of valid values another
+        // way would be to add a "check-sum"?
         // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
-        let msg_id: &AnId = unsafe { msg.downcast_ref_unchecked() };
+        let mh: &MsgHeader = unsafe { msg.downcast_ref_unchecked() };
 
-        msg_id
+        &mh.msg_id
     }
+
+    pub fn get_src_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &Option<AnId> {
+        // TODO: Consider validating that the msg_header or AnId. One way 
+        // would be to have a "global" hashmap of valid values another
+        // way would be to add a "check-sum"?
+        // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+        let mh: &MsgHeader = unsafe { msg.downcast_ref_unchecked() };
+
+        &mh.src_id
+    }
+
 
     pub fn simple_display(&self) -> String {
         let s: String = if let Some(sid) = self.src_id { sid.to_string()[0..8].to_string() } else { "None".to_string() };

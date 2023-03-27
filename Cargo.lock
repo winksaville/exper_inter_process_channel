@@ -31,20 +31,39 @@ version = "0.1.0"
 dependencies = [
  "actor",
  "actor_bi_dir_channel",
+ "actor_executor_protocol",
+ "an_id",
  "client",
  "cmd_done",
  "cmd_init_protocol",
  "con_mgr",
+ "con_mgr_connect_protocol",
+ "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
  "echo_start_complete_protocol",
  "msg_header",
+ "protocol",
  "protocol_set",
  "req_add_actor",
  "req_their_bi_dir_channel",
  "rsp_add_actor",
  "rsp_their_bi_dir_channel",
  "server",
+ "uuid",
+]
+
+[[package]]
+name = "actor_executor_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "req_add_actor",
+ "rsp_add_actor",
+ "uuid",
 ]
 
 [[package]]
@@ -477,6 +496,7 @@ dependencies = [
  "actor",
  "actor_bi_dir_channel",
  "actor_executor",
+ "actor_executor_protocol",
  "an_id",
  "client",
  "cmd_done",

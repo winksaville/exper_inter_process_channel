@@ -175,7 +175,7 @@ impl Client {
             self.ping_count * 2
         );
         if counter <= self.ping_count {
-            let req_msg = Box::new(EchoReq::new(counter));
+            let req_msg = Box::new(EchoReq::new(&self.instance_id, counter));
             println!(
                 "{}:send_echo_req_or_complete:- to partner_tx msg={req_msg:?}",
                 self.name
@@ -213,7 +213,7 @@ impl Client {
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
             assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
-            let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
+            let rsp_msg = Box::new(EchoRsp::new(&self.instance_id, msg.req_timestamp_ns, msg.counter));
             println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
@@ -253,6 +253,7 @@ impl Client {
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
+                &self.instance_id,
                 &self.name,
                 &self.actor_id,
                 &self.instance_id,
@@ -323,6 +324,8 @@ mod test {
 
     #[test]
     fn test_cmd_init() {
+        let supervisor_instance_id = AnId::new();
+
         let (client_bdlc, test_cmd_init_bdlc) = BiDirLocalChannel::new();
 
         // Both con_mgr_tx and rsp_tx are "this" test
@@ -345,6 +348,7 @@ mod test {
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
+            &supervisor_instance_id,
             ConMgrRegisterActorStatus::Success,
         ));
         client.process_msg_any(&client_context, msg);
@@ -363,6 +367,7 @@ mod test {
     #[test]
     fn test_bi_dir_local_channel() {
         println!("test_bi_dir_local_channel:");
+        let supervisor_instance_id = AnId::new();
 
         // BiDirLocalChannel between ctrl and clnt
         let (ctrl_with_clnt, clnt_with_ctrl) = BiDirLocalChannel::new();
@@ -405,6 +410,7 @@ mod test {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
             assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
             let msg = Box::new(ConMgrRegisterActorRsp::new(
+                &supervisor_instance_id,
                 ConMgrRegisterActorStatus::Success,
             ));
             client.process_msg_any(&ctrl_with_clnt_context, msg);
@@ -445,7 +451,7 @@ mod test {
                 println!("test_bi_dir_local_channel: received req_msg={req_msg:?}");
 
                 // Server creates and sends rsp message
-                let rsp_msg = Box::new(EchoRsp::new(Utc::now().timestamp_nanos(), req_msg.counter));
+                let rsp_msg = Box::new(EchoRsp::new(&test_instance_id, Utc::now().timestamp_nanos(), req_msg.counter));
                 srvr_with_clnt.send(rsp_msg).unwrap();
 
                 // Client receives and processes rsp message from server

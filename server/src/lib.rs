@@ -142,9 +142,9 @@ impl Server {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
-            //println!("{}:State0: msg={msg:?}", self.name);
-            let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
-            //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
+            println!("{}:State0: msg={msg:?}", self.name);
+            let rsp_msg = Box::new(EchoRsp::new(&self.instance_id, msg.req_timestamp_ns, msg.counter));
+            println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -152,6 +152,7 @@ impl Server {
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
+                &self.instance_id,
                 &self.name,
                 &self.actor_id,
                 &self.instance_id,
@@ -159,6 +160,7 @@ impl Server {
                 &context.their_bdlc_with_us(),
                 context.actor_executor_tx(),
             ));
+            print!("{}:State0: sending ConMgrRegisterActorReq={msg:?}", self.name);
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -218,6 +220,9 @@ mod test {
 
     #[test]
     fn test_1() {
+        let supervisor_instance_id = AnId::new();
+        //let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+
         let (server_bdlc, test_1_bdlc) = BiDirLocalChannel::new();
 
         // Both con_mgr_tx and rsp_tx are "this" test
@@ -260,7 +265,7 @@ mod test {
             let now_ns = Utc::now().timestamp_nanos();
 
             // Create EchoReq and send it
-            let echo_req: BoxMsgAny = Box::new(EchoReq::new(1));
+            let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
             test_1_bdlc.tx.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
@@ -336,6 +341,8 @@ mod test {
 
     #[test]
     fn test_cmd_init() {
+        let supervisor_instance_id = AnId::new();
+
         let (server_bdlc, test_cmd_init_bdlc) = BiDirLocalChannel::new();
 
         // Both con_mgr_tx and rsp_tx are "this" test
@@ -358,6 +365,7 @@ mod test {
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
+            &supervisor_instance_id,
             ConMgrRegisterActorStatus::Success,
         ));
         server.process_msg_any(&server_context, msg);

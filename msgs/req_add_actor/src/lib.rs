@@ -1,20 +1,18 @@
 use actor::Actor;
-use crossbeam_channel::Sender;
-use msg_header::{BoxMsgAny, MsgHeader};
+use an_id::AnId;
+use msg_header::MsgHeader;
 use msg_local_macro::{msg_local_macro_not_cloneable, paste};
 
 // From: https://www.uuidgenerator.net/version4
 msg_local_macro_not_cloneable!(ReqAddActor "8cc2afb6-c71f-43ae-a278-affcce76ffdd" {
-    actor: Box<dyn Actor>,
-    rsp_tx: Sender<BoxMsgAny>
+    actor: Box<dyn Actor>
 });
 
 impl ReqAddActor {
-    pub fn new(actor: Box<dyn Actor>, rsp_tx: Sender<BoxMsgAny>) -> Self {
+    pub fn new(actor: Box<dyn Actor>, src_id: &AnId) -> Self {
         Self {
-            header: MsgHeader::new_msg_id_only(REQ_ADD_ACTOR_ID),
+            header: MsgHeader::new(REQ_ADD_ACTOR_ID, Some(*src_id)),
             actor,
-            rsp_tx,
         }
     }
 }

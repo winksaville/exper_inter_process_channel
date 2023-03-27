@@ -30,7 +30,7 @@ use once_cell::sync::Lazy;
 static RSP_TX_HASHMAP: Lazy<RwLock<HashMap<AnId, Sender<BoxMsgAny>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-pub fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) {
+fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) {
     let mut wlocked_hashmap = RSP_TX_HASHMAP.write().unwrap(); // TODO: remove unwrap
     let r = wlocked_hashmap.insert(*instance_id, rsp_tx.clone());
     assert!(r.is_none());
@@ -159,7 +159,10 @@ const CON_MGR_ACTOR_ID: AnId = anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833");
 const CON_MGR_PROTOCOL_SET_ID: AnId = anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb");
 
 impl ConMgr {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, supervisor_instance_id: &AnId, supervisor_tx: &Sender<BoxMsgAny>) -> Self {
+        // Add the supervisor_instance_id and supervisor_tx to rsp_tx_map
+        rsp_tx_map_insert(supervisor_instance_id, supervisor_tx);
+
         // Create the ConMgr ProtocolSet.
         println!("ConMgr::new({})", name);
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
@@ -328,9 +331,15 @@ impl ConMgr {
             } else {
                 ConMgrRegisterActorStatus::ActorAlreadyRegistered
             };
-            context
-                .send_rsp(Box::new(ConMgrRegisterActorRsp::new(status)))
-                .unwrap();
+
+            // Send response to the actor we just registered.
+            // We can't send it via context.send_rsp() because the
+            // actor wasn't registered when the context was created!
+            println!("Verify clone_rsp_tx is null");
+            assert!(context.clone_rsp_tx().is_none()); // TODO: maybe add context::is_rsp_tx_set()
+            println!("Sending ConMgrRegisterActorRsp");
+            let rsp_tx = rsp_tx_map_get(&msg.instance_id).unwrap();
+            rsp_tx.send(Box::new(ConMgrRegisterActorRsp::new(&self.instance_id, status))).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
             println!(
                 "{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!",
@@ -355,7 +364,7 @@ impl ConMgr {
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             //println!("{}:State0: msg={msg:?}", self.name);
             assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
-            let rsp_msg = Box::new(EchoRsp::new(msg.req_timestamp_ns, msg.counter));
+            let rsp_msg = Box::new(EchoRsp::new(&self.instance_id, msg.req_timestamp_ns, msg.counter));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
@@ -381,7 +390,7 @@ mod test {
     use con_mgr_register_actor_protocol::{
         CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID,
     };
-    use crossbeam_channel::Sender;
+    use crossbeam_channel::{Sender, unbounded};
     use echo_requestee_protocol::echo_requestee_protocol;
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;
@@ -422,8 +431,10 @@ mod test {
     #[test]
     fn test_1() {
         println!("\ntest_1:+");
-
         let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
+
+        let supervisor_instance_id = AnId::new();
+        let supervisor_tx = their_bdlc_with_us.clone_tx();
 
         let context = Context {
             actor_executor_tx: their_bdlc_with_us.tx.clone(), // Unused
@@ -431,7 +442,7 @@ mod test {
             their_bdlc_with_us: their_bdlc_with_us.clone(),
             rsp_tx: our_bdlc_with_them.tx.clone(),
         };
-        let mut conn_mgr = ConMgr::new("conn_mgr");
+        let mut conn_mgr = ConMgr::new("conn_mgr",  &supervisor_instance_id, &supervisor_tx);
         println!("test_1: conn_mgr={conn_mgr:?}");
 
         // Warm up reading time stamp
@@ -463,7 +474,7 @@ mod test {
             let now_ns = Utc::now().timestamp_nanos();
 
             // Create EchoReq and send it
-            let echo_req: BoxMsgAny = Box::new(EchoReq::new(1));
+            let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
             their_bdlc_with_us.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
@@ -542,12 +553,15 @@ mod test {
     fn test_reg_client_server() {
         println!("\ntest_reg_client_server:+");
 
-        // Create connection manager
-        let mut con_mgr = ConMgr::new("con_mgr");
-        println!("test_reg_client_server: conn_mgr={con_mgr:?}");
-
         let (con_mgr_bdlc, their_bdlc_with_con_mgr) = BiDirLocalChannel::new();
         let (client_bdlc, their_bdlc_with_client) = BiDirLocalChannel::new();
+
+        let supervisor_instance_id = AnId::new();
+        let (supervisor_tx, _supervisor_rx) = unbounded::<BoxMsgAny>();
+
+        // Create connection manager
+        let mut con_mgr = ConMgr::new("con_mgr", &supervisor_instance_id, &supervisor_tx);
+        println!("test_reg_client_server: conn_mgr={con_mgr:?}");
 
         let mut client = Client::new("client");
         println!("test_reg_client_server: client={client:?}");
@@ -560,7 +574,7 @@ mod test {
             actor_executor_tx: their_bdlc_with_con_mgr.tx.clone(),
             con_mgr_tx: their_bdlc_with_con_mgr.tx.clone(),
             their_bdlc_with_us: their_bdlc_with_client.clone(),
-            rsp_tx: their_bdlc_with_client.tx.clone(),
+            rsp_tx: supervisor_tx.clone(),
         };
         // Have the client process the CmdInit
         client.process_msg_any(&context, msg);

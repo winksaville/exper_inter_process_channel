@@ -1,20 +1,31 @@
-use std::thread::{self, JoinHandle};
+use std::{thread::{self, JoinHandle}, collections::HashMap};
 
 use actor::{Actor, ActorContext};
 use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel, Connection, VecConnection};
 
+use an_id::{AnId, paste, anid};
 use cmd_done::CmdDone;
 use cmd_init_protocol::CmdInit;
+use actor_executor_protocol::actor_executor_protocol;
+use con_mgr_connect_protocol::con_mgr_connect_protocol;
+use con_mgr_register_actor_protocol::con_mgr_register_actor_protocol;
+use con_mgr::rsp_tx_map_get;
 use crossbeam_channel::{Select, Sender};
 use msg_header::{BoxMsgAny, MsgHeader};
+use protocol::Protocol;
+use protocol_set::ProtocolSet;
 use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
 use rsp_add_actor::RspAddActor;
 use rsp_their_bi_dir_channel::RspTheirBiDirChannel;
 
+#[allow(unused)]
 #[derive(Debug)]
 struct ActorExecutor {
     pub name: String,
+    pub actor_id: AnId, // TODO: not used yet
+    pub instance_id: AnId,
+    pub protocol_set: ProtocolSet, // TODO: not used yet
     pub actor_vec: Vec<Box<dyn Actor>>,
     pub bi_dir_channels_vec: VecConnection,
     con_mgr_bdlc: BiDirLocalChannel,
@@ -25,7 +36,7 @@ struct Context {
     actor_executor_tx: Sender<BoxMsgAny>,
     con_mgr_tx: Sender<BoxMsgAny>,
     their_bdlc_with_us: BiDirLocalChannel,
-    rsp_tx: Sender<BoxMsgAny>,
+    rsp_tx: Option<Sender<BoxMsgAny>>,
 }
 
 impl ActorContext for Context {
@@ -42,17 +53,38 @@ impl ActorContext for Context {
     }
 
     fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        println!("ActorExecutor::send_self: Not implemented, just return Ok(())");
         Ok(())
     }
 
     fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(self.rsp_tx.send(msg)?)
+        match &self.rsp_tx {
+            Some(rsp_tx) => {
+                Ok(rsp_tx.send(msg)?)
+            }
+            None => {
+                println!("ActorExecutor::send_rsp: No response channel");
+                Err("None".into())
+            }
+        }
     }
 
     fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
-        Some(self.rsp_tx.clone())
+        match &self.rsp_tx {
+            Some(rsp_tx) => {
+                Some(rsp_tx.clone())
+            }
+            None => {
+                println!("ActorExecutor::clone_rsp_tx: No response channel");
+                None
+            }
+        }
     }
 }
+
+// From: https://www.uuidgenerator.net/version4
+const ACTOR_EXECUTOR_ACTOR_ID: AnId = anid!("5c3d6e86-5e19-4ad8-a397-f446bedef1bd");
+const ACTOR_EXECUTOR_PROTOCOL_SET_ID: AnId = anid!("09b50f0f-fb5d-4609-b657-0b1910d1d1dc");
 
 #[allow(unused)]
 impl ActorExecutor {
@@ -68,9 +100,27 @@ impl ActorExecutor {
         // Convert name to string so it can be moved into the thread
         let name = name.to_string();
 
+        // Create the ConMgr ProtocolSet.
+        println!("ConMgr::new({})", name);
+        let mut pm = HashMap::<AnId, Protocol>::new();
+        let ae_protocol = actor_executor_protocol();
+        pm.insert(ae_protocol.id, ae_protocol.clone());
+        let con_mgr_reg_actor_protocol = con_mgr_register_actor_protocol();
+        pm.insert(
+            con_mgr_reg_actor_protocol.id,
+            con_mgr_reg_actor_protocol.clone(),
+        );
+        let connnect_protocol = con_mgr_connect_protocol();
+        pm.insert(connnect_protocol.id, connnect_protocol.clone());
+        let ps_name = name.clone() + "_ps";
+        let ps = ProtocolSet::new(&ps_name, ACTOR_EXECUTOR_PROTOCOL_SET_ID, pm);
+
         let join_handle = thread::spawn(move || {
             let mut ae = Self {
                 name: name.to_string(),
+                actor_id: ACTOR_EXECUTOR_ACTOR_ID,
+                instance_id: AnId::new(),
+                protocol_set: ps,
                 actor_vec: Vec::new(),
                 bi_dir_channels_vec: VecConnection::new(),
                 con_mgr_bdlc,
@@ -122,11 +172,13 @@ impl ActorExecutor {
                                 selector.recv(bdlcs.our_bdlc_with_them.get_recv());
 
                                 // Send the response message with their_channel
-                                let msg_rsp = Box::new(RspAddActor::new(Box::new(
-                                    bdlcs.their_bdlc_with_us.clone(),
-                                )));
+                                let msg_rsp = Box::new(RspAddActor::new(
+                                    &ae.instance_id, // TODO: the ActorExecutor and it's instance_id need to be registered with the ConMgr
+                                    Box::new(bdlcs.their_bdlc_with_us.clone())
+                                ));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
-                                msg.rsp_tx.send(msg_rsp);
+                                let rsp_tx = rsp_tx_map_get(&msg.header.src_id.unwrap()).unwrap();
+                                rsp_tx.send(msg_rsp);
 
                                 // Issue a CmdInit
                                 let msg = Box::new(CmdInit::new());
@@ -179,6 +231,15 @@ impl ActorExecutor {
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
                         let cm = ae.con_mgr_bdlc.clone();
+                        let rsp_tx = match MsgHeader::get_src_id_from_boxed_msg_any(&msg_any) {
+                            Some(src_id) => {
+                                con_mgr::rsp_tx_map_get(src_id)
+                            }
+                            None => {
+                                println!("AE:{}: There is no src_id in msg_any header.msg_id={:?}", ae.name, MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any));
+                                None
+                            }
+                        };
                         let context = Context {
                             // TODO: All this cloning for each msg is slow, we need an array/hash of these Context's
                             actor_executor_tx: ae_actor_bi_dir_channels
@@ -187,7 +248,7 @@ impl ActorExecutor {
                                 .clone(),
                             con_mgr_tx: ae.con_mgr_bdlc.tx.clone(),
                             their_bdlc_with_us: bdlcs.their_bdlc_with_us.clone(),
-                            rsp_tx: bdlcs.our_bdlc_with_them.tx.clone(),
+                            rsp_tx,
                         };
                         actor.process_msg_any(&context, msg_any);
                         println!(
@@ -230,16 +291,18 @@ mod tests {
     //use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use msg_header::BoxMsgAny;
     use server::Server;
+    use an_id::AnId;
 
     use super::*;
 
     #[test]
     fn test_con_mgr_server() {
         println!("\ntest_con_mgr_server:+");
-        let (tx, rx) = unbounded::<BoxMsgAny>();
+        let supervisor_instance_id = AnId::new();
+        let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
 
         let con_mgr_name = "con_mgr";
-        let con_mgr = Box::new(ConMgr::new(con_mgr_name));
+        let con_mgr = Box::new(ConMgr::new(con_mgr_name, &supervisor_instance_id, &supervisor_tx));
 
         // Start an ActorExecutor
         let (aex1_join_handle, aex1_bdlc) =
@@ -247,10 +310,10 @@ mod tests {
         println!("test_con_mgr_server: aex1_bdlc={aex1_bdlc:?}");
 
         // Add con_mgr to ActorExecutor
-        let msg = Box::new(ReqAddActor::new(con_mgr, tx.clone()));
+        let msg = Box::new(ReqAddActor::new(con_mgr, &supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_server: sent {} to aex1", con_mgr_name);
-        let msg_any = rx.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
         println!("test_con_mgr_server: recvd rsp_add_actor={msg:?}");
 
@@ -258,21 +321,25 @@ mod tests {
         let s1_name = "server1";
         let s1 = Box::new(Server::new(s1_name));
         println!("test_con_mgr_server: create s1={s1:?}");
-        let msg = Box::new(ReqAddActor::new(s1, tx));
+        let msg = Box::new(ReqAddActor::new(s1, &supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_server: sent {} to aex1", s1_name);
-        let msg_any = rx.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
         println!("test_con_mgr_server: recvd rsp_add_actor={msg:?}");
 
         let s1_bdlc = &msg.bdlc;
 
+        // Waiting for Server to start, shouldn't have to do this :)
+        //println!("Waiting for Server to start, shouldn't have to do this :)");
+        //thread::sleep(Duration::from_millis(1000));
+
         println!("test_con_mgr_server: send EchoReq");
-        s1_bdlc.send(Box::new(EchoReq::new(1))).unwrap();
+        s1_bdlc.send(Box::new(EchoReq::new(&supervisor_instance_id, 1))).unwrap();
         println!("test_con_mgr_server: sent EchoReq");
 
         println!("test_con_mgr_server: wait EchoRsp");
-        let msg_any = s1_bdlc.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg_rsp = msg_any.downcast_ref::<EchoRsp>().unwrap();
         println!("test_con_mgr_server: recv EchoRsp={msg_rsp:?}");
         assert_eq!(msg_rsp.counter, 1);
@@ -292,10 +359,11 @@ mod tests {
     #[test]
     fn test_con_mgr_client_server() {
         println!("\ntest_con_mgr_client_server:+");
-        let (tx, rx) = unbounded::<BoxMsgAny>();
+        let supervisor_instance_id = AnId::new();
+        let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
 
         let con_mgr_name = "con_mgr";
-        let con_mgr = Box::new(ConMgr::new(con_mgr_name));
+        let con_mgr = Box::new(ConMgr::new(con_mgr_name, &supervisor_instance_id, &supervisor_tx));
 
         // Start an ActorExecutor
         let (aex1_join_handle, aex1_bdlc) =
@@ -303,10 +371,10 @@ mod tests {
         println!("test_con_mgr_client_server: aex1_bdlc={aex1_bdlc:?}");
 
         // Add con_mgr to ActorExecutor
-        let msg = Box::new(ReqAddActor::new(con_mgr, tx.clone()));
+        let msg = Box::new(ReqAddActor::new(con_mgr, &supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_client_server: sent {} to aex1", con_mgr_name);
-        let msg_any = rx.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
         println!("test_con_mgr_client_server: recvd rsp_add_actor={msg:?}");
 
@@ -315,10 +383,10 @@ mod tests {
         let c1 = Box::new(Client::new(c1_name));
         let c1_instance_id = c1.get_instance_id().clone();
         println!("test_con_mgr_client_server: {c1_instance_id} create c1={c1:?}");
-        let msg = Box::new(ReqAddActor::new(c1, tx.clone()));
+        let msg = Box::new(ReqAddActor::new(c1, &supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_client_server: sent {} to aex1", c1_name);
-        let msg_any = rx.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
         println!("test_con_mgr_client_server: recvd rsp_add_actor={msg:?}");
 
@@ -326,10 +394,10 @@ mod tests {
         let s1_name = "server1";
         let s1 = Box::new(Server::new(s1_name));
         println!("test_con_mgr_client_server: create s1={s1:?}");
-        let msg = Box::new(ReqAddActor::new(s1, tx.clone()));
+        let msg = Box::new(ReqAddActor::new(s1, &supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_client_server: sent {} to aex1", s1_name);
-        let msg_any = rx.recv().unwrap();
+        let msg_any = supervisor_rx.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
         println!("test_con_mgr_client_server: recvd rsp_add_actor={msg:?}");
 
@@ -358,7 +426,8 @@ mod tests {
         aex1_join_handle.join().unwrap();
         println!("test_con_mgr_client_server: join aex1 to completed");
 
-        drop(tx);
+        //drop(supervisor_tx);
+        //drop(supervisor_rx);
 
         println!("test_con_mgr_client_server:-");
     }
