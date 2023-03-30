@@ -12,7 +12,7 @@ msg_serde_macro!(EchoReq "ada0f9a9-b556-46ba-b3d5-d19c87ec216c" {
 impl EchoReq {
     pub fn new(src_id: &AnId, counter: u64) -> Self {
         Self {
-            header: MsgHeader::new(ECHO_REQ_ID, Some(src_id.clone())),
+            header: MsgHeader::new(ECHO_REQ_ID, Some(*src_id)),
             req_timestamp_ns: Utc::now().timestamp_nanos(),
             counter,
         }

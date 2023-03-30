@@ -23,6 +23,10 @@ pub trait ActorBiDirChannel {
     fn get_recv(&self) -> &Receiver<BoxMsgAny> {
         panic!("ActorBiDirChannel `fn get_recv` not implemented");
     }
+
+    fn get_sender(&self) -> &Sender<BoxMsgAny> {
+        panic!("ActorBiDirChannel `fn get_sender` not implemented");
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +66,10 @@ impl ActorBiDirChannel for BiDirLocalChannel {
 
     fn get_recv(&self) -> &Receiver<BoxMsgAny> {
         &self.rx
+    }
+
+    fn get_sender(&self) -> &Sender<BoxMsgAny> {
+        &self.tx
     }
 
     fn send_self(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {

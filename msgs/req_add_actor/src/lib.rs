@@ -9,7 +9,7 @@ msg_local_macro_not_cloneable!(ReqAddActor "8cc2afb6-c71f-43ae-a278-affcce76ffdd
 });
 
 impl ReqAddActor {
-    pub fn new(actor: Box<dyn Actor>, src_id: &AnId) -> Self {
+    pub fn new(src_id: &AnId, actor: Box<dyn Actor>) -> Self {
         Self {
             header: MsgHeader::new(REQ_ADD_ACTOR_ID, Some(*src_id)),
             actor,

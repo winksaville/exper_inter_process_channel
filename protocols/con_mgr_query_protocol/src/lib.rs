@@ -5,15 +5,11 @@
 //! for applicable actors using "name", "id", "protoocol"
 //! and/or "protocol_set" and then use ConMgrConnectReq with an instance_id
 //! retunred by ConMgrQueryRsp.
-use crossbeam_channel::Sender;
-
-use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
-use msg_header::{BoxMsgAny, MsgHeader};
+use msg_header::MsgHeader;
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
-use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4
 msg_local_macro!(ConMgrQueryReq "e5922aa5-9731-4379-813b-8cf5d0319d3d" {
@@ -72,52 +68,52 @@ pub fn con_mgr_query_protocol() -> &'static Protocol {
     &CON_MGR_QUERY_PROTOCOL
 }
 
-// From: https://www.uuidgenerator.net/version4
-msg_local_macro!(ConMgrConnectReq "94757aed-87bc-4b8a-bbd6-e4ac4ca04233" {
-    instance_id: AnId,
-    their_bdlc_with_us: BiDirLocalChannel
-});
-
-impl ConMgrConnectReq {
-    pub fn new(instance_id: &AnId, their_bdlc_with_us: &BiDirLocalChannel) -> Self {
-        Self {
-            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_REQ_ID),
-            instance_id: *instance_id,
-            their_bdlc_with_us: their_bdlc_with_us.clone(),
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub enum ConMgrConnectStatus {
-    Success,
-    Rejected,
-    ActorAlreadyConnected,
-    RejectedToManyConnections,
-}
-
-// From: https://www.uuidgenerator.net/version4
-msg_local_macro!(ConMgrConnectRsp "8d735bca-1be0-4c66-b52f-2a18bb310bcf" {
-    status: ConMgrConnectStatus,
-    partner_tx: Option<Sender<BoxMsgAny>>
-});
-
-impl ConMgrConnectRsp {
-    pub fn new(status: ConMgrConnectStatus, partner_tx: Option<Sender<BoxMsgAny>>) -> Self {
-        assert_eq!(status == ConMgrConnectStatus::Success, partner_tx.is_some());
-        Self {
-            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_RSP_ID),
-            status,
-            partner_tx,
-        }
-    }
-}
+//// From: https://www.uuidgenerator.net/version4
+//msg_local_macro!(ConMgrConnectReq "94757aed-87bc-4b8a-bbd6-e4ac4ca04233" {
+//    instance_id: AnId,
+//    their_bdlc_with_us: BiDirLocalChannel
+//});
+//
+//impl ConMgrConnectReq {
+//    pub fn new(instance_id: &AnId, their_bdlc_with_us: &BiDirLocalChannel) -> Self {
+//        Self {
+//            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_REQ_ID),
+//            instance_id: *instance_id,
+//            their_bdlc_with_us: their_bdlc_with_us.clone(),
+//        }
+//    }
+//}
+//
+//#[repr(C)]
+//#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+//pub enum ConMgrConnectStatus {
+//    Success,
+//    Rejected,
+//    ActorAlreadyConnected,
+//    RejectedToManyConnections,
+//}
+//
+//// From: https://www.uuidgenerator.net/version4
+//msg_local_macro!(ConMgrConnectRsp "8d735bca-1be0-4c66-b52f-2a18bb310bcf" {
+//    status: ConMgrConnectStatus,
+//    partner_tx: Option<Sender<BoxMsgAny>>
+//});
+//
+//impl ConMgrConnectRsp {
+//    pub fn new(status: ConMgrConnectStatus, partner_tx: Option<Sender<BoxMsgAny>>) -> Self {
+//        assert_eq!(status == ConMgrConnectStatus::Success, partner_tx.is_some());
+//        Self {
+//            header: MsgHeader::new_msg_id_only(CON_MGR_CONNECT_RSP_ID),
+//            status,
+//            partner_tx,
+//        }
+//    }
+//}
 
 static CON_MGR_CONNECT_PROTOCOL_MESSAGES: Lazy<Vec<AnId>> = Lazy::new(|| {
     vec![
-        CON_MGR_CONNECT_REQ_ID,
-        CON_MGR_CONNECT_RSP_ID,
+        //CON_MGR_CONNECT_REQ_ID,
+        //CON_MGR_CONNECT_RSP_ID,
         CON_MGR_QUERY_REQ_ID,
         CON_MGR_QUERY_RSP_ID,
     ]

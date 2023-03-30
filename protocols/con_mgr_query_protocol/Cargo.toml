@@ -1,5 +1,5 @@
 [package]
-name = "con_mgr_connect_protocol"
+name = "con_mgr_query_protocol"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -27,4 +27,3 @@ crossbeam-channel = "0.5.7"
 [dev-dependencies]
 protocol = { version = "0.1.0", path = "../../protocol" }
 echo_requestee_protocol = { version = "0.1.0", path = "../echo_requestee_protocol" }
-

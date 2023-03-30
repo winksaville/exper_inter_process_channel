@@ -13,7 +13,7 @@ msg_serde_macro!(EchoRsp "8206e26f-a69d-4875-8a85-0cfb636ca7c2" {
 impl EchoRsp {
     pub fn new(src_id: &AnId, req_timestamp: i64, counter: u64) -> Self {
         Self {
-            header: MsgHeader::new(ECHO_RSP_ID, Some(src_id.clone())),
+            header: MsgHeader::new(ECHO_RSP_ID, Some(*src_id)),
             req_timestamp_ns: req_timestamp,
             counter,
             rsp_timestamp_ns: Utc::now().timestamp_nanos(),

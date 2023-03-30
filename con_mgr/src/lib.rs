@@ -4,10 +4,7 @@ use std::{error::Error, sync::RwLock};
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
-use con_mgr_connect_protocol::{
-    con_mgr_connect_protocol, ConMgrConnectReq, ConMgrQueryReq, ConMgrQueryRsp,
-    CON_MGR_CONNECT_REQ_ID, CON_MGR_QUERY_REQ_ID,
-};
+use con_mgr_query_protocol::{CON_MGR_QUERY_REQ_ID, ConMgrQueryRsp, ConMgrQueryReq};
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
     ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
@@ -27,19 +24,33 @@ use msg_header::{BoxMsgAny, MsgHeader};
 
 use once_cell::sync::Lazy;
 
+// ------------------------------------------------------------------------------------------------
+// TODO: Move these to their own package as we're using it from multiple places.
+// ATM rsp_tx_map_insert is invoked here and in ActorExecutor. This sovled a
+// problem were supervisors try to send messages to actors that have not yet
+// been registered with the ConMgr. See in ActorExecutor::start_actor:
+//   "TODO: This is ugly, I'm adding the actors sender to rsp_tx_map,"
 static RSP_TX_HASHMAP: Lazy<RwLock<HashMap<AnId, Sender<BoxMsgAny>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
-fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) {
+// Add the sender to the response channel map.
+// 
+// This is thread safe and but only one sender is added per instance_id
+// additional invocations will be ignored.
+pub fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) { // TODO: rename sender_map_insert?
     let mut wlocked_hashmap = RSP_TX_HASHMAP.write().unwrap(); // TODO: remove unwrap
-    let r = wlocked_hashmap.insert(*instance_id, rsp_tx.clone());
-    assert!(r.is_none());
+    if !wlocked_hashmap.contains_key(instance_id) {
+        let r = wlocked_hashmap.insert(*instance_id, rsp_tx.clone());
+        assert!(r.is_none());
+    }
 }
 
-pub fn rsp_tx_map_get(instance_id: &AnId) -> Option<Sender<BoxMsgAny>> {
+// Get the sender from the response channel map.
+pub fn rsp_tx_map_get(instance_id: &AnId) -> Option<Sender<BoxMsgAny>> { // TODO: Rename sender_map_get?
     let rlocked_hashmap = RSP_TX_HASHMAP.read().unwrap(); // TODO: remove unwrap
     rlocked_hashmap.get(instance_id).cloned()
 }
+// ------------------------------------------------------------------------------------------------
 
 // State information
 #[derive(Debug)]
@@ -175,8 +186,6 @@ impl ConMgr {
             con_mgr_reg_actor_protoocl.id,
             con_mgr_reg_actor_protoocl.clone(),
         );
-        let connnect_protocol = con_mgr_connect_protocol();
-        cm_pm.insert(connnect_protocol.id, connnect_protocol.clone());
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
         println!("ConMgr::new({}): rsp_tx_hashmap={:?}", name, RSP_TX_HASHMAP);
@@ -333,12 +342,11 @@ impl ConMgr {
             };
 
             // Send response to the actor we just registered.
-            // We can't send it via context.send_rsp() because the
-            // actor wasn't registered when the context was created!
-            println!("Verify clone_rsp_tx is null");
-            assert!(context.clone_rsp_tx().is_none()); // TODO: maybe add context::is_rsp_tx_set()
+            // We don't send it via context.send_rsp() because the
+            // actor might not be registered when the context was created.
+            // TODO: Although, now it is because ActorExecutor has, but should we assume that?
             println!("Sending ConMgrRegisterActorRsp");
-            let rsp_tx = rsp_tx_map_get(&msg.instance_id).unwrap();
+            let rsp_tx = rsp_tx_map_get(&msg.instance_id).unwrap(); // We know it's there, add_actor() just added it.
             rsp_tx.send(Box::new(ConMgrRegisterActorRsp::new(&self.instance_id, status))).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
             println!(
@@ -346,18 +354,6 @@ impl ConMgr {
                 self.name
             );
             assert_eq!(msg.header.msg_id, CON_MGR_QUERY_REQ_ID);
-            context
-                .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
-                .unwrap();
-        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectReq>() {
-            println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CON_MGR_CONNECT_REQ_ID);
-
-            // Look up instance id and find what actor
-
-            // Forward the connect req to actors executor (AE) with and have the AE
-            // connect and respond to the requester.
-
             context
                 .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
                 .unwrap();

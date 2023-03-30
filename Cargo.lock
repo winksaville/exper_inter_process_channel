@@ -37,7 +37,7 @@ dependencies = [
  "cmd_done",
  "cmd_init_protocol",
  "con_mgr",
- "con_mgr_connect_protocol",
+ "con_mgr_query_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
@@ -147,7 +147,7 @@ dependencies = [
  "an_id",
  "chrono",
  "cmd_init_protocol",
- "con_mgr_connect_protocol",
+ "con_mgr",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
@@ -222,7 +222,7 @@ dependencies = [
  "chrono",
  "client",
  "cmd_init_protocol",
- "con_mgr_connect_protocol",
+ "con_mgr_query_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
@@ -237,7 +237,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "con_mgr_connect_protocol"
+name = "con_mgr_query_protocol"
 version = "0.1.0"
 dependencies = [
  "actor",
@@ -502,7 +502,7 @@ dependencies = [
  "cmd_done",
  "cmd_init_protocol",
  "con_mgr",
- "con_mgr_connect_protocol",
+ "con_mgr_query_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "custom_logger",

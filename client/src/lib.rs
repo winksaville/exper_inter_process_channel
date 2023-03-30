@@ -2,7 +2,7 @@ use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::Connection;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
-use con_mgr_connect_protocol::{ConMgrConnectReq, ConMgrConnectRsp, CON_MGR_CONNECT_RSP_ID, ConMgrConnectStatus};
+use con_mgr::rsp_tx_map_get;
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
@@ -199,12 +199,6 @@ impl Client {
         }
     }
 
-    fn send_con_mgr_connect_req(&mut self, context: &dyn ActorContext, instance_id: &AnId) {
-        let msg = Box::new(ConMgrConnectReq::new( &instance_id, context.their_bdlc_with_us()));
-        println!("{}:send_con_mgr_req: instance_id={instance_id:?}", self.name);
-        context.send_con_mgr(msg).unwrap();
-    }
-
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoRsp>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -221,24 +215,16 @@ impl Client {
             assert_eq!(msg.header.msg_id, ECHO_START_ID);
             if let Some(tx) = context.clone_rsp_tx() {
                 self.partner_instance_id = Some(msg.partner_instance_id.clone());
+                self.partner_tx =  rsp_tx_map_get(&self.partner_instance_id.unwrap());
                 self.controller_tx = Some(tx);
                 self.ping_count = msg.ping_count;
-                self.send_con_mgr_connect_req(context, &msg.partner_instance_id);
+                println!("{}:State0: Successfully connected to partner start echoing", self.name);
+                self.send_echo_req_or_complete(1);
             } else {
                 println!(
                     "{}:State0: Error no controller_tx, can't start msg={msg:?}",
                     self.name
                 );
-            }
-        } else if let Some(msg) = msg_any.downcast_ref::<ConMgrConnectRsp>() {
-            println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CON_MGR_CONNECT_RSP_ID);
-            if msg.status == ConMgrConnectStatus::Success {
-                println!("{}:State0: Successfully connected to partner start echoing", self.name);
-                self.partner_tx = msg.partner_tx.clone();
-                self.send_echo_req_or_complete(1);
-            } else {
-                println!("{}:State0: FAILED to connect to partner NO echoing, status: {:?}", self.name, msg.status);
             }
         } else if let Some(msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1 so our test passes :)
@@ -281,7 +267,6 @@ mod test {
     use super::*;
     use actor_bi_dir_channel::{ActorBiDirChannel, BiDirLocalChannel};
     use chrono::Utc;
-    use con_mgr_connect_protocol::CON_MGR_CONNECT_REQ_ID;
     use con_mgr_register_actor_protocol::{
         ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
     };
@@ -383,8 +368,6 @@ mod test {
 
         let mut client = Client::new("client");
 
-        let test_instance_id = AnId::new();
-
         for ping_count in [0, 1, 5] {
             let clnt_with_ctrl_context = Context {
                 actor_executor_tx: clnt_with_ctrl.tx.clone(),
@@ -417,27 +400,13 @@ mod test {
 
             // Controller sends EchoStart message to client
             println!("\ntest_bi_dir_local_channel: ping_count={ping_count}");
-            let start_msg = Box::new(EchoStart::new(&test_instance_id, ping_count));
+            let start_msg = Box::new(EchoStart::new(&supervisor_instance_id, &supervisor_instance_id, ping_count));
             ctrl_with_clnt.send(start_msg).unwrap();
 
             // Client receives EchoStart msg from control
             println!("test_bi_dir_local_channel: client process EchoStart");
             let start_msg_any = clnt_with_ctrl.recv().unwrap();
             client.process_msg_any(&clnt_with_ctrl_context, start_msg_any);
-
-            // Client requests con_mgr to connect to partner
-            println!("test_bi_dir_local_channel: client issues to con_mgr a ConMgrConnectReq");
-            let connect_req_msg_any = ctrl_with_clnt.recv().unwrap();
-            let connect_req_msg= connect_req_msg_any.downcast_ref::<ConMgrConnectReq>().unwrap();
-            assert_eq!(&CON_MGR_CONNECT_REQ_ID, MsgHeader::get_msg_id_from_boxed_msg_any(&connect_req_msg_any));
-            assert_eq!(connect_req_msg.instance_id, test_instance_id);
-
-            // ConMgr forwards the request to the actors associated executor who connects the partner to the client
-            // and the client receives the ConMgrConnectRsp
-            println!("test_bi_dir_local_channel: client receives a ConMgrConnectRsp");
-            let tx = clnt_with_srvr.clone_tx();
-            let msg = Box::new(ConMgrConnectRsp::new(ConMgrConnectStatus::Success, Some(tx)));
-            client.process_msg_any(&clnt_with_ctrl_context, msg);
 
             for i in 0..ping_count {
                 println!(
@@ -451,7 +420,7 @@ mod test {
                 println!("test_bi_dir_local_channel: received req_msg={req_msg:?}");
 
                 // Server creates and sends rsp message
-                let rsp_msg = Box::new(EchoRsp::new(&test_instance_id, Utc::now().timestamp_nanos(), req_msg.counter));
+                let rsp_msg = Box::new(EchoRsp::new(&supervisor_instance_id, Utc::now().timestamp_nanos(), req_msg.counter));
                 srvr_with_clnt.send(rsp_msg).unwrap();
 
                 // Client receives and processes rsp message from server
