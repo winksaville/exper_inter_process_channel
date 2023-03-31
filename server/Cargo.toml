@@ -20,3 +20,4 @@ an_id = { version = "0.1.0", path = "../an_id" }
 actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
 con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
+sender_map_by_instance_id = { version = "0.1.0", path = "../sender_map_by_instance_id" }

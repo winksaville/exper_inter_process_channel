@@ -9,6 +9,7 @@ use con_mgr_register_actor_protocol::{
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
+use sender_map_by_instance_id::sender_map_insert;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -122,6 +123,9 @@ impl Server {
             connection: Connection::new(),
         };
 
+        // Add ourself to the sender_map
+        sender_map_insert(&this.instance_id, &this.connection.their_bdlc_with_us.tx);
+
         this.add_state(Self::state0, "state0");
         this
     }
@@ -143,7 +147,11 @@ impl Server {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
             println!("{}:State0: msg={msg:?}", self.name);
-            let rsp_msg = Box::new(EchoRsp::new(&self.instance_id, msg.req_timestamp_ns, msg.counter));
+            let rsp_msg = Box::new(EchoRsp::new(
+                &self.instance_id,
+                msg.req_timestamp_ns,
+                msg.counter,
+            ));
             println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
@@ -157,10 +165,13 @@ impl Server {
                 &self.actor_id,
                 &self.instance_id,
                 &self.protocol_set,
-                &context.their_bdlc_with_us(),
+                context.their_bdlc_with_us(),
                 context.actor_executor_tx(),
             ));
-            print!("{}:State0: sending ConMgrRegisterActorReq={msg:?}", self.name);
+            print!(
+                "{}:State0: sending ConMgrRegisterActorReq={msg:?}",
+                self.name
+            );
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -220,16 +231,19 @@ mod test {
 
     #[test]
     fn test_1() {
-        let supervisor_instance_id = AnId::new();
-        //let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+        println!("\ntest_1:+");
 
-        let (server_bdlc, test_1_bdlc) = BiDirLocalChannel::new();
+        let (server_bdlc, supervisor_bdlc) = BiDirLocalChannel::new();
+
+        // Add supervisor to sender_map
+        let supervisor_instance_id = AnId::new();
+        sender_map_insert(&supervisor_instance_id, &supervisor_bdlc.tx);
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
             actor_executor_tx: server_bdlc.tx.clone(),
             con_mgr_tx: server_bdlc.tx.clone(),
-            their_bdlc_with_us: test_1_bdlc.clone(),
+            their_bdlc_with_us: supervisor_bdlc.clone(),
             rsp_tx: server_bdlc.tx.clone(),
         };
 
@@ -266,14 +280,14 @@ mod test {
 
             // Create EchoReq and send it
             let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
-            test_1_bdlc.tx.send(echo_req).unwrap();
+            supervisor_bdlc.tx.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
             let echo_req_any = server_bdlc.rx.recv().unwrap();
             server.process_msg_any(&server_context, echo_req_any);
 
             // Receive EchoRsp
-            let rsp_msg_any = test_1_bdlc.rx.recv().unwrap();
+            let rsp_msg_any = supervisor_bdlc.rx.recv().unwrap();
             let rsp_msg = rsp_msg_any.downcast_ref::<EchoRsp>().unwrap();
 
             // Mark done
@@ -337,19 +351,25 @@ mod test {
         println!("  t1 = {}ns", sum_t1 / avg_count);
         println!("  t2 = {}ns", sum_t2 / avg_count);
         println!(" rtt = {}ns", sum_rtt / avg_count);
+
+        println!("test_1:-");
     }
 
     #[test]
     fn test_cmd_init() {
-        let supervisor_instance_id = AnId::new();
+        println!("\ntest_cmd_init:+");
 
-        let (server_bdlc, test_cmd_init_bdlc) = BiDirLocalChannel::new();
+        let (server_bdlc, supervisor_bdlc) = BiDirLocalChannel::new();
+
+        // Add supervisor to sender_map
+        let supervisor_instance_id = AnId::new();
+        sender_map_insert(&supervisor_instance_id, &supervisor_bdlc.tx);
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
             actor_executor_tx: server_bdlc.tx.clone(),
             con_mgr_tx: server_bdlc.tx.clone(),
-            their_bdlc_with_us: test_cmd_init_bdlc.clone(),
+            their_bdlc_with_us: supervisor_bdlc.clone(),
             rsp_tx: server_bdlc.tx.clone(),
         };
 
@@ -361,7 +381,7 @@ mod test {
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
         // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
-        let con_mgr_msg_any = test_cmd_init_bdlc.rx.recv().unwrap();
+        let con_mgr_msg_any = supervisor_bdlc.rx.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
@@ -369,5 +389,7 @@ mod test {
             ConMgrRegisterActorStatus::Success,
         ));
         server.process_msg_any(&server_context, msg);
+
+        println!("test_cmd_init:-");
     }
 }

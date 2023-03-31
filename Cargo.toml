@@ -15,6 +15,7 @@ actor_bi_dir_channel = { path="actor_bi_dir_channel" }
 con_mgr = { path="con_mgr" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
+sender_map_by_instance_id = { path="sender_map_by_instance_id" }
 echo_start_complete_protocol = { path="protocols/echo_start_complete_protocol" }
 echo_requester_protocol = { path="protocols/echo_requester_protocol" }
 echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
@@ -54,6 +55,7 @@ members = [
     "con_mgr",
     "protocol_set",
     "protocol",
+    "sender_map_by_instance_id",
     "msg_header",
     "msg_serde_json",
     "msgs/msg1",

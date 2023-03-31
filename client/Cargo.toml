@@ -25,6 +25,7 @@ cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol"
 con_mgr = { version = "0.1.0", path = "../con_mgr" }
 con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
 actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
+sender_map_by_instance_id = { version = "0.1.0", path = "../sender_map_by_instance_id" }
 
 [dev-dependencies]
 actor_bi_dir_channel = { path = "../actor_bi_dir_channel" }

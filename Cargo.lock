@@ -49,6 +49,7 @@ dependencies = [
  "req_their_bi_dir_channel",
  "rsp_add_actor",
  "rsp_their_bi_dir_channel",
+ "sender_map_by_instance_id",
  "server",
  "uuid",
 ]
@@ -158,6 +159,7 @@ dependencies = [
  "msg_header",
  "protocol",
  "protocol_set",
+ "sender_map_by_instance_id",
  "server",
  "uuid",
 ]
@@ -232,6 +234,7 @@ dependencies = [
  "once_cell",
  "protocol",
  "protocol_set",
+ "sender_map_by_instance_id",
  "server",
  "uuid",
 ]
@@ -525,6 +528,7 @@ dependencies = [
  "req_their_bi_dir_channel",
  "rsp_add_actor",
  "rsp_their_bi_dir_channel",
+ "sender_map_by_instance_id",
  "serde",
  "serde_json",
  "server",
@@ -986,6 +990,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddccb15bcce173023b3fedd9436f882a0739b8dfb45e4f6b6002bee5929f61b2"
 
 [[package]]
+name = "sender_map_by_instance_id"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_bi_dir_channel",
+ "an_id",
+ "chrono",
+ "client",
+ "cmd_init_protocol",
+ "con_mgr_query_protocol",
+ "con_mgr_register_actor_protocol",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "echo_requester_protocol",
+ "echo_start_complete_protocol",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "protocol_set",
+ "server",
+ "uuid",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.154"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1031,6 +1059,7 @@ dependencies = [
  "msg_header",
  "protocol",
  "protocol_set",
+ "sender_map_by_instance_id",
  "uuid",
 ]
 

@@ -1,5 +1,5 @@
 //! Connection Manager
-use std::{error::Error, sync::RwLock};
+use std::error::Error;
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
@@ -15,42 +15,13 @@ use crossbeam_channel::Sender;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
+use sender_map_by_instance_id::sender_map_insert;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
 };
 
 use msg_header::{BoxMsgAny, MsgHeader};
-
-use once_cell::sync::Lazy;
-
-// ------------------------------------------------------------------------------------------------
-// TODO: Move these to their own package as we're using it from multiple places.
-// ATM rsp_tx_map_insert is invoked here and in ActorExecutor. This sovled a
-// problem were supervisors try to send messages to actors that have not yet
-// been registered with the ConMgr. See in ActorExecutor::start_actor:
-//   "TODO: This is ugly, I'm adding the actors sender to rsp_tx_map,"
-static RSP_TX_HASHMAP: Lazy<RwLock<HashMap<AnId, Sender<BoxMsgAny>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
-// Add the sender to the response channel map.
-// 
-// This is thread safe and but only one sender is added per instance_id
-// additional invocations will be ignored.
-pub fn rsp_tx_map_insert(instance_id: &AnId, rsp_tx: &Sender<BoxMsgAny>) { // TODO: rename sender_map_insert?
-    let mut wlocked_hashmap = RSP_TX_HASHMAP.write().unwrap(); // TODO: remove unwrap
-    if !wlocked_hashmap.contains_key(instance_id) {
-        let r = wlocked_hashmap.insert(*instance_id, rsp_tx.clone());
-        assert!(r.is_none());
-    }
-}
-
-// Get the sender from the response channel map.
-pub fn rsp_tx_map_get(instance_id: &AnId) -> Option<Sender<BoxMsgAny>> { // TODO: Rename sender_map_get?
-    let rlocked_hashmap = RSP_TX_HASHMAP.read().unwrap(); // TODO: remove unwrap
-    rlocked_hashmap.get(instance_id).cloned()
-}
-// ------------------------------------------------------------------------------------------------
 
 // State information
 #[derive(Debug)]
@@ -170,10 +141,7 @@ const CON_MGR_ACTOR_ID: AnId = anid!("3f82508e-7970-44e9-8fb9-b7936c9c4833");
 const CON_MGR_PROTOCOL_SET_ID: AnId = anid!("ea140384-faa7-4599-9f7d-dd4c2380a5fb");
 
 impl ConMgr {
-    pub fn new(name: &str, supervisor_instance_id: &AnId, supervisor_tx: &Sender<BoxMsgAny>) -> Self {
-        // Add the supervisor_instance_id and supervisor_tx to rsp_tx_map
-        rsp_tx_map_insert(supervisor_instance_id, supervisor_tx);
-
+    pub fn new(name: &str) -> Self {
         // Create the ConMgr ProtocolSet.
         println!("ConMgr::new({})", name);
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
@@ -188,7 +156,7 @@ impl ConMgr {
         );
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
-        println!("ConMgr::new({}): rsp_tx_hashmap={:?}", name, RSP_TX_HASHMAP);
+        println!("ConMgr::new({}):", name);
 
         let mut this = Self {
             name: name.to_owned(),
@@ -206,6 +174,9 @@ impl ConMgr {
             actors_map_by_protocol_set_id: HashMap::new(),
             sender_to_actor_executor_map_by_actor_instance_id: HashMap::new(),
         };
+
+        // Add ourself to the sender_map
+        sender_map_insert(&this.instance_id, &this.connection.their_bdlc_with_us.tx);
 
         this.add_state(Self::state0, "state0");
         this
@@ -247,11 +218,6 @@ impl ConMgr {
             .insert(msg.instance_id, msg.actor_executor_tx.clone());
 
         self.vec_of_actor_bdlc.push(msg.bdlc.clone());
-        rsp_tx_map_insert(&msg.instance_id, &msg.bdlc.tx);
-        println!(
-            "{}::add_actor: rsp_tx_hashmap_insert={:?}",
-            self.name, RSP_TX_HASHMAP
-        );
 
         self.add_map_by_name(idx, &msg.name);
         self.add_map_by_id(idx, &msg.id);
@@ -341,13 +307,8 @@ impl ConMgr {
                 ConMgrRegisterActorStatus::ActorAlreadyRegistered
             };
 
-            // Send response to the actor we just registered.
-            // We don't send it via context.send_rsp() because the
-            // actor might not be registered when the context was created.
-            // TODO: Although, now it is because ActorExecutor has, but should we assume that?
             println!("Sending ConMgrRegisterActorRsp");
-            let rsp_tx = rsp_tx_map_get(&msg.instance_id).unwrap(); // We know it's there, add_actor() just added it.
-            rsp_tx.send(Box::new(ConMgrRegisterActorRsp::new(&self.instance_id, status))).unwrap();
+            context.send_rsp(Box::new(ConMgrRegisterActorRsp::new(&self.instance_id, status))).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
             println!(
                 "{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!",
@@ -429,8 +390,10 @@ mod test {
         println!("\ntest_1:+");
         let (their_bdlc_with_us, our_bdlc_with_them) = BiDirLocalChannel::new();
 
+        // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
         let supervisor_tx = their_bdlc_with_us.clone_tx();
+        sender_map_insert(&supervisor_instance_id, &supervisor_tx);
 
         let context = Context {
             actor_executor_tx: their_bdlc_with_us.tx.clone(), // Unused
@@ -438,7 +401,7 @@ mod test {
             their_bdlc_with_us: their_bdlc_with_us.clone(),
             rsp_tx: our_bdlc_with_them.tx.clone(),
         };
-        let mut conn_mgr = ConMgr::new("conn_mgr",  &supervisor_instance_id, &supervisor_tx);
+        let mut conn_mgr = ConMgr::new("conn_mgr");
         println!("test_1: conn_mgr={conn_mgr:?}");
 
         // Warm up reading time stamp
@@ -554,9 +517,10 @@ mod test {
 
         let supervisor_instance_id = AnId::new();
         let (supervisor_tx, _supervisor_rx) = unbounded::<BoxMsgAny>();
+        sender_map_insert(&supervisor_instance_id, &supervisor_tx);
 
         // Create connection manager
-        let mut con_mgr = ConMgr::new("con_mgr", &supervisor_instance_id, &supervisor_tx);
+        let mut con_mgr = ConMgr::new("con_mgr");
         println!("test_reg_client_server: conn_mgr={con_mgr:?}");
 
         let mut client = Client::new("client");

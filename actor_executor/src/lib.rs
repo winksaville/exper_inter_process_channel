@@ -10,7 +10,6 @@ use actor_executor_protocol::actor_executor_protocol;
 use an_id::{anid, paste, AnId};
 use cmd_done::CmdDone;
 use cmd_init_protocol::CmdInit;
-use con_mgr::{rsp_tx_map_get, rsp_tx_map_insert};
 use con_mgr_query_protocol::con_mgr_query_protocol;
 use con_mgr_register_actor_protocol::con_mgr_register_actor_protocol;
 use crossbeam_channel::{Select, Sender};
@@ -21,6 +20,7 @@ use req_add_actor::ReqAddActor;
 use req_their_bi_dir_channel::ReqTheirBiDirChannel;
 use rsp_add_actor::RspAddActor;
 use rsp_their_bi_dir_channel::RspTheirBiDirChannel;
+use sender_map_by_instance_id::{sender_map_get, sender_map_insert};
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -127,6 +127,12 @@ impl ActorExecutor {
             };
             println!("AE:{}:+", ae.name);
 
+            // Add our self to the sender map
+            sender_map_insert(
+                &ae.instance_id,
+                &ae_actor_bi_dir_channels.their_bdlc_with_us.tx,
+            );
+
             let mut selector = Select::new();
             let oper_idx = selector.recv(ae_actor_bi_dir_channels.our_bdlc_with_them.get_recv());
             assert_eq!(oper_idx, 0);
@@ -167,20 +173,6 @@ impl ActorExecutor {
                                 // Get a reference to the actors bdlcs
                                 let bdlcs = ae.bi_dir_channels_vec.get(actor_idx);
 
-                                // TODO: This is ugly, I'm adding the actors sender to rsp_tx_map,
-                                // we do this so messages can be sent to the actor before the actor
-                                // registers with the ConMgr. If I don't do this we'd have to add
-                                // another message for someone (con_mgr or the actor we're registering)
-                                // to send a message to us that registering was complete. Alternatively,
-                                // we could have the entity regeristing (supervisor) wait message from
-                                // the actor it's regisistering and put the responsibility on it not
-                                // to send messages until actors are registered. This seems more reasonable,
-                                // but since invoking rsp_tx_map_insert is so easy, I'm going to do it for now.
-                                rsp_tx_map_insert(
-                                    ae.actor_vec[actor_idx].get_instance_id(),
-                                    bdlcs.their_bdlc_with_us.get_sender(),
-                                );
-
                                 // Add the actors bdlcs to the selector
                                 println!("AE:{}: selector.recv(our_channel.get_recv())", ae.name);
                                 selector.recv(bdlcs.our_bdlc_with_them.get_recv());
@@ -191,7 +183,7 @@ impl ActorExecutor {
                                     Box::new(bdlcs.their_bdlc_with_us.clone()),
                                 ));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
-                                let rsp_tx = rsp_tx_map_get(&msg.header.src_id.unwrap()).unwrap();
+                                let rsp_tx = sender_map_get(&msg.header.src_id.unwrap()).unwrap();
                                 rsp_tx.send(msg_rsp);
 
                                 // Issue a CmdInit
@@ -246,7 +238,7 @@ impl ActorExecutor {
                         );
                         let cm = ae.con_mgr_bdlc.clone();
                         let rsp_tx = match MsgHeader::get_src_id_from_boxed_msg_any(&msg_any) {
-                            Some(src_id) => con_mgr::rsp_tx_map_get(src_id),
+                            Some(src_id) => sender_map_get(src_id),
                             None => {
                                 println!(
                                     "AE:{}: There is no src_id in msg_any header.msg_id={:?}",
@@ -297,14 +289,13 @@ impl ActorExecutor {
 
 #[cfg(test)]
 mod tests {
+    use an_id::AnId;
     use client::Client;
     use cmd_done::CmdDone;
     use con_mgr::ConMgr;
     use crossbeam_channel::unbounded;
     use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
-    //use echo_start_complete_protocol::{EchoComplete, EchoStart};
-    use an_id::AnId;
     use msg_header::BoxMsgAny;
     use server::Server;
 
@@ -313,15 +304,14 @@ mod tests {
     #[test]
     fn test_con_mgr_server() {
         println!("\ntest_con_mgr_server:+");
+
+        // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
         let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+        sender_map_insert(&supervisor_instance_id, &supervisor_tx);
 
         let con_mgr_name = "con_mgr";
-        let con_mgr = Box::new(ConMgr::new(
-            con_mgr_name,
-            &supervisor_instance_id,
-            &supervisor_tx,
-        ));
+        let con_mgr = Box::new(ConMgr::new(con_mgr_name));
 
         // Start an ActorExecutor
         let (aex1_join_handle, aex1_bdlc) =
@@ -378,13 +368,10 @@ mod tests {
         println!("\ntest_con_mgr_client_server:+");
         let supervisor_instance_id = AnId::new();
         let (supervisor_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+        sender_map_insert(&supervisor_instance_id, &supervisor_tx);
 
         let con_mgr_name = "con_mgr";
-        let con_mgr = Box::new(ConMgr::new(
-            con_mgr_name,
-            &supervisor_instance_id,
-            &supervisor_tx,
-        ));
+        let con_mgr = Box::new(ConMgr::new(con_mgr_name));
 
         // Start an ActorExecutor
         let (aex1_join_handle, aex1_bdlc) =
@@ -425,7 +412,7 @@ mod tests {
 
         // Send EchoStart to c1
         println!("test_con_mgr_client_server: send EchoStart");
-        let c1_tx = match rsp_tx_map_get(&c1_instance_id) {
+        let c1_tx = match sender_map_get(&c1_instance_id) {
             Some(tx) => tx,
             None => {
                 println!("test_con_mgr_client_server: c1_tx not found");
