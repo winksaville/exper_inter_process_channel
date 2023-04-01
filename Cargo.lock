@@ -20,6 +20,7 @@ dependencies = [
 name = "actor_bi_dir_channel"
 version = "0.1.0"
 dependencies = [
+ "an_id",
  "crossbeam-channel",
  "msg1",
  "msg_header",

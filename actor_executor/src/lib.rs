@@ -187,7 +187,7 @@ impl ActorExecutor {
                                 rsp_tx.send(msg_rsp);
 
                                 // Issue a CmdInit
-                                let msg = Box::new(CmdInit::new());
+                                let msg = Box::new(CmdInit::new(&ae.instance_id));
                                 bdlcs.our_bdlc_with_them.self_tx.send(msg).unwrap(); // TODO: Ignore error on release builds so we don't panic?
 
                                 println!(
@@ -203,9 +203,10 @@ impl ActorExecutor {
                                 println!("AE:{}: msg={msg:?}", ae.name);
                                 let connection = ae.bi_dir_channels_vec.get(msg.handle);
                                 let their_bdlc_with_us = connection.their_bdlc_with_us.clone();
-                                let msg_rsp = Box::new(RspTheirBiDirChannel::new(Box::new(
-                                    their_bdlc_with_us,
-                                )));
+                                let msg_rsp = Box::new(RspTheirBiDirChannel::new(
+                                    &ae.instance_id,
+                                    Box::new(their_bdlc_with_us),
+                                ));
 
                                 // send msg_rsp
                                 println!("AE:{}: send msg_rsp={msg_rsp:?}", ae.name);
@@ -352,7 +353,7 @@ mod tests {
         assert_eq!(msg_rsp.counter, 1);
 
         println!("test_con_mgr_server: send CmdDone");
-        let msg = Box::new(CmdDone::new());
+        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_server: sent CmdDone");
 
@@ -439,7 +440,7 @@ mod tests {
         println!("test_con_mgr_client_server: recv EchoComplete={msg_rsp:?}");
 
         println!("test_con_mgr_client_server: send CmdDone");
-        let msg = Box::new(CmdDone::new());
+        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
         aex1_bdlc.send(msg).unwrap();
         println!("test_con_mgr_client_server: sent CmdDone");
 

@@ -192,7 +192,8 @@ impl Client {
                 );
             }
         } else if let Some(tx) = &self.controller_tx {
-            tx.send(Box::new(EchoComplete::new())).unwrap();
+            tx.send(Box::new(EchoComplete::new(&self.instance_id)))
+                .unwrap();
             println!(
                 "{}:send_echo_req_or_complete:- send Complete to controller_tx",
                 self.name
@@ -237,11 +238,9 @@ impl Client {
                 );
             }
         } else if let Some(msg) = msg_any.downcast_ref::<Msg2>() {
-            // Got a Msg2 so self send a Msg1 so our test passes :)
+            // Got a Msg2 so self send a Msg1
             println!("{}:State0: {msg:?}", self.name);
-            let msg1 = Box::<Msg1>::default();
-
-            //self.self_tx.as_ref().unwrap().send(msg1).unwrap();
+            let msg1 = Box::new(Msg1::new(&self.instance_id, 123));
             context.send_rsp(msg1).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
@@ -340,7 +339,7 @@ mod test {
         let mut client = Client::new("client");
 
         // First message must be CmdInit and client send
-        let msg = Box::new(CmdInit::new());
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
         client.process_msg_any(&client_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
@@ -355,7 +354,7 @@ mod test {
         client.process_msg_any(&client_context, msg);
 
         // Send Msg2 expect Msg1 back
-        let msg = Box::new(Msg2::new());
+        let msg = Box::new(Msg2::new(&supervisor_instance_id));
         client.process_msg_any(&client_context, msg);
         let recv_msg = supervisor_bdlc.rx.recv().unwrap();
         assert_eq!(
@@ -395,7 +394,7 @@ mod test {
         };
 
         // First message must be CmdInit and client will send a ConMsgRegisterActorReq
-        let msg = Box::new(CmdInit::new());
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
         client.process_msg_any(&clnt_with_supervisor_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with

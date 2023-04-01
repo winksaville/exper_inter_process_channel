@@ -18,7 +18,7 @@ pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 #[repr(C)]
 pub struct MsgHeader {
     pub msg_id: AnId,
-    pub src_id: Option<AnId>,
+    pub src_id: Option<AnId>, // TODO: Remove optional, it could be AnId::null() instead
 }
 
 impl Default for MsgHeader {
@@ -34,6 +34,8 @@ impl MsgHeader {
         Self { msg_id, src_id }
     }
 
+    // TODO: Consider remove new_msg_id_only if src_id becomes non-optional
+    #[deprecated]
     pub fn new_msg_id_only(msg_id: AnId) -> Self {
         //println!("MsgHeader::new_msg_id_only");
         Self::new(msg_id, None)
@@ -147,6 +149,7 @@ mod test {
         println!("\n");
         let msg_id = AnId::new();
 
+        #[allow(deprecated)]
         let header = MsgHeader::new_msg_id_only(msg_id);
         println!("test_new:    {{header}}={header}");
         println!("test_new:  {{header:?}}={header:?}");

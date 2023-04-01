@@ -105,20 +105,8 @@ macro_rules! msg_serde_macro {
             pub header: msg_header::MsgHeader,
         }
 
-        impl Default for $name {
-            fn default() -> Self {
-                Self::new()
-            }
-        }
-
         #[allow(unused)]
         impl $name {
-            pub fn new() -> Self {
-                Self {
-                    header: msg_header::MsgHeader::new_msg_id_only(an_id::anid!($id_str)),
-                }
-            }
-
             pub fn msg_id(&self) -> &an_id::AnId {
                 &self.header.msg_id
             }
@@ -184,7 +172,8 @@ macro_rules! msg_serde_macro {
 
 #[cfg(test)]
 mod test {
-    use msg_header::BoxMsgAny;
+    use an_id::AnId;
+    use msg_header::{BoxMsgAny, MsgHeader};
 
     use super::*;
 
@@ -193,7 +182,10 @@ mod test {
 
     #[test]
     fn test_msg_a_to_from_serde_json_buf() {
-        let msg_a = Box::<MsgA>::default();
+        let src_id = AnId::new();
+        let msg_a = Box::new(MsgA {
+            header: MsgHeader::new(MSG_A_ID, Some(src_id)),
+        });
         let msg_a_any_1: BoxMsgAny = msg_a.clone();
         let msg_a_vec = MsgA::to_serde_json_buf(msg_a_any_1).unwrap();
         let msg_a_any_2 = MsgA::from_serde_json_buf(&msg_a_vec).unwrap();
@@ -208,9 +200,9 @@ mod test {
     });
 
     impl MsgB {
-        pub fn new(num: u64, a_str: &str) -> Self {
+        pub fn new(src_id: &AnId, num: u64, a_str: &str) -> Self {
             Self {
-                header: msg_header::MsgHeader::new_msg_id_only(MSG_B_ID),
+                header: MsgHeader::new(MSG_B_ID, Some(*src_id)),
                 a_u64: num,
                 a_string: a_str.to_string(),
             }
@@ -219,10 +211,11 @@ mod test {
 
     #[test]
     fn test_with_fields() {
-        let msg_b = Box::new(MsgB::new(123, "hi"));
+        let src_id = AnId::new();
+        let msg_b = Box::new(MsgB::new(&src_id, 123, "hi"));
         println!("test_with_fields msg_b={msg_b:?}");
         assert_eq!(msg_b.header.msg_id, MSG_B_ID);
-        assert_eq!(msg_b.header.src_id, None);
+        assert_eq!(msg_b.header.src_id, Some(src_id));
         assert_eq!(msg_b.a_u64, 123);
         assert_eq!(msg_b.a_string, "hi");
         assert_eq!(msg_b.header.msg_id.to_string(), MSG_B_ID_STR);
@@ -232,7 +225,7 @@ mod test {
         let msg_b_any_2 = MsgB::from_serde_json_buf(&msg_b_vec).unwrap();
         let msg_b_deser = MsgB::from_box_msg_any(&msg_b_any_2).unwrap();
         assert_eq!(msg_b_deser.header.msg_id, MSG_B_ID);
-        assert_eq!(msg_b_deser.header.src_id, None);
+        assert_eq!(msg_b_deser.header.src_id, Some(src_id));
         assert_eq!(msg_b_deser.a_u64, 123);
         assert_eq!(msg_b_deser.a_string, "hi");
         assert_eq!(msg_b_deser.header.msg_id.to_string(), MSG_B_ID_STR);

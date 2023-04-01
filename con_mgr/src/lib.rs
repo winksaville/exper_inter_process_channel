@@ -321,7 +321,7 @@ impl ConMgr {
             );
             assert_eq!(msg.header.msg_id, CON_MGR_QUERY_REQ_ID);
             context
-                .send_rsp(Box::new(ConMgrQueryRsp::new(&[])))
+                .send_rsp(Box::new(ConMgrQueryRsp::new(&self.instance_id, &[])))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             //println!("{}:State0: msg={msg:?}", self.name);
@@ -536,7 +536,7 @@ mod test {
         println!("test_reg_client_server: client={client:?}");
 
         // First message must be CmdInit
-        let msg = Box::new(CmdInit::new());
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
 
         // Initialize Client context
         let mut context = Context {
@@ -648,7 +648,7 @@ mod test {
         println!("test_reg_client_server: server={server:?}");
 
         // First message must be CmdInit
-        let msg = Box::new(CmdInit::new());
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
 
         // Initialize Client context
         let mut context = Context {

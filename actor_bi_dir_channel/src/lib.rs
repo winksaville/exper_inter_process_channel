@@ -156,6 +156,7 @@ impl VecConnection {
 
 #[cfg(test)]
 mod test {
+    use an_id::AnId;
     use msg1::Msg1;
     use msg_header::MsgHeader;
 
@@ -165,7 +166,8 @@ mod test {
     fn test_bi_dir_local_channel() {
         let (left, right) = BiDirLocalChannel::new();
 
-        let msg_1 = Box::new(Msg1::new(1));
+        let supervisor_instance_id = AnId::new();
+        let msg_1 = Box::new(Msg1::new(&supervisor_instance_id, 1));
 
         // Verify left can send to self and receive on left.recv
         left.send_self(msg_1.clone()).unwrap();
@@ -215,8 +217,9 @@ mod test {
     #[test]
     fn test_connection() {
         let connection = Connection::new();
+        let supervisor_instance_id = AnId::new();
 
-        let msg_1 = Box::new(Msg1::new(1));
+        let msg_1 = Box::new(Msg1::new(&supervisor_instance_id, 1));
 
         // Verify their_bdlc_with_us can send to self
         connection

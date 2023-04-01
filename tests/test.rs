@@ -1,11 +1,14 @@
+use an_id::AnId;
 use msg1::Msg1;
 use msg2::Msg2;
 
 #[test]
 #[should_panic]
 fn test_identical_json() {
+    let supervisor_instance_id = AnId::new();
+
     // Create a Box<Msg2>
-    let msg2 = Box::<Msg2>::default();
+    let msg2 = Box::new(Msg2::new(&supervisor_instance_id));
     let ser_msg2 = Msg2::to_serde_json_buf(msg2).unwrap();
 
     // Deserialize to Msg1, this should fail

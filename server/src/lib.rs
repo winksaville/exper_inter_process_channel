@@ -376,7 +376,7 @@ mod test {
         let mut server = Server::new("server");
 
         // First message must be CmdInit and client send
-        let msg = Box::new(CmdInit::new());
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
         server.process_msg_any(&server_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with

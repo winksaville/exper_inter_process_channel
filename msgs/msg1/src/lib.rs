@@ -15,20 +15,14 @@ pub struct Msg1 {
     pub v: u64,
 }
 
-impl Default for Msg1 {
-    fn default() -> Self {
-        Self::new(0x1234567890ABCDEF)
-    }
-}
-
 // Allow `clippy::uninlined_format_args`  because in msg_macro
 // we need to use stringify!($name) which can't be used in a
 // format string. Also this is caught by `cargo +nightly clippy`.
 #[allow(clippy::uninlined_format_args)]
 impl Msg1 {
-    pub fn new(v: u64) -> Self {
+    pub fn new(src_id: &AnId, v: u64) -> Self {
         Self {
-            header: MsgHeader::new_msg_id_only(MSG1_ID),
+            header: MsgHeader::new(MSG1_ID, Some(*src_id)),
             v,
         }
     }
@@ -103,7 +97,11 @@ mod test {
 
     #[test]
     fn test_msg1_to_from_serde_json_buf() {
-        let msg1 = Msg1::default();
+        println!("\ntest_msg1_to_from_serde_json_buf:+");
+
+        let src_id = AnId::new();
+        let v = 0x1234567890ABCDEF;
+        let msg1 = Msg1::new(&src_id, v);
         println!("test_msg1_to_from_serde_json_buf: msg1: {msg1:?}");
         let bma1: BoxMsgAny = Box::new(msg1.clone());
         let ser_msg1 = Msg1::to_serde_json_buf(bma1).unwrap();
@@ -112,6 +110,7 @@ mod test {
         println!("test_msg1_to_from_serde_json_buf: msg1_deser={msg1_deser:?}");
         assert_eq!(&msg1, msg1_deser);
         assert_eq!(msg1.header.msg_id, MSG1_ID);
+        assert_eq!(msg1.header.src_id, Some(src_id));
         assert_eq!(msg1.header.msg_id, msg1_deser.header.msg_id);
         println!(
             "test_msg1_to_from_serde_json_buf: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
@@ -119,11 +118,17 @@ mod test {
             msg1_deser.type_id()
         );
         assert_eq!(TypeId::of::<Msg1>(), msg1_deser.type_id());
+
+        println!("test_msg1_to_from_serde_json_buf:-");
     }
 
     #[test]
     fn test_hash_map_to_from_serde_json_buf() {
-        let msg1 = Msg1::default();
+        println!("\ntest_hash_map_to_from_serde_json_buf:+");
+
+        let src_id = AnId::new();
+        let v = 0x1234567890ABCDEF;
+        let msg1 = Msg1::new(&src_id, v);
         println!("MSG1_ID_STR={}", MSG1_ID_STR);
         println!("msg1={msg1:?}");
 
@@ -161,17 +166,79 @@ mod test {
             std::mem::size_of::<BoxMsgAny>()
         );
 
-        let msg1_serde = if let Some(msg) = Msg1::from_box_msg_any(&msg1_serde_box_msg_any) {
+        let msg1_deserialized = if let Some(msg) = Msg1::from_box_msg_any(&msg1_serde_box_msg_any) {
             msg
         } else {
             panic!("msg1_serde was not a Msg1");
         };
         println!(
-            "msg1_serde: {:p} {:?} {} {msg1_serde:?}",
-            msg1_serde,
-            msg1_serde.type_id(),
+            "msg1_deserialized: {:p} {:?} {} {msg1_deserialized:?}",
+            msg1_deserialized,
+            msg1_deserialized.type_id(),
             std::mem::size_of::<Msg1>()
         );
-        assert_eq!(&msg1, msg1_serde);
+        assert_eq!(&msg1, msg1_deserialized);
+
+        println!("test_hash_map_to_from_serde_json_buf:-");
+    }
+
+    #[test]
+    fn test_hash_map_to_from_serde_json_buf_src_id_none() {
+        println!("\ntest_hash_map_to_from_serde_json_buf_src_id_none:+");
+
+        let src_id = AnId::new();
+        let v = 0x1234567890ABCDEF;
+        let msg1 = Msg1::new(&src_id, v);
+        println!("MSG1_ID_STR={}", MSG1_ID_STR);
+        println!("msg1={msg1:?}");
+
+        // Use HashMap to serialize
+        let ser = Msg1::to_serde_json_buf;
+        let mut hm_ser = HashMap::<AnId, ToSerdeJsonBuf>::new();
+        hm_ser.insert(*msg1.msg_id(), ser);
+        println!("hm_ser.len()={}", hm_ser.len());
+
+        // Use another HashMap to deserialize
+        let deser = Msg1::from_serde_json_buf;
+        let mut hm_deser = HashMap::<String, FromSerdeJsonBuf>::new();
+        let msg1_id_str = MSG1_ID_STR;
+        hm_deser.insert(msg1_id_str.to_string(), deser);
+        println!("hm_deser.len()={}", hm_deser.len());
+
+        // Instantiate msg1 as a BoxMsgAny
+        let msg1_box_msg_any: BoxMsgAny = Box::new(msg1.clone());
+
+        // Serialize using the to_serde_json_buf funtion
+        let fn_to_serde_json_buf = hm_ser.get(&msg1.msg_id()).unwrap();
+        let msg1_buf = (*fn_to_serde_json_buf)(msg1_box_msg_any).unwrap();
+        println!("msg1_buf {:p} {msg1_buf:x?}", &*msg1_buf);
+        println!("msg1_buf uf8={:?}", std::str::from_utf8(&msg1_buf).unwrap());
+
+        // Deserialize using the from_serde_json_buf function
+        let id_str = get_msg_id_str_from_buf(&msg1_buf);
+        println!("id_str={id_str}");
+        let fn_from_serde_json_buf = hm_deser.get(id_str).unwrap();
+        let msg1_serde_box_msg_any = (*fn_from_serde_json_buf)(&msg1_buf).unwrap();
+        println!(
+            "msg1_serde_box_msg_any: {:p} {:p} {} {msg1_serde_box_msg_any:?}",
+            msg1_serde_box_msg_any,
+            &*msg1_serde_box_msg_any,
+            std::mem::size_of::<BoxMsgAny>()
+        );
+
+        let msg1_deserialized = if let Some(msg) = Msg1::from_box_msg_any(&msg1_serde_box_msg_any) {
+            msg
+        } else {
+            panic!("msg1_serde was not a Msg1");
+        };
+        println!(
+            "msg1_deserialized: {:p} {:?} {} {msg1_deserialized:?}",
+            msg1_deserialized,
+            msg1_deserialized.type_id(),
+            std::mem::size_of::<Msg1>()
+        );
+        assert_eq!(&msg1, msg1_deserialized);
+
+        println!("\ntest_hash_map_to_from_serde_json_buf_src_id_none:-");
     }
 }

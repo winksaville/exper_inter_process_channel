@@ -13,3 +13,4 @@ msg_header = { version = "0.1.0", path = "../msg_header" }
 
 [dev-dependencies]
 msg1 = { path = "../msgs/msg1" }
+an_id = { path = "../an_id" }

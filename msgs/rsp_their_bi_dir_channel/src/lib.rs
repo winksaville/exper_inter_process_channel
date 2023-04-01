@@ -1,4 +1,5 @@
 use actor_bi_dir_channel::BiDirLocalChannel;
+use an_id::AnId;
 use msg_header::MsgHeader;
 use msg_local_macro::{msg_local_macro, paste};
 
@@ -8,9 +9,9 @@ msg_local_macro!(RspTheirBiDirChannel "03eb8c2c-0bc4-4d87-bcef-619e647b815f" {
 });
 
 impl RspTheirBiDirChannel {
-    pub fn new(bdlc: Box<BiDirLocalChannel>) -> Self {
+    pub fn new(src_id: &AnId, bdlc: Box<BiDirLocalChannel>) -> Self {
         Self {
-            header: MsgHeader::new_msg_id_only(RSP_THEIR_BI_DIR_CHANNEL_ID),
+            header: MsgHeader::new(RSP_THEIR_BI_DIR_CHANNEL_ID, Some(*src_id)),
             bdlc,
         }
     }
