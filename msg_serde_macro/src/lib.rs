@@ -45,7 +45,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
-                let id = msg_serde_json::get_msg_id_str_from_buf(buf);
+                let id = msg_header::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
                         match serde_json::from_str::<Self>(s) {
@@ -136,7 +136,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
-                let id = msg_serde_json::get_msg_id_str_from_buf(buf);
+                let id = msg_header::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
                         match serde_json::from_str::<Self>(s) {

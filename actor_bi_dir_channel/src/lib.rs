@@ -219,7 +219,10 @@ mod test {
         let msg_1 = Box::new(Msg1::new(1));
 
         // Verify their_bdlc_with_us can send to self
-        connection.their_bdlc_with_us.send_self(msg_1.clone()).unwrap();
+        connection
+            .their_bdlc_with_us
+            .send_self(msg_1.clone())
+            .unwrap();
         let recv_msg_1_any = connection.their_bdlc_with_us.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
@@ -229,7 +232,10 @@ mod test {
         assert_eq!(recv_msg_1.v, msg_1.v);
 
         // Verify our_bdlc_with_them can send to self and receive on our_bdlc_with_them.recv
-        connection.our_bdlc_with_them.send_self(msg_1.clone()).unwrap();
+        connection
+            .our_bdlc_with_them
+            .send_self(msg_1.clone())
+            .unwrap();
         let recv_msg_1_any = connection.our_bdlc_with_them.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),

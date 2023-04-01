@@ -3,15 +3,15 @@ use std::sync::RwLock;
 
 use an_id::AnId;
 use crossbeam_channel::Sender;
-use std::collections::HashMap;
 use msg_header::BoxMsgAny;
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 static SENDER_HASHMAP: Lazy<RwLock<HashMap<AnId, Sender<BoxMsgAny>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 // Add the sender to the response channel map.
-// 
+//
 // This is thread safe and but only one sender is added per instance_id
 // additional invocations will be ignored.
 pub fn sender_map_insert(instance_id: &AnId, sender: &Sender<BoxMsgAny>) {
@@ -28,7 +28,10 @@ pub fn sender_map_get(instance_id: &AnId) -> Option<Sender<BoxMsgAny>> {
     let rlocked_hashmap = SENDER_HASHMAP.read().unwrap(); // TODO: remove unwrap
     let sender = rlocked_hashmap.get(instance_id).cloned();
 
-    println!("sender_map_get: instance_id: {} sender: {:?}", instance_id, sender);
+    println!(
+        "sender_map_get: instance_id: {} sender: {:?}",
+        instance_id, sender
+    );
     sender
 }
 

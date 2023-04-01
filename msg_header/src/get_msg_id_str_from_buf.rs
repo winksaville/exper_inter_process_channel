@@ -1,4 +1,4 @@
-use msg_header::{BoxMsgAny, MSG_ID_STR_LEN};
+use crate::{BoxMsgAny, MSG_ID_STR_LEN};
 
 pub type FromSerdeJsonBuf = fn(&[u8]) -> std::option::Option<BoxMsgAny>;
 pub type ToSerdeJsonBuf = fn(BoxMsgAny) -> std::option::Option<Vec<u8>>;
@@ -32,7 +32,8 @@ mod test {
 
     #[test]
     fn test_get_id_utf8_str() {
-        let msg = r#"{"header":{"msg_id":"3ab7c2f7-6445-4529-a675-5e3246217452","src_id":"None"}}"#.as_bytes();
+        let msg = r#"{"header":{"msg_id":"3ab7c2f7-6445-4529-a675-5e3246217452","src_id":"None"}}"#
+            .as_bytes();
         assert_eq!(AN_ID_STR, get_msg_id_str_from_buf(msg));
         let msg = r#"{"header":{"msg_id":"3ab7c2f7-6445-4529-a675-5e3246217452"}"#.as_bytes();
         assert_eq!(AN_ID_STR, get_msg_id_str_from_buf(msg));

@@ -8,7 +8,6 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-manager = { path="manager" }
 actor = { path="actor" }
 actor_executor = { path="actor_executor" }
 actor_bi_dir_channel = { path="actor_bi_dir_channel" }
@@ -28,7 +27,6 @@ echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
 echo_rsp = { path="msgs/echo_rsp" }
 msg_header = { path="msg_header" }
-msg_serde_json = { path="msg_serde_json" }
 msg1 = { path="msgs/msg1" }
 msg2 = { path="msgs/msg2" }
 cmd_done = { path="msgs/cmd_done" }
@@ -48,7 +46,6 @@ crossbeam-channel = "0.5.7"
 
 [workspace]
 members = [
-    "manager",
     "actor",
     "actor_executor",
     "actor_bi_dir_channel",
@@ -57,7 +54,6 @@ members = [
     "protocol",
     "sender_map_by_instance_id",
     "msg_header",
-    "msg_serde_json",
     "msgs/msg1",
     "msgs/msg2",
     "msgs/cmd_done",

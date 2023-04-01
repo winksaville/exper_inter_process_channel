@@ -1,6 +1,5 @@
 use an_id::{anid, paste, AnId};
-use msg_header::{BoxMsgAny, MsgHeader};
-use msg_serde_json::get_msg_id_str_from_buf;
+use msg_header::{get_msg_id_str_from_buf, BoxMsgAny, MsgHeader};
 use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4
@@ -96,7 +95,7 @@ impl Msg1 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use msg_serde_json::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
+    use msg_header::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
     use std::{
         any::{Any, TypeId},
         collections::HashMap,

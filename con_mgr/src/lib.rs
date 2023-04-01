@@ -4,7 +4,7 @@ use std::error::Error;
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
-use con_mgr_query_protocol::{CON_MGR_QUERY_REQ_ID, ConMgrQueryRsp, ConMgrQueryReq};
+use con_mgr_query_protocol::{ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID};
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
     ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
@@ -308,7 +308,12 @@ impl ConMgr {
             };
 
             println!("Sending ConMgrRegisterActorRsp");
-            context.send_rsp(Box::new(ConMgrRegisterActorRsp::new(&self.instance_id, status))).unwrap();
+            context
+                .send_rsp(Box::new(ConMgrRegisterActorRsp::new(
+                    &self.instance_id,
+                    status,
+                )))
+                .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrQueryReq>() {
             println!(
                 "{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!",
@@ -321,7 +326,11 @@ impl ConMgr {
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             //println!("{}:State0: msg={msg:?}", self.name);
             assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
-            let rsp_msg = Box::new(EchoRsp::new(&self.instance_id, msg.req_timestamp_ns, msg.counter));
+            let rsp_msg = Box::new(EchoRsp::new(
+                &self.instance_id,
+                msg.req_timestamp_ns,
+                msg.counter,
+            ));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
             context.send_rsp(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
@@ -347,7 +356,7 @@ mod test {
     use con_mgr_register_actor_protocol::{
         CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID,
     };
-    use crossbeam_channel::{Sender, unbounded};
+    use crossbeam_channel::{unbounded, Sender};
     use echo_requestee_protocol::echo_requestee_protocol;
     use echo_requester_protocol::echo_requester_protocol;
     use echo_start_complete_protocol::echo_start_complete_protocol;

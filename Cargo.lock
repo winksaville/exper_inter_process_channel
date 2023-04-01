@@ -171,7 +171,6 @@ dependencies = [
  "an_id",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -185,7 +184,6 @@ dependencies = [
  "an_id",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -368,7 +366,6 @@ dependencies = [
  "an_id",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -383,7 +380,6 @@ dependencies = [
  "chrono",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -424,7 +420,6 @@ dependencies = [
  "chrono",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -516,11 +511,9 @@ dependencies = [
  "echo_rsp",
  "echo_start",
  "echo_start_complete_protocol",
- "manager",
  "msg1",
  "msg2",
  "msg_header",
- "msg_serde_json",
  "name_id",
  "protocol",
  "protocol_set",
@@ -700,21 +693,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "manager"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "client",
- "crossbeam-channel",
- "msg_header",
- "protocol",
- "protocol_set",
- "server",
- "uuid",
-]
-
-[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -727,7 +705,6 @@ dependencies = [
  "an_id",
  "log",
  "msg_header",
- "msg_serde_json",
  "serde",
  "serde_json",
  "uuid",
@@ -740,7 +717,6 @@ dependencies = [
  "an_id",
  "log",
  "msg_header",
- "msg_serde_json",
  "msg_serde_macro",
  "serde",
  "serde_json",
@@ -765,18 +741,9 @@ dependencies = [
  "custom_logger",
  "log",
  "msg_header",
- "msg_serde_json",
  "paste",
  "serde",
  "serde_json",
- "uuid",
-]
-
-[[package]]
-name = "msg_serde_json"
-version = "0.1.0"
-dependencies = [
- "msg_header",
  "uuid",
 ]
 
@@ -788,7 +755,6 @@ dependencies = [
  "custom_logger",
  "log",
  "msg_header",
- "msg_serde_json",
  "paste",
  "serde",
  "serde_json",
@@ -931,7 +897,6 @@ dependencies = [
  "log",
  "msg_header",
  "msg_local_macro",
- "msg_serde_json",
  "serde",
  "serde_json",
  "uuid",
