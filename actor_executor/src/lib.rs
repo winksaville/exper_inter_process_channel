@@ -39,7 +39,7 @@ struct Context {
     actor_executor_tx: Sender<BoxMsgAny>,
     con_mgr_tx: Sender<BoxMsgAny>,
     their_bdlc_with_us: BiDirLocalChannel,
-    rsp_tx: Option<Sender<BoxMsgAny>>,
+    rsp_tx: Sender<BoxMsgAny>,
 }
 
 impl ActorContext for Context {
@@ -61,23 +61,11 @@ impl ActorContext for Context {
     }
 
     fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        match &self.rsp_tx {
-            Some(rsp_tx) => Ok(rsp_tx.send(msg)?),
-            None => {
-                println!("ActorExecutor::send_rsp: No response channel");
-                Err("None".into())
-            }
-        }
+        Ok(self.rsp_tx.send(msg)?)
     }
 
     fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
-        match &self.rsp_tx {
-            Some(rsp_tx) => Some(rsp_tx.clone()),
-            None => {
-                println!("ActorExecutor::clone_rsp_tx: No response channel");
-                None
-            }
-        }
+        Some(self.rsp_tx.clone())
     }
 }
 
@@ -237,16 +225,24 @@ impl ActorExecutor {
                             actor.get_name(),
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
-                        let cm = ae.con_mgr_bdlc.clone();
-                        let rsp_tx = match MsgHeader::get_src_id_from_boxed_msg_any(&msg_any) {
-                            Some(src_id) => sender_map_get(src_id),
+                        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
+                        let rsp_tx = match src_id {
+                            Some(src_id) => {
+                                if let Some(sender) = sender_map_get(src_id) {
+                                    sender.clone()
+                                } else {
+                                    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+                                    panic!(
+                                        "AE:{}: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map",
+                                        ae.name);
+                                }
+                            }
                             None => {
-                                println!(
-                                    "AE:{}: There is no src_id in msg_any header.msg_id={:?}",
-                                    ae.name,
-                                    MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any)
+                                let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+                                panic!(
+                                    "AE:{}: There is no src_id in msg_any header.msg_id={msg_id:?}",
+                                    ae.name
                                 );
-                                None
                             }
                         };
                         let context = Context {
