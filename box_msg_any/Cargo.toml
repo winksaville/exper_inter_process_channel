@@ -1,5 +1,5 @@
 [package]
-name = "an_id"
+name = "box_msg_any"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,6 +8,3 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-paste = "1.0.12"
-serde = { version = "1.0.154", features = ["derive"] }
-uuid = { version = "1.3.0", features = ["v4", "serde"] }

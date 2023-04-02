@@ -8,9 +8,10 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+box_msg_any = { path = "box_msg_any" }
 actor = { path="actor" }
+actor_channel = { path="actor_channel" }
 actor_executor = { path="actor_executor" }
-actor_bi_dir_channel = { path="actor_bi_dir_channel" }
 con_mgr = { path="con_mgr" }
 protocol_set = { path="protocol_set" }
 protocol = { path="protocol" }
@@ -30,8 +31,6 @@ msg_header = { path="msg_header" }
 msg1 = { path="msgs/msg1" }
 msg2 = { path="msgs/msg2" }
 cmd_done = { path="msgs/cmd_done" }
-req_their_bi_dir_channel = { path="msgs/req_their_bi_dir_channel" }
-rsp_their_bi_dir_channel = { path="msgs/rsp_their_bi_dir_channel" }
 req_add_actor = { path="msgs/req_add_actor" }
 rsp_add_actor = { path="msgs/rsp_add_actor" }
 name_id = { path="name_id" }
@@ -46,9 +45,9 @@ crossbeam-channel = "0.5.7"
 
 [workspace]
 members = [
+    "box_msg_any",
     "actor",
     "actor_executor",
-    "actor_bi_dir_channel",
     "con_mgr",
     "protocol_set",
     "protocol",
@@ -57,8 +56,6 @@ members = [
     "msgs/msg1",
     "msgs/msg2",
     "msgs/cmd_done",
-    "msgs/req_their_bi_dir_channel",
-    "msgs/rsp_their_bi_dir_channel",
     "msgs/req_add_actor",
     "msgs/rsp_add_actor",
     "msgs/echo_complete",

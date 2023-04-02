@@ -8,8 +8,11 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+box_msg_any = { version = "0.1.0", path = "../box_msg_any" }
+an_id = { version = "0.1.0", path = "../an_id" }
 msg_header = { path="../msg_header" }
 actor = { version = "0.1.0", path = "../actor" }
+actor_channel = { version = "0.1.0", path = "../actor_channel" }
 chrono = "0.4.23"
 protocol = { version = "0.1.0", path = "../protocol" }
 uuid = "1.3.0"
@@ -20,14 +23,11 @@ msg1 = { path = "../msgs/msg1" }
 msg2 = { path = "../msgs/msg2" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
 crossbeam-channel = "0.5.7"
-an_id = { version = "0.1.0", path = "../an_id" }
 cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
 con_mgr = { version = "0.1.0", path = "../con_mgr" }
 con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
-actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
 sender_map_by_instance_id = { version = "0.1.0", path = "../sender_map_by_instance_id" }
 
 [dev-dependencies]
-actor_bi_dir_channel = { path = "../actor_bi_dir_channel" }
 msg_header = { path = "../msg_header" }
 server = { path = "../server" }

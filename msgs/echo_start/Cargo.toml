@@ -10,6 +10,7 @@ license.workspace = true
 [dependencies]
 crossbeam-channel = "0.5.7"
 log = "0.4.17"
+box_msg_any = { version = "0.1.0", path = "../../box_msg_any" }
 an_id = { version = "0.1.0", path = "../../an_id" }
 msg_header = { path = "../../msg_header" }
 msg_local_macro = { path = "../../msg_local_macro" }

@@ -1,5 +1,5 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
-use actor_bi_dir_channel::Connection;
+use actor_channel::ActorChannel;
 use an_id::{anid, paste, AnId};
 use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
@@ -15,7 +15,8 @@ use std::{
     fmt::{self, Debug},
 };
 
-use msg_header::{BoxMsgAny, MsgHeader};
+use box_msg_any::BoxMsgAny;
+use msg_header::MsgHeader;
 
 // State information
 #[derive(Debug)]
@@ -34,8 +35,7 @@ pub struct Server {
     pub protocol_set: ProtocolSet,
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
-
-    connection: Connection,
+    pub chnl: ActorChannel,
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -57,20 +57,12 @@ impl Actor for Server {
         &self.instance_id
     }
 
+    fn get_chnl(&self) -> &ActorChannel {
+        &self.chnl
+    }
+
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny) {
         (self.current_state)(self, context, msg);
-    }
-
-    fn their_bdlc_with_us(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.connection.their_bdlc_with_us.clone()
-    }
-
-    fn our_bdlc_with_them(&self) -> actor_bi_dir_channel::BiDirLocalChannel {
-        self.connection.our_bdlc_with_them.clone()
-    }
-
-    fn connection(&self) -> Connection {
-        self.connection.clone()
     }
 
     fn done(&self) -> bool {
@@ -113,6 +105,9 @@ impl Server {
         server_pm.insert(erep.id, erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
+        let chnl_name = name.to_owned() + "_chnl";
+        let chnl = ActorChannel::new(&chnl_name);
+
         let mut this = Self {
             name: name.to_owned(),
             actor_id: SERVER_ACTOR_ID,
@@ -120,11 +115,11 @@ impl Server {
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
-            connection: Connection::new(),
+            chnl,
         };
 
         // Add ourself to the sender_map
-        sender_map_insert(&this.instance_id, &this.connection.their_bdlc_with_us.tx);
+        sender_map_insert(&this.instance_id, &this.chnl.sender);
 
         this.add_state(Self::state0, "state0");
         this
@@ -165,8 +160,6 @@ impl Server {
                 &self.actor_id,
                 &self.instance_id,
                 &self.protocol_set,
-                context.their_bdlc_with_us(),
-                context.actor_executor_tx(),
             ));
             print!(
                 "{}:State0: sending ConMgrRegisterActorReq={msg:?}",
@@ -189,27 +182,21 @@ impl Server {
 
 #[cfg(test)]
 mod test {
-    use actor_bi_dir_channel::BiDirLocalChannel;
+    use actor_channel::ActorSender;
     use chrono::Utc;
     use con_mgr_register_actor_protocol::CON_MGR_REGISTER_ACTOR_REQ_ID;
-    use crossbeam_channel::Sender;
 
     use super::*;
 
     struct Context {
-        actor_executor_tx: Sender<BoxMsgAny>,
-        con_mgr_tx: Sender<BoxMsgAny>,
-        their_bdlc_with_us: BiDirLocalChannel,
-        rsp_tx: Sender<BoxMsgAny>,
+        actor_executor_sender: ActorSender,
+        con_mgr_tx: ActorSender,
+        rsp_tx: ActorSender,
     }
 
     impl ActorContext for Context {
-        fn actor_executor_tx(&self) -> &Sender<BoxMsgAny> {
-            &self.actor_executor_tx
-        }
-
-        fn their_bdlc_with_us(&self) -> &BiDirLocalChannel {
-            &self.their_bdlc_with_us
+        fn actor_executor_tx(&self) -> &ActorSender {
+            &self.actor_executor_sender
         }
 
         fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
@@ -224,7 +211,7 @@ mod test {
             Ok(self.rsp_tx.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>> {
+        fn clone_rsp_tx(&self) -> Option<ActorSender> {
             Some(self.rsp_tx.clone())
         }
     }
@@ -233,18 +220,17 @@ mod test {
     fn test_1() {
         println!("\ntest_1:+");
 
-        let (server_bdlc, supervisor_bdlc) = BiDirLocalChannel::new();
+        let supervisor_chnl = ActorChannel::new("supervisor");
 
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
-        sender_map_insert(&supervisor_instance_id, &supervisor_bdlc.tx);
+        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
-        // Both con_mgr_tx and rsp_tx are "this" test
+        // Context for server is supervisor
         let server_context = Context {
-            actor_executor_tx: server_bdlc.tx.clone(),
-            con_mgr_tx: server_bdlc.tx.clone(),
-            their_bdlc_with_us: supervisor_bdlc.clone(),
-            rsp_tx: server_bdlc.tx.clone(),
+            actor_executor_sender: supervisor_chnl.sender.clone(),
+            con_mgr_tx: supervisor_chnl.sender.clone(),
+            rsp_tx: supervisor_chnl.sender.clone(),
         };
 
         let mut server = Server::new("server");
@@ -280,14 +266,14 @@ mod test {
 
             // Create EchoReq and send it
             let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
-            supervisor_bdlc.tx.send(echo_req).unwrap();
+            server.chnl.sender.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
-            let echo_req_any = server_bdlc.rx.recv().unwrap();
+            let echo_req_any = server.chnl.receiver.recv().unwrap();
             server.process_msg_any(&server_context, echo_req_any);
 
             // Receive EchoRsp
-            let rsp_msg_any = supervisor_bdlc.rx.recv().unwrap();
+            let rsp_msg_any = supervisor_chnl.receiver.recv().unwrap();
             let rsp_msg = rsp_msg_any.downcast_ref::<EchoRsp>().unwrap();
 
             // Mark done
@@ -359,18 +345,17 @@ mod test {
     fn test_cmd_init() {
         println!("\ntest_cmd_init:+");
 
-        let (server_bdlc, supervisor_bdlc) = BiDirLocalChannel::new();
+        let supervisor_chnl = ActorChannel::new("supervisor");
 
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
-        sender_map_insert(&supervisor_instance_id, &supervisor_bdlc.tx);
+        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
-            actor_executor_tx: server_bdlc.tx.clone(),
-            con_mgr_tx: server_bdlc.tx.clone(),
-            their_bdlc_with_us: supervisor_bdlc.clone(),
-            rsp_tx: server_bdlc.tx.clone(),
+            actor_executor_sender: supervisor_chnl.sender.clone(),
+            con_mgr_tx: supervisor_chnl.sender.clone(),
+            rsp_tx: supervisor_chnl.sender.clone(),
         };
 
         let mut server = Server::new("server");
@@ -381,7 +366,7 @@ mod test {
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
         // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
-        let con_mgr_msg_any = supervisor_bdlc.rx.recv().unwrap();
+        let con_mgr_msg_any = supervisor_chnl.receiver.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(

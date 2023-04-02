@@ -8,19 +8,18 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+box_msg_any = { version = "0.1.0", path = "../box_msg_any" }
+an_id = { version = "0.1.0", path = "../an_id" }
 actor = { version = "0.1.0", path = "../actor" }
-actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
+actor_channel = { version = "0.1.0", path = "../actor_channel" }
 crossbeam-channel = "0.5.7"
 msg_header = { version = "0.1.0", path = "../msg_header" }
 req_add_actor = { version = "0.1.0", path = "../msgs/req_add_actor" }
 rsp_add_actor = { version = "0.1.0", path = "../msgs/rsp_add_actor" }
 cmd_done = { version = "0.1.0", path = "../msgs/cmd_done" }
-req_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/req_their_bi_dir_channel" }
-rsp_their_bi_dir_channel = { version = "0.1.0", path = "../msgs/rsp_their_bi_dir_channel" }
 con_mgr = { version = "0.1.0", path = "../con_mgr" }
 con_mgr_query_protocol = { version = "0.1.0", path = "../protocols/con_mgr_query_protocol" }
 cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
-an_id = { version = "0.1.0", path = "../an_id" }
 protocol_set = { version = "0.1.0", path = "../protocol_set" }
 uuid = "1.3.0"
 protocol = { version = "0.1.0", path = "../protocol" }

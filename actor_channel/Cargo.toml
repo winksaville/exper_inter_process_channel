@@ -1,5 +1,5 @@
 [package]
-name = "actor_bi_dir_channel"
+name = "actor_channel"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -8,9 +8,10 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+box_msg_any = { path="../box_msg_any" }
 crossbeam-channel = "0.5.7"
-msg_header = { version = "0.1.0", path = "../msg_header" }
 
 [dev-dependencies]
-msg1 = { path = "../msgs/msg1" }
-an_id = { path = "../an_id" }
+msg_header = { version = "0.1.0", path = "../msg_header" }
+an_id = { path="../an_id" }
+msg1 = { version = "0.1.0", path = "../msgs/msg1" }

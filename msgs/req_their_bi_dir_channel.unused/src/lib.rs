@@ -1,6 +1,7 @@
 use an_id::AnId;
 use crossbeam_channel::Sender;
-use msg_header::{BoxMsgAny, MsgHeader};
+use msg_header::MsgHeader;
+use box_msg_any::BoxMsgAny;
 use msg_local_macro::{msg_local_macro, paste};
 
 // From: https://www.uuidgenerator.net/version4

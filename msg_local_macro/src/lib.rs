@@ -36,7 +36,7 @@ macro_rules! msg_local_macro_not_cloneable {
                 &self.header.src_id
             }
 
-            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+            pub fn from_box_msg_any(msg: &box_msg_any::BoxMsgAny) -> Option<&$name> {
                 if let Some(m) = msg.downcast_ref::<$name>() {
                     Some(m)
                 } else {
@@ -77,7 +77,7 @@ macro_rules! msg_local_macro {
                 &self.header.src_id
             }
 
-            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+            pub fn from_box_msg_any(msg: &box_msg_any::BoxMsgAny) -> Option<&$name> {
                 if let Some(m) = msg.downcast_ref::<$name>() {
                     Some(m)
                 } else {
@@ -118,7 +118,7 @@ macro_rules! msg_local_macro {
                 &self.header.src_id
             }
 
-            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+            pub fn from_box_msg_any(msg: &box_msg_any::BoxMsgAny) -> Option<&$name> {
                 if let Some(m) = msg.downcast_ref::<$name>() {
                     Some(m)
                 } else {
@@ -134,7 +134,8 @@ mod test {
     use an_id::AnId;
     use crossbeam_channel::{unbounded, Sender};
 
-    use msg_header::{BoxMsgAny, MsgHeader};
+    use box_msg_any::BoxMsgAny;
+    use msg_header::MsgHeader;
 
     use super::*;
 
@@ -142,7 +143,7 @@ mod test {
     msg_local_macro!(MsgLclA "0d061a84-69aa-4bd0-a43f-ef3efd971d26" {
         a_u64: u64,
         a_string: String,
-        a_sender: Sender<msg_header::BoxMsgAny> // Last field must not have a comma (need to fix macro)
+        a_sender: Sender<box_msg_any::BoxMsgAny> // Last field must not have a comma (need to fix macro)
     });
 
     impl MsgLclA {

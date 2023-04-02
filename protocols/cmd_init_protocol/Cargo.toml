@@ -8,6 +8,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+box_msg_any = { version = "0.1.0", path = "../../box_msg_any" }
 an_id = { version = "0.1.0", path = "../../an_id" }
 cmd_init = { path = "../../msgs/cmd_init" }
 msg_header = { version = "0.1.0", path = "../../msg_header" }

@@ -8,24 +8,15 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-msg_header = { path="../msg_header" }
-protocol_set = { path="../protocol_set" }
-echo_requestee_protocol = { version = "0.1.0", path = "../protocols/echo_requestee_protocol" }
-con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
-con_mgr_query_protocol = { version = "0.1.0", path = "../protocols/con_mgr_query_protocol" }
-actor = { path="../actor" }
-chrono = "0.4.23"
-protocol = { version = "0.1.0", path = "../protocol" }
-uuid = "1.3.0"
-crossbeam-channel = "0.5.7"
-actor_bi_dir_channel = { version = "0.1.0", path = "../actor_bi_dir_channel" }
+box_msg_any = { version = "0.1.0", path = "../box_msg_any" }
 an_id = { version = "0.1.0", path = "../an_id" }
-cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
+actor_channel = { path="../actor_channel" }
 once_cell = "1.17.1"
 
 [dev-dependencies]
-actor = { path = "../actor" }
-client = { path = "../client" }
-server = { path = "../server" }
-echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
-echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
+#actor = { path = "../actor" }
+actor_channel = { path = "../actor_channel" }
+#client = { path = "../client" }
+#server = { path = "../server" }
+#echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
+#echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }

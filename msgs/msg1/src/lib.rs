@@ -1,5 +1,6 @@
 use an_id::{anid, paste, AnId};
-use msg_header::{get_msg_id_str_from_buf, BoxMsgAny, MsgHeader};
+use box_msg_any::BoxMsgAny;
+use msg_header::{get_msg_id_str_from_buf, MsgHeader};
 use serde::{Deserialize, Serialize};
 
 // From: https://www.uuidgenerator.net/version4

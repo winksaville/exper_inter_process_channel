@@ -1,15 +1,12 @@
 #![feature(downcast_unchecked)]
-
+use actor_channel::ActorSender;
 use an_id::AnId;
+use box_msg_any::BoxMsgAny;
+use sender_map_by_instance_id::sender_map_get;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
-
 mod get_msg_id_str_from_buf;
 pub use get_msg_id_str_from_buf::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
-
-// Messages are things that implement trait std::any::Any
-// which is most anything
-pub type BoxMsgAny = Box<dyn std::any::Any + Send>;
 
 pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -51,14 +48,41 @@ impl MsgHeader {
         &mh.msg_id
     }
 
-    pub fn get_src_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &Option<AnId> {
+    pub fn get_src_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &Option<AnId> {
         // TODO: Consider validating that the msg_header or AnId. One way
         // would be to have a "global" hashmap of valid values another
         // way would be to add a "check-sum"?
         // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
-        let mh: &MsgHeader = unsafe { msg.downcast_ref_unchecked() };
+        let mh: &MsgHeader = unsafe { msg_any.downcast_ref_unchecked() };
 
         &mh.src_id
+    }
+
+    pub fn get_src_tx_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {
+        // TODO: Consider validating that the msg_header or AnId. One way
+        // would be to have a "global" hashmap of valid values another
+        // way would be to add a "check-sum"?
+        // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+        let option_src_id = MsgHeader::get_src_id_from_boxed_msg_any(msg_any);
+
+        let sender = match option_src_id {
+            Some(src_id) => {
+                if let Some(sender) = sender_map_get(src_id) {
+                    Some(sender)
+                } else {
+                    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(msg_any);
+                    panic!( "get_src_id_from_boxed_msg_any: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map");
+                }
+                //let (tx, _) = crossbeam_channel::unbounded();
+                //Some(ActorSender::new("xx", tx))
+            }
+            None => {
+                let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(msg_any);
+                panic!("get_src_id_from_boxed_msg_any: There is no src_id in msg_any header.msg_id={msg_id:?}",);
+            }
+        };
+
+        sender
     }
 
     pub fn simple_display(&self) -> String {

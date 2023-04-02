@@ -1,7 +1,6 @@
-use actor_bi_dir_channel::{BiDirLocalChannel, Connection};
+use actor_channel::{ActorChannel, ActorSender};
 use an_id::AnId;
-use crossbeam_channel::Sender;
-use msg_header::BoxMsgAny;
+use box_msg_any::BoxMsgAny;
 use std::fmt::Debug;
 
 pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
@@ -10,10 +9,7 @@ pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
 // entity, which by definition Actors are.
 pub trait ActorContext {
     /// Returns a reference to this actors executor tx
-    fn actor_executor_tx(&self) -> &Sender<BoxMsgAny>;
-
-    /// The "their" BiDirLocalChannel of a Connection for communicating with "us"
-    fn their_bdlc_with_us(&self) -> &BiDirLocalChannel;
+    fn actor_executor_tx(&self) -> &ActorSender;
 
     /// Send message to connection manager
     fn send_con_mgr(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
@@ -30,17 +26,7 @@ pub trait ActorContext {
     /// can be sent when the echo sequence is complete. When
     /// we can dynamically create "connections" I don't this
     /// this shouldn't be necessary.
-    fn clone_rsp_tx(&self) -> Option<Sender<BoxMsgAny>>;
-}
-
-pub trait ActorChannel {
-    fn send(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        Err("ActorChannel `fn send` not implemented".into())
-    }
-
-    fn recv(&self) -> Result<BoxMsgAny, Box<dyn std::error::Error>> {
-        Err("ActorChannel `fn recv` not implemented".into())
-    }
+    fn clone_rsp_tx(&self) -> Option<ActorSender>;
 }
 
 pub trait Actor: Send + Debug + Sync {
@@ -84,10 +70,8 @@ pub trait Actor: Send + Debug + Sync {
     fn get_name(&self) -> &str;
     fn get_actor_id(&self) -> &AnId;
     fn get_instance_id(&self) -> &AnId;
+    fn get_chnl(&self) -> &ActorChannel;
     fn process_msg_any(&mut self, context: &dyn ActorContext, msg: BoxMsgAny);
-    fn connection(&self) -> Connection;
-    fn their_bdlc_with_us(&self) -> BiDirLocalChannel;
-    fn our_bdlc_with_them(&self) -> BiDirLocalChannel;
     fn done(&self) -> bool;
 }
 
@@ -96,6 +80,6 @@ mod test {
 
     #[test]
     fn test_actor() {
-        println!("test_actor");
+        println!("test_actor: empty ATM");
     }
 }

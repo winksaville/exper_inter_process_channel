@@ -10,10 +10,8 @@
 //! The CON_MGR_REGISTEE_ACTOR_PROTOCOL is implemented by
 //! the actors that want to register with the connection manager
 //! they send CON_MGR_REGISTER_ACTOR_RSP_ID messages.
-use actor_bi_dir_channel::BiDirLocalChannel;
 use an_id::{anid, AnId};
-use crossbeam_channel::Sender;
-use msg_header::{BoxMsgAny, MsgHeader};
+use msg_header::MsgHeader;
 use msg_local_macro::{msg_local_macro, paste};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
@@ -28,9 +26,7 @@ msg_local_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
     //protocol_set_id: AnId,
     // As ProtocolSet is immutable, see is #13
     //   https://github.com/winksaville/exper_inter_process_channel/issues/13
-    protocol_set: ProtocolSet, // TODO maybe make Option<ProtocolSet>
-    bdlc: BiDirLocalChannel,
-    actor_executor_tx: Sender<BoxMsgAny>
+    protocol_set: ProtocolSet // TODO maybe make Option<ProtocolSet>
 });
 
 impl ConMgrRegisterActorReq {
@@ -40,8 +36,6 @@ impl ConMgrRegisterActorReq {
         id: &AnId,
         instance_id: &AnId,
         protocol_set: &ProtocolSet,
-        bdlc: &BiDirLocalChannel,
-        actor_executor_tx: &Sender<BoxMsgAny>,
     ) -> Self {
         Self {
             header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, Some(*src_id)),
@@ -49,8 +43,6 @@ impl ConMgrRegisterActorReq {
             id: *id,
             instance_id: *instance_id,
             protocol_set: protocol_set.clone(),
-            bdlc: bdlc.clone(),
-            actor_executor_tx: actor_executor_tx.clone(),
         }
     }
 }
@@ -113,12 +105,12 @@ pub fn con_mgr_registee_actor_protocol() -> &'static Protocol {
 #[cfg(test)]
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
     use super::*;
 
-    use actor_bi_dir_channel::ActorBiDirChannel;
+    use box_msg_any::BoxMsgAny;
+    use crossbeam_channel::unbounded;
     use echo_requestee_protocol::echo_requestee_protocol;
+    use std::collections::HashMap;
 
     #[test]
     fn test_con_mgr_reg_actor_protocol() {
@@ -141,18 +133,10 @@ mod test {
         pm.insert(erep.id.clone(), erep.clone());
         let ps = ProtocolSet::new("ps", a_protocol_set_id, pm);
 
-        let (theirs, ours) = BiDirLocalChannel::new();
-
-        let msg = ConMgrRegisterActorReq::new(
-            &a_src_id,
-            "cmra1",
-            &a_id,
-            &a_instance_id,
-            &ps,
-            &theirs,
-            &ours.tx.clone(),
-        );
+        let msg = ConMgrRegisterActorReq::new(&a_src_id, "cmra1", &a_id, &a_instance_id, &ps);
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
+
+        let (theirs, ours) = unbounded::<BoxMsgAny>();
 
         assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
         assert_eq!(msg.header.src_id, Some(a_src_id));
@@ -160,13 +144,20 @@ mod test {
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);
         assert_eq!(msg.protocol_set, ps);
-        let their_channel: Box<dyn ActorBiDirChannel> = Box::new(msg.bdlc.clone());
+
         println!("sending");
-        their_channel.send(Box::new(1)).unwrap();
+        theirs.send(Box::new(msg)).unwrap();
         println!("receiving");
         let msg_any = ours.recv().unwrap();
         println!("received");
-        assert_eq!(*msg_any.downcast::<i32>().unwrap(), 1);
+        let msg_rcvd = msg_any.downcast::<ConMgrRegisterActorReq>().unwrap();
+
+        assert_eq!(msg_rcvd.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg_rcvd.header.src_id, Some(a_src_id));
+        assert_eq!(msg_rcvd.name, "cmra1");
+        assert_eq!(msg_rcvd.id, a_id);
+        assert_eq!(msg_rcvd.instance_id, a_instance_id);
+        assert_eq!(msg_rcvd.protocol_set, ps);
     }
 
     //#[test]

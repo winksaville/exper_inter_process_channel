@@ -1,4 +1,5 @@
-use crate::{BoxMsgAny, MSG_ID_STR_LEN};
+use crate::MSG_ID_STR_LEN;
+use box_msg_any::BoxMsgAny;
 
 pub type FromSerdeJsonBuf = fn(&[u8]) -> std::option::Option<BoxMsgAny>;
 pub type ToSerdeJsonBuf = fn(BoxMsgAny) -> std::option::Option<Vec<u8>>;

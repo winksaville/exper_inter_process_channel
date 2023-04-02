@@ -2,7 +2,7 @@ use std::cell::UnsafeCell;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 
-use msg_header::BoxMsgAny;
+use box_msg_any::BoxMsgAny;
 
 pub trait ActorBiDirChannel {
     fn clone_tx(&self) -> Sender<BoxMsgAny> {

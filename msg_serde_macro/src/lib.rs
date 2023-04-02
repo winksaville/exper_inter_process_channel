@@ -36,7 +36,7 @@ macro_rules! msg_serde_macro {
                 &self.header.src_id
             }
 
-            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+            pub fn from_box_msg_any(msg: &box_msg_any::BoxMsgAny) -> Option<&$name> {
                 if let Some(m) = msg.downcast_ref::<$name>() {
                     Some(m)
                 } else {
@@ -44,7 +44,7 @@ macro_rules! msg_serde_macro {
                 }
             }
 
-            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
+            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<box_msg_any::BoxMsgAny> {
                 let id = msg_header::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
@@ -73,7 +73,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn to_serde_json_buf(
-                boxed_msg_any: msg_header::BoxMsgAny,
+                boxed_msg_any: box_msg_any::BoxMsgAny,
             ) -> std::option::Option<Vec<u8>> {
                 if let Some(m) = boxed_msg_any.downcast_ref::<Self>() {
                     match serde_json::to_vec(m) {
@@ -115,7 +115,7 @@ macro_rules! msg_serde_macro {
                 &self.header.src_id
             }
 
-            pub fn from_box_msg_any(msg: &msg_header::BoxMsgAny) -> Option<&$name> {
+            pub fn from_box_msg_any(msg: &box_msg_any::BoxMsgAny) -> Option<&$name> {
                 if let Some(m) = msg.downcast_ref::<$name>() {
                     Some(m)
                 } else {
@@ -123,7 +123,7 @@ macro_rules! msg_serde_macro {
                 }
             }
 
-            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<msg_header::BoxMsgAny> {
+            pub fn from_serde_json_buf(buf: &[u8]) -> std::option::Option<box_msg_any::BoxMsgAny> {
                 let id = msg_header::get_msg_id_str_from_buf(buf);
                 if id == $id_str {
                     if let Ok(s) = std::str::from_utf8(buf) {
@@ -152,7 +152,7 @@ macro_rules! msg_serde_macro {
             }
 
             pub fn to_serde_json_buf(
-                boxed_msg_any: msg_header::BoxMsgAny,
+                boxed_msg_any: box_msg_any::BoxMsgAny,
             ) -> std::option::Option<Vec<u8>> {
                 if let Some(m) = boxed_msg_any.downcast_ref::<Self>() {
                     match serde_json::to_vec(m) {
@@ -173,7 +173,8 @@ macro_rules! msg_serde_macro {
 #[cfg(test)]
 mod test {
     use an_id::AnId;
-    use msg_header::{BoxMsgAny, MsgHeader};
+    use box_msg_any::BoxMsgAny;
+    use msg_header::MsgHeader;
 
     use super::*;
 
