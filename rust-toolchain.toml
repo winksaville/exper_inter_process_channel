@@ -2,3 +2,4 @@
 # Nightly is necessary because msg_header is using downcast_ref_unchecked
 # and thus needs "feature(downcast_unchecked)
 channel = "nightly"
+#channel = "stable"
