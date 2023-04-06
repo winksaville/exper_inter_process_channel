@@ -3,6 +3,10 @@
 Determine the feasibility of combining channels and
 network connections to send messages between processes.
 
+## Weird Bugs
+
+ * Rust-Analyzer is reporting a false type-mismatch error [#14](https://github.com/winksaville/exper_inter_process_channel/issues/14)
+
 ## Run
 
 Currently `main()` is not doing anything:

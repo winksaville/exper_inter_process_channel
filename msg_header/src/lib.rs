@@ -1,4 +1,4 @@
-#![feature(downcast_unchecked)]
+#![feature(downcast_unchecked)] // Disable if stable
 use actor_channel::ActorSender;
 use an_id::AnId;
 use box_msg_any::BoxMsgAny;
@@ -7,6 +7,19 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
 mod get_msg_id_str_from_buf;
 pub use get_msg_id_str_from_buf::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
+
+// You can use stable but the result will no run,
+// I've added this to debug the issue with Rust-Analyzer
+// reporting a false error for sender_map_insert.
+#[rustversion::stable]
+use an_id::anid;
+#[rustversion::stable]
+use paste::paste;
+
+#[rustversion::stable]
+const DEBUG_ANID: AnId = anid!("def26b5a-a462-492a-acdd-85aac7a1f2ac");
+#[rustversion::stable]
+const SOME_DEBUG_ANID: Option<AnId> = Some(anid!("c4e6ad97-8661-491e-a4fc-a986bbb1cf45"));
 
 pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -38,16 +51,22 @@ impl MsgHeader {
         Self::new(msg_id, None)
     }
 
+    #[rustversion::nightly]
     pub fn get_msg_id_from_boxed_msg_any(msg: &BoxMsgAny) -> &AnId {
         // TODO: Consider validating that the msg_header or AnId. One way
         // would be to have a "global" hashmap of valid values another
         // way would be to add a "check-sum"?
         // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
         let mh: &MsgHeader = unsafe { msg.downcast_ref_unchecked() };
-
         &mh.msg_id
     }
 
+    #[rustversion::stable]
+    pub fn get_msg_id_from_boxed_msg_any(_msg: &BoxMsgAny) -> &AnId {
+        &DEBUG_ANID
+    }
+
+    #[rustversion::nightly]
     pub fn get_src_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &Option<AnId> {
         // TODO: Consider validating that the msg_header or AnId. One way
         // would be to have a "global" hashmap of valid values another
@@ -56,6 +75,11 @@ impl MsgHeader {
         let mh: &MsgHeader = unsafe { msg_any.downcast_ref_unchecked() };
 
         &mh.src_id
+    }
+
+    #[rustversion::stable]
+    pub fn get_src_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &Option<AnId> {
+        &SOME_DEBUG_ANID
     }
 
     pub fn get_src_tx_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {
