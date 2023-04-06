@@ -8,40 +8,9 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-box_msg_any = { path = "box_msg_any" }
-actor = { path="actor" }
-actor_channel = { path="actor_channel" }
-actor_executor = { path="actor_executor" }
-con_mgr = { path="con_mgr" }
-protocol_set = { path="protocol_set" }
-protocol = { path="protocol" }
-sender_map_by_instance_id = { path="sender_map_by_instance_id" }
-echo_start_complete_protocol = { path="protocols/echo_start_complete_protocol" }
-echo_requester_protocol = { path="protocols/echo_requester_protocol" }
-echo_requestee_protocol = { path="protocols/echo_requestee_protocol" }
-cmd_init_protocol = { path="protocols/cmd_init_protocol" }
-actor_executor_protocol = { path="protocols/actor_executor_protocol" }
-con_mgr_register_actor_protocol = { path="protocols/con_mgr_register_actor_protocol" }
-con_mgr_query_protocol = { path="protocols/con_mgr_query_protocol" }
-echo_start = { path="msgs/echo_start" }
-echo_complete = { path="msgs/echo_complete" }
-echo_req = { path="msgs/echo_req" }
-echo_rsp = { path="msgs/echo_rsp" }
-msg_header = { path="msg_header" }
+an_id = { path="an_id" }
 msg1 = { path="msgs/msg1" }
 msg2 = { path="msgs/msg2" }
-cmd_done = { path="msgs/cmd_done" }
-req_add_actor = { path="msgs/req_add_actor" }
-rsp_add_actor = { path="msgs/rsp_add_actor" }
-name_id = { path="name_id" }
-an_id = { path="an_id" }
-client = { path="client" }
-server = { path="server" }
-uuid = "1.3.0"
-serde = { version = "1.0.154", features = ["derive"] }
-serde_json = "1.0.94"
-custom_logger = { git = "https://github.com/winksaville/custom_logger", version = "0.2.0" }
-crossbeam-channel = "0.5.7"
 
 [workspace]
 members = [

@@ -165,6 +165,7 @@ impl ActorExecutor {
                                 ));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
                                 let rsp_tx = sender_map_get(&msg.header.src_id.unwrap()).unwrap();
+                                println!("AE:{}: msg.rsp_tx.send rsp_tx={rsp_tx:?}", ae.name);
                                 rsp_tx.send(msg_rsp);
 
                                 // Issue a CmdInit
@@ -261,17 +262,19 @@ impl ActorExecutor {
 
 #[cfg(test)]
 mod tests {
-    use actor_channel::ActorChannel;
+    use super::ActorExecutor;
+    use actor_channel::{ActorChannel, ActorSender};
+    use actor::Actor;
+    use actor_executor_protocol::{ReqAddActor, RspAddActor};
     use an_id::AnId;
     use client::Client;
     use cmd_done::CmdDone;
     use con_mgr::ConMgr;
     use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
-    //use box_msg_any::BoxMsgAny;
     use server::Server;
-
-    use super::*;
+    use sender_map_by_instance_id::{sender_map_get, sender_map_insert};
+    use std::thread::JoinHandle;
 
     // Initialize create supervisor_id, and supervisor_chnl, ConMg and ActorExecutor
     // starting ActorExecutor and adding ConMgr to it
@@ -419,5 +422,78 @@ mod tests {
         //drop(supervisor_rx);
 
         println!("test_con_mgr_client_server:-");
+    }
+
+    #[test]
+    fn test_multiple_ae() {
+        println!("\ntest_multiple_ae:+");
+
+        let (supervisor_instance_id, supervisor_chnl, ae_sender, ae_join_handle) = initialize();
+
+        let add_actor = |actor_name_str: &str, actor_boxed: Box<dyn Actor>| {
+            println!("** add_actor:+ {ae_sender:?}, {supervisor_instance_id:?}");
+            println!("** add_actor: {actor_boxed:?}");
+            let msg = Box::new(ReqAddActor::new(&supervisor_instance_id, actor_boxed));
+            ae_sender.send(msg).unwrap();
+            println!("** add_actor: sent {} to ae", actor_name_str);
+            let msg_any = supervisor_chnl.receiver.recv().unwrap();
+            println!("** add_actor: recvd msg_any={msg_any:?}");
+            let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
+            println!("** add_actor:- rsp_add_actor={msg:?}");
+        };
+
+        // Add client1 to ActorExecutor
+        let c1_name = "client1";
+        let c1 = Box::new(Client::new(c1_name));
+        let c1_instance_id = *c1.get_instance_id();
+        add_actor("client1", c1);
+
+        // Add server1 to ActorExecutor
+        let s1_name = "server1";
+        let s1 = Box::new(Server::new(s1_name));
+        let s1_instance_id = *s1.get_instance_id();
+        add_actor("server1", s1);
+
+        // Send EchoStart to c1
+        println!("test_multiple_ae: send EchoStart");
+        let c1_tx = match sender_map_get(&c1_instance_id) {
+            Some(tx) => tx,
+            None => {
+                println!("test_multiple_ae: c1_tx not found");
+                panic!();
+            }
+        };
+        match c1_tx.send(Box::new(EchoStart::new(
+            &supervisor_instance_id,
+            &s1_instance_id,
+            10,
+        ))) {
+            Ok(_) => {}
+            Err(e) => {
+                println!("test_multiple_ae: send EchoStart failed e={e:?}");
+                panic!();
+            }
+        }
+        println!("test_multiple_ae: sent EchoStart");
+
+        // Wait for EchoComplete from c1
+        println!("test_multiple_ae: wait EchoComplete");
+        let msg_any = supervisor_chnl.receiver.recv().unwrap();
+        let msg_rsp = msg_any.downcast_ref::<EchoComplete>().unwrap();
+        println!("test_multiple_ae: recv EchoComplete={msg_rsp:?}");
+
+        println!("test_multiple_ae: send CmdDone");
+        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
+        ae_sender.send(msg).unwrap();
+        println!("test_multiple_ae: sent CmdDone");
+
+        println!("test_multiple_ae: join ae to complete");
+        ae_join_handle.join().unwrap();
+        println!("test_multiple_ae: join ae to completed");
+
+        //drop(supervisor_tx);
+        //drop(supervisor_rx);
+
+        println!("test_multiple_ae:-");
     }
 }

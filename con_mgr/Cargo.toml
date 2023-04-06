@@ -25,9 +25,11 @@ cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
 sender_map_by_instance_id = { path = "../sender_map_by_instance_id" }
 once_cell = "1.17.1"
 
-[dev-dependencies]
-actor = { path = "../actor" }
-client = { path = "../client" }
-server = { path = "../server" }
-echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
-echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
+#[dev-dependencies]
+#actor = { path = "../actor" }
+#cmd_init_protocol = { path = "../protocols/cmd_init_protocol" }
+#client = { path = "../client" }
+#server = { path = "../server" }
+#echo_requester_protocol = { path = "../protocols/echo_requester_protocol" }
+#echo_start_complete_protocol = { path = "../protocols/echo_start_complete_protocol" }
+#sender_map_by_instance_id = { path = "../sender_map_by_instance_id" }

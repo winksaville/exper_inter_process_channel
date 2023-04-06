@@ -22,11 +22,8 @@ dependencies = [
 name = "actor_channel"
 version = "0.1.0"
 dependencies = [
- "an_id",
  "box_msg_any",
  "crossbeam-channel",
- "msg1",
- "msg_header",
 ]
 
 [[package]]
@@ -169,7 +166,6 @@ dependencies = [
  "protocol",
  "protocol_set",
  "sender_map_by_instance_id",
- "server",
  "uuid",
 ]
 
@@ -233,20 +229,16 @@ dependencies = [
  "an_id",
  "box_msg_any",
  "chrono",
- "client",
  "cmd_init_protocol",
  "con_mgr_query_protocol",
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
- "echo_requester_protocol",
- "echo_start_complete_protocol",
  "msg_header",
  "once_cell",
  "protocol",
  "protocol_set",
  "sender_map_by_instance_id",
- "server",
  "uuid",
 ]
 
@@ -511,40 +503,9 @@ dependencies = [
 name = "exper_inter_process_channel"
 version = "0.1.0"
 dependencies = [
- "actor",
- "actor_channel",
- "actor_executor",
- "actor_executor_protocol",
  "an_id",
- "box_msg_any",
- "client",
- "cmd_done",
- "cmd_init_protocol",
- "con_mgr",
- "con_mgr_query_protocol",
- "con_mgr_register_actor_protocol",
- "crossbeam-channel",
- "custom_logger",
- "echo_complete",
- "echo_req",
- "echo_requestee_protocol",
- "echo_requester_protocol",
- "echo_rsp",
- "echo_start",
- "echo_start_complete_protocol",
  "msg1",
  "msg2",
- "msg_header",
- "name_id",
- "protocol",
- "protocol_set",
- "req_add_actor",
- "rsp_add_actor",
- "sender_map_by_instance_id",
- "serde",
- "serde_json",
- "server",
- "uuid",
 ]
 
 [[package]]

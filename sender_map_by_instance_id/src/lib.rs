@@ -17,8 +17,19 @@ pub fn sender_map_insert(instance_id: &AnId, sender: &ActorSender) {
     let mut wlocked_hashmap = SENDER_HASHMAP.write().unwrap(); // TODO: remove unwrap
     if !wlocked_hashmap.contains_key(instance_id) {
         println!("sender_map_insert: instance_id: {}", instance_id);
-        let r = wlocked_hashmap.insert(*instance_id, sender.clone());
+
+        // These needed to satisfy the rust analyzer type checker.
+        let v: ActorSender = sender.clone();
+        let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, v);
+
+        // This is also "correct code" and compiles and runs fine,
+        // but as of v1.62 of rustc rust-analyzer generates a type-mismatch.
+        // on uses of this function
+        //let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, sender.clone());
+
         assert!(r.is_none());
+    } else {
+        panic!("sender_map_insert: instance_id: {} already exists", instance_id);
     }
 }
 
