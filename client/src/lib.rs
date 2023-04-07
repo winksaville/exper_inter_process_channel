@@ -264,187 +264,187 @@ impl Client {
     }
 }
 
-//#[cfg(test)]
-//mod test {
-//    use super::*;
-//    use chrono::Utc;
-//    use con_mgr_register_actor_protocol::{
-//        ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
-//    };
-//    use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
-//    use msg1::MSG1_ID;
-//    use msg_header::MsgHeader;
-//
-//    struct Context {
-//        actor_executor_tx: ActorSender,
-//        con_mgr_tx: ActorSender,
-//        rsp_tx: ActorSender,
-//    }
-//
-//    impl ActorContext for Context {
-//        fn actor_executor_tx(&self) -> &ActorSender {
-//            &self.actor_executor_tx
-//        }
-//
-//        fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-//            Ok(self.con_mgr_tx.send(msg)?)
-//        }
-//
-//        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-//            Ok(())
-//        }
-//
-//        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-//            Ok(self.rsp_tx.send(msg)?)
-//        }
-//
-//        fn clone_rsp_tx(&self) -> Option<ActorSender> {
-//            Some(self.rsp_tx.clone())
-//        }
-//    }
-//
-//    #[test]
-//    fn test_cmd_init() {
-//        println!("\ntest_cmd_init:+");
-//
-//        // Create a client and a supervisor bdlc's
-//        let supervisor_chnl = ActorChannel::new("supervisor");
-//
-//        // Add supervisor to sender_map
-//        let supervisor_instance_id = AnId::new();
-//        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
-//
-//        // Both con_mgr_tx and rsp_tx are supervisor
-//        let client_context = Context {
-//            actor_executor_tx: supervisor_chnl.sender.clone(),
-//            con_mgr_tx: supervisor_chnl.sender.clone(),
-//            rsp_tx: supervisor_chnl.sender.clone(),
-//        };
-//
-//        // Create a client
-//        let mut client = Client::new("client");
-//
-//        // First message must be CmdInit and client send
-//        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
-//        client.process_msg_any(&client_context, msg);
-//
-//        // ConMgr is sent ConMgrRegisterActorReq and responds with
-//        // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
-//        let con_mgr_msg_any = supervisor_chnl.receiver.recv().unwrap();
-//        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
-//        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-//        let msg = Box::new(ConMgrRegisterActorRsp::new(
-//            &supervisor_instance_id,
-//            ConMgrRegisterActorStatus::Success,
-//        ));
-//        client.process_msg_any(&client_context, msg);
-//
-//        // Send Msg2 expect Msg1 back
-//        let msg = Box::new(Msg2::new(&supervisor_instance_id));
-//        client.process_msg_any(&client_context, msg);
-//        let recv_msg = supervisor_chnl.receiver.recv().unwrap();
-//        assert_eq!(
-//            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg),
-//            &MSG1_ID
-//        );
-//
-//        println!("test_cmd_init:-");
-//    }
-//
-//    // Test various ping_counts including 0
-//    #[test]
-//    fn test_client_ping_with_supervisor_as_server() {
-//        println!("\ntest_client_ping_with_supervisor_as_server:+");
-//
-//        let supervisor_chnl = ActorChannel::new("supervisor");
-//
-//        // Add supervisor to sender_map
-//        let supervisor_instance_id = AnId::new();
-//        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
-//
-//        // Create a client with a supervisor as the actor_executor
-//        let mut client = Client::new("client");
-//
-//        let supervisor_with_clnt_context = Context {
-//            actor_executor_tx: supervisor_chnl.sender.clone(),
-//            con_mgr_tx: supervisor_chnl.sender.clone(),
-//            rsp_tx: supervisor_chnl.sender.clone(),
-//        };
-//
-//        // First message must be CmdInit and client will send a ConMsgRegisterActorReq
-//        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
-//        client.process_msg_any(&supervisor_with_clnt_context, msg);
-//
-//        // ConMgr is sent ConMgrRegisterActorReq and responds with
-//        // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
-//        let con_mgr_msg_any = supervisor_chnl.receiver.recv().unwrap();
-//        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
-//        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-//        let msg = Box::new(ConMgrRegisterActorRsp::new(
-//            &supervisor_instance_id,
-//            ConMgrRegisterActorStatus::Success,
-//        ));
-//        client.process_msg_any(&supervisor_with_clnt_context, msg);
-//
-//        // Channel srvr
-//        let srvr_chnl = ActorChannel::new("server");
-//        let srvr_instance_id = AnId::new();
-//        sender_map_insert(&srvr_instance_id, &srvr_chnl.sender);
-//
-//        for ping_count in [0, 1, 5] {
-//            let srvr_with_clnt_context = Context {
-//                actor_executor_tx: supervisor_chnl.sender.clone(),
-//                con_mgr_tx: supervisor_chnl.sender.clone(),
-//                rsp_tx: client.chnl.sender.clone(),
-//            };
-//
-//            // Supervisor sends EchoStart message to client
-//            println!("\ntest_client_ping_with_supervisor_as_server: ping_count={ping_count}");
-//            let start_msg = Box::new(EchoStart::new(
-//                &supervisor_instance_id,
-//                &srvr_instance_id,
-//                ping_count,
-//            ));
-//            client.chnl.sender.send(start_msg).unwrap();
-//
-//            // Client receives EchoStart msg from supervisor
-//            println!("test_client_ping_with_supervisor_as_server: client receiving EchoStart");
-//            let start_msg_any = client.chnl.receiver.recv().unwrap();
-//            println!("test_client_ping_with_supervisor_as_server: client process EchoStart");
-//            client.process_msg_any(&supervisor_with_clnt_context, start_msg_any);
-//
-//            for i in 0..ping_count {
-//                println!(
-//                    "test_client_ping_with_supervisor_as_server: server recv TOL {} of {ping_count}",
-//                    i + 1
-//                );
-//
-//                // Server receives request message
-//                let req_msg_any = srvr_chnl.receiver.recv().unwrap();
-//                let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
-//                println!(
-//                    "test_client_ping_with_supervisor_as_server: received req_msg={req_msg:?}"
-//                );
-//
-//                // Server creates and sends rsp message
-//                let rsp_msg = Box::new(EchoRsp::new(
-//                    &supervisor_instance_id,
-//                    Utc::now().timestamp_nanos(),
-//                    req_msg.counter,
-//                ));
-//                client.chnl.sender.send(rsp_msg).unwrap();
-//
-//                // Client receives and processes rsp message from server
-//                let rsp_msg_any = client.chnl.receiver.recv().unwrap();
-//                client.process_msg_any(&srvr_with_clnt_context, rsp_msg_any);
-//            }
-//
-//            // Supervisor receives Complete msg
-//            let complete_msg_any = supervisor_chnl.receiver.recv().unwrap();
-//            let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
-//            println!("test_client_ping_with_supervisor_as_server: received complete msg={complete_msg:?}");
-//            assert_eq!(complete_msg.header.msg_id, ECHO_COMPLETE_ID);
-//        }
-//        println!("test_client_ping_with_supervisor_as_server:-");
-//    }
-//}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use chrono::Utc;
+    use con_mgr_register_actor_protocol::{
+        ConMgrRegisterActorRsp, ConMgrRegisterActorStatus, CON_MGR_REGISTER_ACTOR_REQ_ID,
+    };
+    use echo_start_complete_protocol::{EchoComplete, EchoStart, ECHO_COMPLETE_ID};
+    use msg1::MSG1_ID;
+    use msg_header::MsgHeader;
+
+    struct Context {
+        actor_executor_tx: ActorSender,
+        con_mgr_tx: ActorSender,
+        rsp_tx: ActorSender,
+    }
+
+    impl ActorContext for Context {
+        fn actor_executor_tx(&self) -> &ActorSender {
+            &self.actor_executor_tx
+        }
+
+        fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.con_mgr_tx.send(msg)?)
+        }
+
+        fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(())
+        }
+
+        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.rsp_tx.send(msg)?)
+        }
+
+        fn clone_rsp_tx(&self) -> Option<ActorSender> {
+            Some(self.rsp_tx.clone())
+        }
+    }
+
+    #[test]
+    fn test_cmd_init() {
+        println!("\ntest_cmd_init:+");
+
+        // Create a client and a supervisor bdlc's
+        let supervisor_chnl = ActorChannel::new("supervisor");
+
+        // Add supervisor to sender_map
+        let supervisor_instance_id = AnId::new();
+        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
+
+        // Both con_mgr_tx and rsp_tx are supervisor
+        let client_context = Context {
+            actor_executor_tx: supervisor_chnl.sender.clone(),
+            con_mgr_tx: supervisor_chnl.sender.clone(),
+            rsp_tx: supervisor_chnl.sender.clone(),
+        };
+
+        // Create a client
+        let mut client = Client::new("client");
+
+        // First message must be CmdInit and client send
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
+        client.process_msg_any(&client_context, msg);
+
+        // ConMgr is sent ConMgrRegisterActorReq and responds with
+        // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
+        let con_mgr_msg_any = supervisor_chnl.receiver.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        let msg = Box::new(ConMgrRegisterActorRsp::new(
+            &supervisor_instance_id,
+            ConMgrRegisterActorStatus::Success,
+        ));
+        client.process_msg_any(&client_context, msg);
+
+        // Send Msg2 expect Msg1 back
+        let msg = Box::new(Msg2::new(&supervisor_instance_id));
+        client.process_msg_any(&client_context, msg);
+        let recv_msg = supervisor_chnl.receiver.recv().unwrap();
+        assert_eq!(
+            MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg),
+            &MSG1_ID
+        );
+
+        println!("test_cmd_init:-");
+    }
+
+    // Test various ping_counts including 0
+    #[test]
+    fn test_client_ping_with_supervisor_as_server() {
+        println!("\ntest_client_ping_with_supervisor_as_server:+");
+
+        let supervisor_chnl = ActorChannel::new("supervisor");
+
+        // Add supervisor to sender_map
+        let supervisor_instance_id = AnId::new();
+        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
+
+        // Create a client with a supervisor as the actor_executor
+        let mut client = Client::new("client");
+
+        let supervisor_with_clnt_context = Context {
+            actor_executor_tx: supervisor_chnl.sender.clone(),
+            con_mgr_tx: supervisor_chnl.sender.clone(),
+            rsp_tx: supervisor_chnl.sender.clone(),
+        };
+
+        // First message must be CmdInit and client will send a ConMsgRegisterActorReq
+        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
+        client.process_msg_any(&supervisor_with_clnt_context, msg);
+
+        // ConMgr is sent ConMgrRegisterActorReq and responds with
+        // ConMgrRegisterActorRsp status: ConMgrRegisterActorStatus::Success
+        let con_mgr_msg_any = supervisor_chnl.receiver.recv().unwrap();
+        let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
+        assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        let msg = Box::new(ConMgrRegisterActorRsp::new(
+            &supervisor_instance_id,
+            ConMgrRegisterActorStatus::Success,
+        ));
+        client.process_msg_any(&supervisor_with_clnt_context, msg);
+
+        // Channel srvr
+        let srvr_chnl = ActorChannel::new("server");
+        let srvr_instance_id = AnId::new();
+        sender_map_insert(&srvr_instance_id, &srvr_chnl.sender);
+
+        for ping_count in [0, 1, 5] {
+            let srvr_with_clnt_context = Context {
+                actor_executor_tx: supervisor_chnl.sender.clone(),
+                con_mgr_tx: supervisor_chnl.sender.clone(),
+                rsp_tx: client.chnl.sender.clone(),
+            };
+
+            // Supervisor sends EchoStart message to client
+            println!("\ntest_client_ping_with_supervisor_as_server: ping_count={ping_count}");
+            let start_msg = Box::new(EchoStart::new(
+                &supervisor_instance_id,
+                &srvr_instance_id,
+                ping_count,
+            ));
+            client.chnl.sender.send(start_msg).unwrap();
+
+            // Client receives EchoStart msg from supervisor
+            println!("test_client_ping_with_supervisor_as_server: client receiving EchoStart");
+            let start_msg_any = client.chnl.receiver.recv().unwrap();
+            println!("test_client_ping_with_supervisor_as_server: client process EchoStart");
+            client.process_msg_any(&supervisor_with_clnt_context, start_msg_any);
+
+            for i in 0..ping_count {
+                println!(
+                    "test_client_ping_with_supervisor_as_server: server recv TOL {} of {ping_count}",
+                    i + 1
+                );
+
+                // Server receives request message
+                let req_msg_any = srvr_chnl.receiver.recv().unwrap();
+                let req_msg = req_msg_any.downcast_ref::<EchoReq>().unwrap();
+                println!(
+                    "test_client_ping_with_supervisor_as_server: received req_msg={req_msg:?}"
+                );
+
+                // Server creates and sends rsp message
+                let rsp_msg = Box::new(EchoRsp::new(
+                    &supervisor_instance_id,
+                    Utc::now().timestamp_nanos(),
+                    req_msg.counter,
+                ));
+                client.chnl.sender.send(rsp_msg).unwrap();
+
+                // Client receives and processes rsp message from server
+                let rsp_msg_any = client.chnl.receiver.recv().unwrap();
+                client.process_msg_any(&srvr_with_clnt_context, rsp_msg_any);
+            }
+
+            // Supervisor receives Complete msg
+            let complete_msg_any = supervisor_chnl.receiver.recv().unwrap();
+            let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
+            println!("test_client_ping_with_supervisor_as_server: received complete msg={complete_msg:?}");
+            assert_eq!(complete_msg.header.msg_id, ECHO_COMPLETE_ID);
+        }
+        println!("test_client_ping_with_supervisor_as_server:-");
+    }
+}

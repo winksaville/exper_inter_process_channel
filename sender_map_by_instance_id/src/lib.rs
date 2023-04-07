@@ -18,14 +18,17 @@ pub fn sender_map_insert(instance_id: &AnId, sender: &ActorSender) {
     if !wlocked_hashmap.contains_key(instance_id) {
         println!("sender_map_insert: instance_id: {}", instance_id);
 
-        // These needed to satisfy the rust analyzer type checker.
-        let v: ActorSender = sender.clone();
-        let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, v);
+        // Actually, this doesn't solve the problem, is seems
+        // to be associated with a "false" circular dependency.
+
+        //// These needed to satisfy the rust analyzer type checker.
+        //let v: ActorSender = sender.clone();
+        //let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, v);
 
         // This is also "correct code" and compiles and runs fine,
         // but as of v1.62 of rustc rust-analyzer generates a type-mismatch.
         // on uses of this function
-        //let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, sender.clone());
+        let r: Option<ActorSender> = wlocked_hashmap.insert(*instance_id, sender.clone());
 
         assert!(r.is_none());
     } else {

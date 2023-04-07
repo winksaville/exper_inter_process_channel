@@ -11,7 +11,14 @@ license.workspace = true
 box_msg_any = { path="../box_msg_any" }
 crossbeam-channel = "0.5.7"
 
-#[dev-dependencies]
-#msg_header = { version = "0.1.0", path = "../msg_header" }
+# Enabling either msg_header or msg1 causes the false "cyclic deps"
+# in the "OUTPUT" -> "Rust Anaylyzer Language Server" (RA). This is most readily
+# seen when starting VSCode, `code ~/prgs/rust/myrepos/exper_inter_process_channel`.
+# But you can also see it by clearing the output of RA and clicking on
+# "rust-analyzer" in the bottom status bar of vscode. We also see
+# the "type-mismatch" error reported in "PROBLEMS" on any file that
+# calls sender_map_insert, such as client/lib.rs.
+[dev-dependencies]
 #an_id = { path="../an_id" }
-#msg1 = { version = "0.1.0", path = "../msgs/msg1" }
+#msg_header = { version = "0.1.0", path = "../msg_header" }
+msg1 = { version = "0.1.0", path = "../msgs/msg1" }

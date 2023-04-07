@@ -104,15 +104,15 @@ impl VecActorChannel {
 //    use super::*;
 //
 //    use an_id::AnId;
-//    use msg1::{Msg1, MSG1_ID};
-//    use msg_header::MsgHeader;
+//    //use msg1::{Msg1, MSG1_ID};
+//    //use msg_header::MsgHeader;
 //
 //    #[test]
 //    fn test_actor_channel() {
 //        let supervisor_chnl = ActorChannel::new("supervisor");
 //        println!("supervisor_chnl: {supervisor_chnl:?}");
 //
-//        let supervisor_instance_id = AnId::new();
+//        let _supervisor_instance_id = AnId::new();
 //        let msg_1 = Box::new(Msg1::new(&supervisor_instance_id, 1));
 //
 //        assert_eq!("supervisor_chnl_tx", supervisor_chnl.sender.name);
