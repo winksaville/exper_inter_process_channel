@@ -1,4 +1,4 @@
-//#![feature(downcast_unchecked)] // Disable if stable
+#![feature(downcast_unchecked)] // Disable if stable
 use actor_channel::ActorSender;
 use an_id::AnId;
 use box_msg_any::BoxMsgAny;

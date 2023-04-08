@@ -430,29 +430,23 @@ mod tests {
 
         let (supervisor_instance_id, supervisor_chnl, ae_sender, ae_join_handle) = initialize();
 
-        let add_actor = |actor_name_str: &str, actor_boxed: Box<dyn Actor>| {
-            println!("** add_actor:+ {ae_sender:?}, {supervisor_instance_id:?}");
-            println!("** add_actor: {actor_boxed:?}");
+        // Returns the actor_id and instance_id of the added actor
+        let add_actor = |actor_boxed: Box<dyn Actor>| -> (AnId, AnId) {
             let msg = Box::new(ReqAddActor::new(&supervisor_instance_id, actor_boxed));
             ae_sender.send(msg).unwrap();
-            println!("** add_actor: sent {} to ae", actor_name_str);
             let msg_any = supervisor_chnl.receiver.recv().unwrap();
-            println!("** add_actor: recvd msg_any={msg_any:?}");
             let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
-            println!("** add_actor:- rsp_add_actor={msg:?}");
+
+            (msg.actor_id, msg.actor_instance_id)
         };
 
         // Add client1 to ActorExecutor
-        let c1_name = "client1";
-        let c1 = Box::new(Client::new(c1_name));
-        let c1_instance_id = *c1.get_instance_id();
-        add_actor("client1", c1);
+        let c1 = Box::new(Client::new("client1"));
+        let (_, c1_instance_id) = add_actor(c1);
 
         // Add server1 to ActorExecutor
-        let s1_name = "server1";
-        let s1 = Box::new(Server::new(s1_name));
-        let s1_instance_id = *s1.get_instance_id();
-        add_actor("server1", s1);
+        let s1 = Box::new(Server::new("server1"));
+        let (_, s1_instance_id) = add_actor(s1);
 
         // Send EchoStart to c1
         println!("test_multiple_ae: send EchoStart");
