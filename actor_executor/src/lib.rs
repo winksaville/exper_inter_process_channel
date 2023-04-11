@@ -59,8 +59,8 @@ impl ActorContext for Context {
         self.rsp_tx.send(msg)
     }
 
-    fn clone_rsp_tx(&self) -> Option<ActorSender> {
-        Some(self.rsp_tx.clone())
+    fn clone_rsp_tx(&self) -> ActorSender {
+        self.rsp_tx.clone()
     }
 }
 
@@ -165,7 +165,7 @@ impl ActorExecutor {
                                     ae.vec_actor[actor_idx].get_instance_id(),
                                 ));
                                 println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
-                                let rsp_tx = sender_map_get(&msg.header.src_id.unwrap()).unwrap();
+                                let rsp_tx = sender_map_get(&msg.header.src_id).unwrap();
                                 println!("AE:{}: msg.rsp_tx.send rsp_tx={rsp_tx:?}", ae.name);
                                 rsp_tx.send(msg_rsp);
 
@@ -207,24 +207,13 @@ impl ActorExecutor {
                             MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any),
                         );
                         let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
-                        let rsp_tx = match src_id {
-                            Some(src_id) => {
-                                if let Some(sender) = sender_map_get(src_id) {
-                                    sender.clone()
-                                } else {
-                                    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
-                                    panic!(
-                                        "AE:{}: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map",
-                                        ae.name);
-                                }
-                            }
-                            None => {
-                                let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
-                                panic!(
-                                    "AE:{}: There is no src_id in msg_any header.msg_id={msg_id:?}",
-                                    ae.name
-                                );
-                            }
+                        let rsp_tx = if let Some(sender) = sender_map_get(src_id) {
+                            sender.clone()
+                        } else {
+                            let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
+                            panic!(
+                                "AE:{}: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map",
+                                ae.name);
                         };
                         let context = Context {
                             // TODO: All this cloning for each msg is slow, we need an array/hash of these Context's

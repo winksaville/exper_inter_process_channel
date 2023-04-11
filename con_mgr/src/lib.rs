@@ -369,8 +369,8 @@ mod test {
             Ok(self.rsp_tx.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> Option<ActorSender> {
-            Some(self.rsp_tx.clone())
+        fn clone_rsp_tx(&self) -> ActorSender {
+            self.rsp_tx.clone()
         }
     }
 
@@ -538,8 +538,8 @@ mod test {
         let msg_any = con_mgr.chnl.receiver.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any).unwrap();
-        assert_eq!(src_id, client.instance_id);
+        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(src_id, &client.instance_id);
         println!(
             "test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID src_id is client"
         );
@@ -552,8 +552,8 @@ mod test {
         let msg_any = client.chnl.receiver.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
-        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any).unwrap();
-        assert_eq!(src_id, con_mgr.instance_id);
+        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(src_id, &con_mgr.instance_id);
         println!(
             "test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID src_id is con_mgr"
         );
@@ -627,8 +627,8 @@ mod test {
         let msg_any = con_mgr.chnl.receiver.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
-        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any).unwrap();
-        assert_eq!(src_id, server.instance_id);
+        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(src_id, &server.instance_id);
         println!(
             "test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_REQ_ID src_id is server"
         );
@@ -641,8 +641,8 @@ mod test {
         let msg_any = server.chnl.receiver.recv().unwrap();
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_RSP_ID);
-        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any).unwrap();
-        assert_eq!(src_id, con_mgr.instance_id);
+        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(&msg_any);
+        assert_eq!(src_id, &con_mgr.instance_id);
         println!(
             "test_reg_client_server: msg_any is CON_MGR_REGISTER_ACTOR_RSP_ID src_id is con_mgr"
         );

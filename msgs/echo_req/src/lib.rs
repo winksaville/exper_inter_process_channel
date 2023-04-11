@@ -12,7 +12,7 @@ msg_serde_macro!(EchoReq "ada0f9a9-b556-46ba-b3d5-d19c87ec216c" {
 impl EchoReq {
     pub fn new(src_id: &AnId, counter: u64) -> Self {
         Self {
-            header: MsgHeader::new(ECHO_REQ_ID, Some(*src_id)),
+            header: MsgHeader::new(ECHO_REQ_ID, *src_id),
             req_timestamp_ns: Utc::now().timestamp_nanos(),
             counter,
         }
@@ -34,6 +34,6 @@ mod test {
         assert!(msg.req_timestamp_ns >= now_ns);
         assert_eq!(msg.counter, 1);
         assert_eq!(msg.header.msg_id.to_string(), ECHO_REQ_ID_STR);
-        assert_eq!(msg.header.src_id, Some(src_id));
+        assert_eq!(msg.header.src_id, src_id);
     }
 }

@@ -8,7 +8,7 @@ msg_serde_macro!(CmdDone "92a8798e-e2c9-493e-b863-edae4d302f14");
 impl CmdDone {
     pub fn new(src_id: &AnId) -> Self {
         Self {
-            header: MsgHeader::new(CMD_DONE_ID, Some(*src_id)),
+            header: MsgHeader::new(CMD_DONE_ID, *src_id),
         }
     }
 }
@@ -23,7 +23,7 @@ mod test {
         let msg = CmdDone::new(&src_id);
         println!("test_cmd_done_new msg={msg:?}");
         assert_eq!(msg.header.msg_id, CMD_DONE_ID);
-        assert_eq!(msg.header.src_id, Some(src_id));
+        assert_eq!(msg.header.src_id, src_id);
         assert_eq!(msg.header.msg_id.to_string(), CMD_DONE_ID_STR);
     }
 }

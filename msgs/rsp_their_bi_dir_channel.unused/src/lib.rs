@@ -11,7 +11,7 @@ msg_local_macro!(RspTheirBiDirChannel "03eb8c2c-0bc4-4d87-bcef-619e647b815f" {
 impl RspTheirBiDirChannel {
     pub fn new(src_id: &AnId, bdlc: Box<BiDirLocalChannel>) -> Self {
         Self {
-            header: MsgHeader::new(RSP_THEIR_BI_DIR_CHANNEL_ID, Some(*src_id)),
+            header: MsgHeader::new(RSP_THEIR_BI_DIR_CHANNEL_ID, *src_id),
             bdlc,
         }
     }

@@ -216,22 +216,16 @@ impl Client {
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             println!("{}:State0: msg={msg:?}", self.name);
             assert_eq!(msg.header.msg_id, ECHO_START_ID);
-            if let Some(tx) = context.clone_rsp_tx() {
-                self.partner_instance_id = Some(msg.partner_instance_id);
-                self.partner_tx = sender_map_get(&self.partner_instance_id.unwrap());
-                self.controller_tx = Some(tx);
-                self.ping_count = msg.ping_count;
-                println!(
-                    "{}:State0: Successfully connected to partner start echoing",
-                    self.name
-                );
-                self.send_echo_req_or_complete(1);
-            } else {
-                println!(
-                    "{}:State0: Error no controller_tx, can't start msg={msg:?}",
-                    self.name
-                );
-            }
+            let tx = context.clone_rsp_tx();
+            self.partner_instance_id = Some(msg.partner_instance_id);
+            self.partner_tx = sender_map_get(&self.partner_instance_id.unwrap());
+            self.controller_tx = Some(tx);
+            self.ping_count = msg.ping_count;
+            println!(
+                "{}:State0: Successfully connected to partner start echoing",
+                self.name
+            );
+            self.send_echo_req_or_complete(1);
         } else if let Some(msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1
             println!("{}:State0: {msg:?}", self.name);
@@ -298,8 +292,8 @@ mod test {
             Ok(self.rsp_tx.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> Option<ActorSender> {
-            Some(self.rsp_tx.clone())
+        fn clone_rsp_tx(&self) -> ActorSender {
+            self.rsp_tx.clone()
         }
     }
 

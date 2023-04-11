@@ -21,12 +21,8 @@ pub trait ActorContext {
     /// is no Sender then the message will be silently dropped????
     fn send_rsp(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
-    /// Currently used by /client actor defined here so that
-    /// Client.controller_tx can be set and the EchoComplete
-    /// can be sent when the echo sequence is complete. When
-    /// we can dynamically create "connections" I don't this
-    /// this shouldn't be necessary.
-    fn clone_rsp_tx(&self) -> Option<ActorSender>;
+    /// Clone rsp_tx
+    fn clone_rsp_tx(&self) -> ActorSender;
 }
 
 pub trait Actor: Send + Debug + Sync {

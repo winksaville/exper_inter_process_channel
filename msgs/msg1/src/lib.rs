@@ -23,7 +23,7 @@ pub struct Msg1 {
 impl Msg1 {
     pub fn new(src_id: &AnId, v: u64) -> Self {
         Self {
-            header: MsgHeader::new(MSG1_ID, Some(*src_id)),
+            header: MsgHeader::new(MSG1_ID, *src_id),
             v,
         }
     }
@@ -32,7 +32,7 @@ impl Msg1 {
         &self.header.msg_id
     }
 
-    pub fn src_id(&self) -> &Option<AnId> {
+    pub fn src_id(&self) -> &AnId {
         &self.header.src_id
     }
 
@@ -111,7 +111,7 @@ mod test {
         println!("test_msg1_to_from_serde_json_buf: msg1_deser={msg1_deser:?}");
         assert_eq!(&msg1, msg1_deser);
         assert_eq!(msg1.header.msg_id, MSG1_ID);
-        assert_eq!(msg1.header.src_id, Some(src_id));
+        assert_eq!(msg1.header.src_id, src_id);
         assert_eq!(msg1.header.msg_id, msg1_deser.header.msg_id);
         println!(
             "test_msg1_to_from_serde_json_buf: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",

@@ -38,7 +38,7 @@ impl ConMgrRegisterActorReq {
         protocol_set: &ProtocolSet,
     ) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, Some(*src_id)),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, *src_id),
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
@@ -63,7 +63,7 @@ msg_local_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
 impl ConMgrRegisterActorRsp {
     pub fn new(src_id: &AnId, status: ConMgrRegisterActorStatus) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_RSP_ID, Some(*src_id)),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_RSP_ID, *src_id),
             status,
         }
     }
@@ -139,7 +139,7 @@ mod test {
         let (theirs, ours) = unbounded::<BoxMsgAny>();
 
         assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
-        assert_eq!(msg.header.src_id, Some(a_src_id));
+        assert_eq!(msg.header.src_id, a_src_id);
         assert_eq!(msg.name, "cmra1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);
@@ -153,7 +153,7 @@ mod test {
         let msg_rcvd = msg_any.downcast::<ConMgrRegisterActorReq>().unwrap();
 
         assert_eq!(msg_rcvd.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
-        assert_eq!(msg_rcvd.header.src_id, Some(a_src_id));
+        assert_eq!(msg_rcvd.header.src_id, a_src_id);
         assert_eq!(msg_rcvd.name, "cmra1");
         assert_eq!(msg_rcvd.id, a_id);
         assert_eq!(msg_rcvd.instance_id, a_instance_id);

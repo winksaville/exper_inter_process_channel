@@ -211,8 +211,8 @@ mod test {
             Ok(self.rsp_tx.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> Option<ActorSender> {
-            Some(self.rsp_tx.clone())
+        fn clone_rsp_tx(&self) -> ActorSender {
+            self.rsp_tx.clone()
         }
     }
 

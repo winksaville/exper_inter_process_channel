@@ -132,7 +132,7 @@ mod test {
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.header.msg_id, MSG1_ID);
-        assert_eq!(recv_msg_1.header.src_id, Some(supervisor_instance_id));
+        assert_eq!(recv_msg_1.header.src_id, supervisor_instance_id);
         assert_eq!(recv_msg_1.v, msg_1.v);
     }
 }

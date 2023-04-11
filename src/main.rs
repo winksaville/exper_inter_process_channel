@@ -210,8 +210,12 @@ impl IpchnlSerializer {
             println!("{}::serializer_thread:+", &self_name);
 
             // Indicate ready to receive messages
-            status_tx.send(()).unwrap_or_else(|_| panic!("{}::serializer_thread: erroring sending status ready",
-                    &self_name));
+            status_tx.send(()).unwrap_or_else(|_| {
+                panic!(
+                    "{}::serializer_thread: erroring sending status ready",
+                    &self_name
+                )
+            });
 
             // Ignore errors for the moment
             let mut writer = TcpStream::connect(self.deser_ip_address_port).unwrap();
@@ -294,7 +298,7 @@ fn main() {
 
     // Veriy the msg1
     println!("main: verifying msg1");
-    assert_eq!(&supervisor_instance_id, &msg.header.src_id.unwrap());
+    assert_eq!(&supervisor_instance_id, &msg.header.src_id);
     assert_eq!(123, msg.v);
 
     println!("main:-");

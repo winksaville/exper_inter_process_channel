@@ -8,9 +8,12 @@ use std::fmt::{Debug, Display};
 mod get_msg_id_str_from_buf;
 pub use get_msg_id_str_from_buf::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
-// You can use stable but the result will no run,
+// You can use stable but the result will NOT run,
 // I've added this to debug the issue with Rust-Analyzer
 // reporting a false error for sender_map_insert.
+// See:
+//  https://users.rust-lang.org/t/ra-reports-errors-but-compile-succeeds/92127
+//  https://github.com/rust-lang/rust-analyzer/pull/14475
 #[rustversion::stable]
 use an_id::anid;
 #[rustversion::stable]
@@ -19,7 +22,7 @@ use paste::paste;
 #[rustversion::stable]
 const DEBUG_ANID: AnId = anid!("def26b5a-a462-492a-acdd-85aac7a1f2ac");
 #[rustversion::stable]
-const SOME_DEBUG_ANID: Option<AnId> = Some(anid!("c4e6ad97-8661-491e-a4fc-a986bbb1cf45"));
+const SOME_DEBUG_ANID: Option<AnId> = anid!("c4e6ad97-8661-491e-a4fc-a986bbb1cf45");
 
 pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -28,11 +31,11 @@ pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 #[repr(C)]
 pub struct MsgHeader {
     pub msg_id: AnId,
-    pub src_id: Option<AnId>,
+    pub src_id: AnId,
 }
 
 impl MsgHeader {
-    pub fn new(msg_id: AnId, src_id: Option<AnId>) -> Self {
+    pub fn new(msg_id: AnId, src_id: AnId) -> Self {
         //println!("MsgHeader::new");
         Self { msg_id, src_id }
     }
@@ -53,8 +56,8 @@ impl MsgHeader {
     }
 
     #[rustversion::nightly]
-    pub fn get_src_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &Option<AnId> {
-        // TODO: Consider validating that the msg_header or AnId. One way
+    pub fn get_src_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &AnId {
+        // TODO: Consider validating that this is AnId. One way
         // would be to have a "global" hashmap of valid values another
         // way would be to add a "check-sum"?
         // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
@@ -64,46 +67,25 @@ impl MsgHeader {
     }
 
     #[rustversion::stable]
-    pub fn get_src_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &Option<AnId> {
+    pub fn get_src_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &AnId {
         &SOME_DEBUG_ANID
     }
 
     pub fn get_src_tx_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {
-        // TODO: Consider validating that the msg_header or AnId. One way
+        // TODO: Consider validating that this is AnId. One way
         // would be to have a "global" hashmap of valid values another
         // way would be to add a "check-sum"?
         // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
-        let option_src_id = MsgHeader::get_src_id_from_boxed_msg_any(msg_any);
+        let src_id = MsgHeader::get_src_id_from_boxed_msg_any(msg_any);
 
-        let sender = match option_src_id {
-            Some(src_id) => {
-                if let Some(sender) = sender_map_get(src_id) {
-                    Some(sender)
-                } else {
-                    let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(msg_any);
-                    panic!( "get_src_id_from_boxed_msg_any: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map");
-                }
-                //let (tx, _) = crossbeam_channel::unbounded();
-                //Some(ActorSender::new("xx", tx))
-            }
-            None => {
-                let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(msg_any);
-                panic!("get_src_id_from_boxed_msg_any: There is no src_id in msg_any header.msg_id={msg_id:?}",);
-            }
-        };
-
-        sender
+        sender_map_get(src_id)
     }
 
     pub fn simple_display(&self) -> String {
-        let s: String = if let Some(sid) = self.src_id {
-            sid.to_string()[0..8].to_string()
-        } else {
-            "None".to_string()
-        };
         format!(
-            "mh {{ msg_id: {} src_id: {s} }}",
-            &self.msg_id.to_string()[0..8]
+            "mh {{ msg_id: {} src_id: {} }}",
+            &self.msg_id.to_string()[0..8],
+            &self.src_id.to_string()[0..8],
         )
     }
 }
@@ -136,12 +118,12 @@ mod test {
     #[test]
     fn test_size() {
         println!("\n");
-        let header = MsgHeader::new(AnId::nil(), Some(AnId::nil()));
+        let header = MsgHeader::new(AnId::nil(), AnId::nil());
         let size = std::mem::size_of_val(&header);
         println!("test_default: size_of_val(&header)={size}    {{header}}={header}");
         println!("test_default: size_of_val(&header)={size}  {{header:?}}={header:?}");
         println!("test_default: size_of_val(&header)={size} {{header:#?}}={header:#?}");
-        assert_eq!(size, 33);
+        assert_eq!(size, 32);
     }
 
     #[test]
@@ -150,12 +132,12 @@ mod test {
         let msg_id = AnId::nil();
         let src_id = anid!("31d1ee24-0dfd-49cd-906a-857aa67e59f4");
 
-        let header = MsgHeader::new(msg_id, Some(src_id));
+        let header = MsgHeader::new(msg_id, src_id);
         println!("test_new:    {{header}}={header}");
         println!("test_new:  {{header:?}}={header:?}");
         println!("test_new: {{header:#?}}={header:#?}");
         assert_eq!(header.msg_id, msg_id);
-        assert_eq!(header.src_id, Some(src_id));
+        assert_eq!(header.src_id, src_id);
     }
 
     #[test]

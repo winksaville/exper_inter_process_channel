@@ -11,7 +11,7 @@ msg_local_macro!(RspAddActor "17a6ee73-6a91-42e2-908f-b1887e95d87a" {
 impl RspAddActor {
     pub fn new(src_id: &AnId, actor_id: &AnId, actor_instance_id: &AnId) -> Self {
         Self {
-            header: MsgHeader::new(RSP_ADD_ACTOR_ID, Some(*src_id)),
+            header: MsgHeader::new(RSP_ADD_ACTOR_ID, *src_id),
             actor_id: *actor_id,
             actor_instance_id: *actor_instance_id,
         }

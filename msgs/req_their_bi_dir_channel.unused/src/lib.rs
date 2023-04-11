@@ -13,7 +13,7 @@ msg_local_macro!(ReqTheirBiDirChannel "ea3145f6-078f-4085-9f86-30e27caca5e1" {
 impl ReqTheirBiDirChannel {
     pub fn new(src_id: &AnId, handle: usize, rsp_tx: Sender<BoxMsgAny>) -> Self {
         Self {
-            header: MsgHeader::new(REQ_THEIR_BI_DIR_CHANNEL_ID, Some(*src_id)),
+            header: MsgHeader::new(REQ_THEIR_BI_DIR_CHANNEL_ID, *src_id),
             handle,
             rsp_tx,
         }
