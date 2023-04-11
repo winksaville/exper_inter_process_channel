@@ -28,27 +28,13 @@ pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 #[repr(C)]
 pub struct MsgHeader {
     pub msg_id: AnId,
-    pub src_id: Option<AnId>, // TODO: Remove optional, it could be AnId::null() instead
-}
-
-impl Default for MsgHeader {
-    fn default() -> Self {
-        println!("MsgHeader::Default::default");
-        Self::new(AnId::new(), None)
-    }
+    pub src_id: Option<AnId>,
 }
 
 impl MsgHeader {
     pub fn new(msg_id: AnId, src_id: Option<AnId>) -> Self {
         //println!("MsgHeader::new");
         Self { msg_id, src_id }
-    }
-
-    // TODO: Consider remove new_msg_id_only if src_id becomes non-optional
-    #[deprecated]
-    pub fn new_msg_id_only(msg_id: AnId) -> Self {
-        //println!("MsgHeader::new_msg_id_only");
-        Self::new(msg_id, None)
     }
 
     #[rustversion::nightly]
@@ -143,12 +129,14 @@ impl Display for MsgHeader {
 
 #[cfg(test)]
 mod test {
+    use an_id::{anid, paste};
+
     use super::*;
 
     #[test]
     fn test_size() {
         println!("\n");
-        let header: MsgHeader = Default::default();
+        let header = MsgHeader::new(AnId::nil(), Some(AnId::nil()));
         let size = std::mem::size_of_val(&header);
         println!("test_default: size_of_val(&header)={size}    {{header}}={header}");
         println!("test_default: size_of_val(&header)={size}  {{header:?}}={header:?}");
@@ -157,32 +145,10 @@ mod test {
     }
 
     #[test]
-    fn test_default() {
-        println!("\n");
-        let header: MsgHeader = Default::default();
-        println!("test_default:    {{header}}={header}");
-        println!("test_default:  {{header:?}}={header:?}");
-        println!("test_default: {{header:#?}}={header:#?}");
-        assert_ne!(header.msg_id, AnId::nil());
-        assert_eq!(header.src_id, None);
-    }
-
-    #[test]
-    fn test_msgheader_default() {
-        println!("\n");
-        let header = MsgHeader::default();
-        println!("test_msgheader_default:    {{header}}={header}");
-        println!("test_msgheader_default:  {{header:?}}={header:?}");
-        println!("test_msgheader_default: {{header:#?}}={header:#?}");
-        assert_ne!(header.msg_id, AnId::nil());
-        assert_eq!(header.src_id, None);
-    }
-
-    #[test]
     fn test_new() {
         println!("\n");
-        let msg_id = AnId::new();
-        let src_id = AnId::new();
+        let msg_id = AnId::nil();
+        let src_id = anid!("31d1ee24-0dfd-49cd-906a-857aa67e59f4");
 
         let header = MsgHeader::new(msg_id, Some(src_id));
         println!("test_new:    {{header}}={header}");
@@ -190,20 +156,6 @@ mod test {
         println!("test_new: {{header:#?}}={header:#?}");
         assert_eq!(header.msg_id, msg_id);
         assert_eq!(header.src_id, Some(src_id));
-    }
-
-    #[test]
-    fn test_new_msg_id_only() {
-        println!("\n");
-        let msg_id = AnId::new();
-
-        #[allow(deprecated)]
-        let header = MsgHeader::new_msg_id_only(msg_id);
-        println!("test_new:    {{header}}={header}");
-        println!("test_new:  {{header:?}}={header:?}");
-        println!("test_new: {{header:#?}}={header:#?}");
-        assert_eq!(header.msg_id, msg_id);
-        assert_eq!(header.src_id, None);
     }
 
     #[test]
