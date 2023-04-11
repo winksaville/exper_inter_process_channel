@@ -285,7 +285,11 @@ fn main() {
     let supervisor_instance_id = AnId::new();
 
     // Create a boxed msg1 and send it to the serialzer
-    let msg1 = Box::new(Msg1::new(&supervisor_instance_id, 123));
+    let msg1 = Box::new(Msg1::new(
+        &supervisor_instance_id,
+        &supervisor_instance_id,
+        123,
+    ));
     supervisor_tx.send(msg1).unwrap();
 
     // Wait for the deserializer to receive the msg and send it back to the supervisor
@@ -298,7 +302,7 @@ fn main() {
 
     // Veriy the msg1
     println!("main: verifying msg1");
-    assert_eq!(&supervisor_instance_id, &msg.header.src_id);
+    assert_eq!(&supervisor_instance_id, msg.src_id());
     assert_eq!(123, msg.v);
 
     println!("main:-");

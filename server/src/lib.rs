@@ -105,13 +105,14 @@ impl Server {
         server_pm.insert(erep.id, erep.clone());
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
+        let server_instance_id = AnId::new();
         let chnl_name = name.to_owned() + "_chnl";
-        let chnl = ActorChannel::new(&chnl_name);
+        let chnl = ActorChannel::new(&chnl_name, &server_instance_id);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: SERVER_ACTOR_ID,
-            instance_id: AnId::new(),
+            instance_id: server_instance_id,
             protocol_set: server_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
@@ -140,21 +141,23 @@ impl Server {
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
-            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
-            println!("{}:State0: msg={msg:?}", self.name);
+            assert_eq!(msg.msg_id(), &ECHO_REQ_ID);
+            //println!("{}:State0: msg={msg:?}", self.name);
             let rsp_msg = Box::new(EchoRsp::new(
+                context.get_dst_instance_id(),
                 &self.instance_id,
                 msg.req_timestamp_ns,
                 msg.counter,
             ));
-            println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
-            context.send_rsp(rsp_msg).unwrap();
+            //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
+            context.send_dst(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
+            assert_eq!(msg.msg_id(), &CMD_INIT_ID);
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
+                msg.src_id(),
                 &self.instance_id,
                 &self.name,
                 &self.actor_id,
@@ -168,7 +171,7 @@ impl Server {
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+            assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_RSP_ID);
             assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
@@ -189,30 +192,38 @@ mod test {
     use super::*;
 
     struct Context {
-        actor_executor_sender: ActorSender,
-        con_mgr_tx: ActorSender,
-        rsp_tx: ActorSender,
+        ae_sndr: ActorSender,
+        con_mgr_sndr: ActorSender,
+        dst_sndr: ActorSender,
     }
 
     impl ActorContext for Context {
-        fn actor_executor_tx(&self) -> &ActorSender {
-            &self.actor_executor_sender
+        fn actor_executor_sndr(&self) -> &ActorSender {
+            &self.ae_sndr
         }
 
         fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.con_mgr_tx.send(msg)?)
+            Ok(self.con_mgr_sndr.send(msg)?)
+        }
+
+        fn get_con_mgr_instance_id(&self) -> &AnId {
+            self.con_mgr_sndr.get_dst_instance_id()
         }
 
         fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
 
-        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.rsp_tx.send(msg)?)
+        fn send_dst(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.dst_sndr.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> ActorSender {
-            self.rsp_tx.clone()
+        fn get_dst_instance_id(&self) -> &AnId {
+            self.dst_sndr.get_dst_instance_id()
+        }
+
+        fn clone_dst_sndr(&self) -> ActorSender {
+            self.dst_sndr.clone()
         }
     }
 
@@ -220,17 +231,17 @@ mod test {
     fn test_1() {
         println!("\ntest_1:+");
 
-        let supervisor_chnl = ActorChannel::new("supervisor");
+        let supervisor_instance_id = AnId::new();
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
 
         // Add supervisor to sender_map
-        let supervisor_instance_id = AnId::new();
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Context for server is supervisor
         let server_context = Context {
-            actor_executor_sender: supervisor_chnl.sender.clone(),
-            con_mgr_tx: supervisor_chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(),
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: supervisor_chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(),
         };
 
         let mut server = Server::new("server");
@@ -265,7 +276,11 @@ mod test {
             let now_ns = Utc::now().timestamp_nanos();
 
             // Create EchoReq and send it
-            let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
+            let echo_req: BoxMsgAny = Box::new(EchoReq::new(
+                &server.instance_id,
+                &supervisor_instance_id,
+                1,
+            ));
             server.chnl.sender.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
@@ -345,23 +360,22 @@ mod test {
     fn test_cmd_init() {
         println!("\ntest_cmd_init:+");
 
-        let supervisor_chnl = ActorChannel::new("supervisor");
-
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Both con_mgr_tx and rsp_tx are "this" test
         let server_context = Context {
-            actor_executor_sender: supervisor_chnl.sender.clone(),
-            con_mgr_tx: supervisor_chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(),
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: supervisor_chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(),
         };
 
         let mut server = Server::new("server");
 
         // First message must be CmdInit and client send
-        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
+        let msg = Box::new(CmdInit::new(&server.instance_id, &supervisor_instance_id));
         server.process_msg_any(&server_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
@@ -370,6 +384,7 @@ mod test {
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
+            &server.instance_id,
             &supervisor_instance_id,
             ConMgrRegisterActorStatus::Success,
         ));

@@ -21,6 +21,7 @@ msg_local_macro!(ConMgrQueryReq "e5922aa5-9731-4379-813b-8cf5d0319d3d" {
 
 impl ConMgrQueryReq {
     pub fn new(
+        dst_id: &AnId,
         src_id: &AnId,
         name: Option<&str>,
         id: Option<AnId>,
@@ -28,7 +29,7 @@ impl ConMgrQueryReq {
         protocol_set_id: Option<AnId>,
     ) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_QUERY_REQ_ID, *src_id),
+            header: MsgHeader::new(CON_MGR_QUERY_REQ_ID, *dst_id, *src_id),
             name: name.map(|s| s.to_owned()),
             id,
             protocol_id,
@@ -43,9 +44,9 @@ msg_local_macro!(ConMgrQueryRsp "162306ca-10b5-4bc9-9537-f7d8c53c7d0a" {
 });
 
 impl ConMgrQueryRsp {
-    pub fn new(src_id: &AnId, instance_ids: &[AnId]) -> Self {
+    pub fn new(dst_id: &AnId, src_id: &AnId, instance_ids: &[AnId]) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_QUERY_RSP_ID, *src_id),
+            header: MsgHeader::new(CON_MGR_QUERY_RSP_ID, *dst_id, *src_id),
             instance_ids: instance_ids.to_owned(),
         }
     }

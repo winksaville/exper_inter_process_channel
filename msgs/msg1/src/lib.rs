@@ -21,15 +21,19 @@ pub struct Msg1 {
 // format string. Also this is caught by `cargo +nightly clippy`.
 #[allow(clippy::uninlined_format_args)]
 impl Msg1 {
-    pub fn new(src_id: &AnId, v: u64) -> Self {
+    pub fn new(dst_id: &AnId, src_id: &AnId, v: u64) -> Self {
         Self {
-            header: MsgHeader::new(MSG1_ID, *src_id),
+            header: MsgHeader::new(MSG1_ID, *dst_id, *src_id),
             v,
         }
     }
 
     pub fn msg_id(&self) -> &AnId {
         &self.header.msg_id
+    }
+
+    pub fn dst_id(&self) -> &AnId {
+        &self.header.dst_id
     }
 
     pub fn src_id(&self) -> &AnId {
@@ -100,9 +104,10 @@ mod test {
     fn test_msg1_to_from_serde_json_buf() {
         println!("\ntest_msg1_to_from_serde_json_buf:+");
 
+        let dst_id = AnId::new();
         let src_id = AnId::new();
         let v = 0x1234567890ABCDEF;
-        let msg1 = Msg1::new(&src_id, v);
+        let msg1 = Msg1::new(&dst_id, &src_id, v);
         println!("test_msg1_to_from_serde_json_buf: msg1: {msg1:?}");
         let bma1: BoxMsgAny = Box::new(msg1.clone());
         let ser_msg1 = Msg1::to_serde_json_buf(bma1).unwrap();
@@ -110,9 +115,10 @@ mod test {
         let msg1_deser = bma1_deser.downcast_ref::<Msg1>().unwrap();
         println!("test_msg1_to_from_serde_json_buf: msg1_deser={msg1_deser:?}");
         assert_eq!(&msg1, msg1_deser);
-        assert_eq!(msg1.header.msg_id, MSG1_ID);
-        assert_eq!(msg1.header.src_id, src_id);
-        assert_eq!(msg1.header.msg_id, msg1_deser.header.msg_id);
+        assert_eq!(msg1.msg_id(), &MSG1_ID);
+        assert_eq!(msg1.dst_id(), &dst_id);
+        assert_eq!(msg1.src_id(), &src_id);
+        assert_eq!(msg1.msg_id(), msg1_deser.msg_id());
         println!(
             "test_msg1_to_from_serde_json_buf: TypeId::of::<Msg1>()={:?} msg1.type_id()={:?}",
             TypeId::of::<Msg1>(),
@@ -127,9 +133,10 @@ mod test {
     fn test_hash_map_to_from_serde_json_buf() {
         println!("\ntest_hash_map_to_from_serde_json_buf:+");
 
+        let dst_id = AnId::new();
         let src_id = AnId::new();
         let v = 0x1234567890ABCDEF;
-        let msg1 = Msg1::new(&src_id, v);
+        let msg1 = Msg1::new(&dst_id, &src_id, v);
         println!("MSG1_ID_STR={}", MSG1_ID_STR);
         println!("msg1={msg1:?}");
 
@@ -187,9 +194,10 @@ mod test {
     fn test_hash_map_to_from_serde_json_buf_src_id_none() {
         println!("\ntest_hash_map_to_from_serde_json_buf_src_id_none:+");
 
+        let dst_id = AnId::new();
         let src_id = AnId::new();
         let v = 0x1234567890ABCDEF;
-        let msg1 = Msg1::new(&src_id, v);
+        let msg1 = Msg1::new(&dst_id, &src_id, v);
         println!("MSG1_ID_STR={}", MSG1_ID_STR);
         println!("msg1={msg1:?}");
 

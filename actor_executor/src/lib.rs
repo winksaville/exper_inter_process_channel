@@ -36,18 +36,22 @@ struct ActorExecutor {
 }
 
 struct Context {
-    actor_executor_tx: ActorSender,
-    con_mgr_tx: ActorSender,
-    rsp_tx: ActorSender,
+    ae_sndr: ActorSender,
+    con_mgr_sndr: ActorSender,
+    dst_sndr: ActorSender,
 }
 
 impl ActorContext for Context {
-    fn actor_executor_tx(&self) -> &ActorSender {
-        &self.actor_executor_tx
+    fn actor_executor_sndr(&self) -> &ActorSender {
+        &self.ae_sndr
     }
 
     fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        self.con_mgr_tx.send(msg)
+        self.con_mgr_sndr.send(msg)
+    }
+
+    fn get_con_mgr_instance_id(&self) -> &AnId {
+        self.con_mgr_sndr.get_dst_instance_id()
     }
 
     fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
@@ -55,12 +59,16 @@ impl ActorContext for Context {
         Ok(())
     }
 
-    fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-        self.rsp_tx.send(msg)
+    fn send_dst(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+        self.dst_sndr.send(msg)
     }
 
-    fn clone_rsp_tx(&self) -> ActorSender {
-        self.rsp_tx.clone()
+    fn get_dst_instance_id(&self) -> &AnId {
+        self.dst_sndr.get_dst_instance_id()
+    }
+
+    fn clone_dst_sndr(&self) -> ActorSender {
+        self.dst_sndr.clone()
     }
 }
 
@@ -76,7 +84,7 @@ impl ActorExecutor {
     // Returns the ActorExecutor join handle and its instance_id
     pub fn start(name: &str, con_mgr_instance_id: &AnId) -> (JoinHandle<()>, AnId) {
         let ae_iid = AnId::new();
-        let ae_chnl = ActorChannel::new(name);
+        let ae_chnl = ActorChannel::new(name, &ae_iid);
         sender_map_insert(&ae_iid, &ae_chnl.sender);
 
         // Convert name to string so it can be moved into the thread
@@ -126,21 +134,28 @@ impl ActorExecutor {
                 let oper_idx = oper.index();
 
                 if oper_idx == 0 {
+                    println!("AE:{}:self: msg received", ae.name);
                     // This message is for the AE itself
                     let result = oper.recv(&ae_chnl.receiver.rx);
                     match result {
                         Err(why) => {
                             // TODO: Error on our selves, is there anything else we need to do?
-                            println!("AE:{}: error on recv: {why} `done = true`", ae.name);
+                            println!("AE:{}:self: error on recv: {why} `done = true`", ae.name);
                             ae.done = true;
                         }
                         Ok(msg_any) => {
                             // Got our message
-                            println!("AE:{}: msg_any={msg_any:?}", ae.name);
+                            println!("AE:{}:self: msg_any={msg_any:?}", ae.name);
                             if msg_any.downcast_ref::<ReqAddActor>().is_some() {
                                 // It is a MsgReqAeAddActor, now downcast to concrete message so we can push it to vec_actor
                                 let msg = msg_any.downcast::<ReqAddActor>().unwrap();
-                                println!("AE:{}: msg={msg:?}", ae.name);
+                                println!("AE:{}:self: msg={msg:?}", ae.name);
+
+                                // Get the destination id of the actor requesting the registration
+                                let requester_dst_id = *msg.src_id();
+
+                                // Get the actor's instance_id that is being registered
+                                let actor_instance_id = *msg.actor.get_instance_id();
 
                                 // Push actor
                                 let actor_idx = ae.vec_actor.len();
@@ -151,38 +166,47 @@ impl ActorExecutor {
                                 ae.vec_actor_chnl
                                     .push(ae.vec_actor[actor_idx].get_chnl().clone());
 
-                                // Get a reference to the actors bdlcs
+                                // Get a reference to the actors channel
                                 let chnl = ae.vec_actor_chnl.get(actor_idx);
 
                                 // Add the actors receiver to the selector
-                                println!("AE:{}: selector.recv(our_channel.get_recv())", ae.name);
+                                println!(
+                                    "AE:{}:self: selector.recv(our_channel.get_recv())",
+                                    ae.name
+                                );
                                 selector.recv(&chnl.receiver.rx);
 
-                                // Send the response message with their_channel
+                                // Send the response message with their instance_id
+                                let sndr = sender_map_get(&requester_dst_id).unwrap();
                                 let msg_rsp = Box::new(RspAddActor::new(
+                                    sndr.get_dst_instance_id(),
                                     &ae.instance_id,
                                     ae.vec_actor[actor_idx].get_actor_id(),
-                                    ae.vec_actor[actor_idx].get_instance_id(),
+                                    &actor_instance_id,
                                 ));
-                                println!("AE:{}: msg.rsp_tx.send msg={msg_rsp:?}", ae.name);
-                                let rsp_tx = sender_map_get(&msg.header.src_id).unwrap();
-                                println!("AE:{}: msg.rsp_tx.send rsp_tx={rsp_tx:?}", ae.name);
-                                rsp_tx.send(msg_rsp);
+                                println!("AE:{}:self: respond with msg={msg_rsp:?}", ae.name);
+                                println!("AE:{}:self: sender={sndr:?}", ae.name);
+                                sndr.send(msg_rsp);
 
                                 // Issue a CmdInit
-                                let msg = Box::new(CmdInit::new(&ae.instance_id));
+                                let msg =
+                                    Box::new(CmdInit::new(&actor_instance_id, &ae.instance_id));
                                 chnl.sender.send(msg).unwrap(); // TODO: Ignore error on release builds so we don't panic?
 
                                 println!(
-                                    "AE:{}: added new receiver for {}",
+                                    "AE:{}:self: added new receiver for {}",
                                     ae.name,
                                     ae.vec_actor[actor_idx].get_name()
                                 );
                             } else if let Some(msg) = msg_any.downcast_ref::<CmdDone>() {
-                                println!("AE:{}: msg={msg:?}", ae.name);
+                                println!("AE:{}:self: msg={msg:?}", ae.name);
                                 ae.done = true;
                             } else {
-                                println!("AE:{}: Uknown msg", ae.name);
+                                println!(
+                                    "AE:{}:self: Uknown msg_id={:?}",
+                                    ae.name,
+                                    MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any)
+                                );
                             }
                         }
                     }
@@ -217,9 +241,9 @@ impl ActorExecutor {
                         };
                         let context = Context {
                             // TODO: All this cloning for each msg is slow, we need an array/hash of these Context's
-                            actor_executor_tx: ae_chnl.sender.clone(),
-                            con_mgr_tx: ae.con_mgr_tx.clone(),
-                            rsp_tx,
+                            ae_sndr: ae_chnl.sender.clone(),
+                            con_mgr_sndr: ae.con_mgr_tx.clone(),
+                            dst_sndr: rsp_tx,
                         };
                         actor.process_msg_any(&context, msg_any);
                         println!(
@@ -269,12 +293,16 @@ mod tests {
     // Add an actor to the ActorExecutor blocking until the actor is added
     fn add_actor_to_actor_executor_blocking(
         actor_boxed: Box<dyn Actor>,
-        ae_instacne_id: &AnId,
+        ae_instance_id: &AnId,
         supervisor_instance_id: &AnId,
         supervisor_receiver: &ActorReceiver,
     ) -> (AnId, AnId) {
-        let msg = Box::new(ReqAddActor::new(supervisor_instance_id, actor_boxed));
-        let ae_sender = sender_map_get(ae_instacne_id).unwrap();
+        let msg = Box::new(ReqAddActor::new(
+            ae_instance_id,
+            supervisor_instance_id,
+            actor_boxed,
+        ));
+        let ae_sender = sender_map_get(ae_instance_id).unwrap();
         ae_sender.send(msg).unwrap();
         let msg_any = supervisor_receiver.recv().unwrap();
         let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
@@ -290,7 +318,7 @@ mod tests {
     ) -> (AnId, ActorChannel, JoinHandle<()>, AnId, AnId) {
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
-        let supervisor_chnl = ActorChannel::new("supervisor");
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Create connection manager
@@ -303,7 +331,11 @@ mod tests {
         println!("test_con_mgr_server: ae_instance_id={ae_instance_id:?}");
 
         // Add con_mgr to ActorExecutor
-        let msg = Box::new(ReqAddActor::new(&supervisor_instance_id, con_mgr));
+        let msg = Box::new(ReqAddActor::new(
+            &ae_instance_id,
+            &supervisor_instance_id,
+            con_mgr,
+        ));
         let ae_sender = sender_map_get(&ae_instance_id).unwrap();
         ae_sender.send(msg).unwrap();
         println!("test_con_mgr_server: sent {} to ae", con_mgr_name);
@@ -340,7 +372,11 @@ mod tests {
         println!("test_con_mgr_server: send EchoReq");
         sender_map_get(&s1_instance_id)
             .unwrap()
-            .send(Box::new(EchoReq::new(&supervisor_instance_id, 1)))
+            .send(Box::new(EchoReq::new(
+                &s1_instance_id,
+                &supervisor_instance_id,
+                1,
+            )))
             .unwrap();
         println!("test_con_mgr_server: sent EchoReq");
 
@@ -351,7 +387,7 @@ mod tests {
         assert_eq!(msg_rsp.counter, 1);
 
         println!("test_con_mgr_server: send CmdDone");
-        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
+        let msg = Box::new(CmdDone::new(msg_rsp.dst_id(), &supervisor_instance_id));
         ae_sender.send(msg).unwrap();
         println!("test_con_mgr_server: sent CmdDone");
 
@@ -390,14 +426,15 @@ mod tests {
 
         // Send EchoStart to c1
         println!("test_con_mgr_client_server: send EchoStart");
-        let c1_tx = match sender_map_get(&c1_instance_id) {
+        let c1_sndr = match sender_map_get(&c1_instance_id) {
             Some(tx) => tx,
             None => {
                 println!("test_con_mgr_client_server: c1_tx not found");
                 panic!();
             }
         };
-        match c1_tx.send(Box::new(EchoStart::new(
+        match c1_sndr.send(Box::new(EchoStart::new(
+            c1_sndr.get_dst_instance_id(),
             &supervisor_instance_id,
             &s1_instance_id,
             10,
@@ -417,7 +454,7 @@ mod tests {
         println!("test_con_mgr_client_server: recv EchoComplete={msg_rsp:?}");
 
         println!("test_con_mgr_client_server: send CmdDone");
-        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
+        let msg = Box::new(CmdDone::new(&ae_instance_id, &supervisor_instance_id));
         ae_sender.send(msg).unwrap();
         println!("test_con_mgr_client_server: sent CmdDone");
 
@@ -478,6 +515,7 @@ mod tests {
             }
         };
         match c1_tx.send(Box::new(EchoStart::new(
+            &c1_tx.get_dst_instance_id(),
             &supervisor_instance_id,
             &s1_instance_id,
             10,
@@ -497,7 +535,7 @@ mod tests {
         println!("test_multiple_ae: recv EchoComplete={msg_rsp:?}");
 
         println!("test_multiple_ae: send CmdDone to ae");
-        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
+        let msg = Box::new(CmdDone::new(&ae_instance_id, &supervisor_instance_id));
         ae_sender.send(msg).unwrap();
         println!("test_multiple_ae: sent ae CmdDone");
 
@@ -506,7 +544,7 @@ mod tests {
         println!("test_multiple_ae: join ae has completed");
 
         println!("test_multiple_ae: send CmdDone to ae2");
-        let msg = Box::new(CmdDone::new(&supervisor_instance_id));
+        let msg = Box::new(CmdDone::new(&ae2_instance_id, &supervisor_instance_id));
         ae2_sender.send(msg).unwrap();
         println!("test_multiple_ae: sent a2 CmdDone");
 

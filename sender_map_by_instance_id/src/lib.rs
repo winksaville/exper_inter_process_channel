@@ -45,7 +45,7 @@ mod test {
     fn test_sender_map() {
         // Create an instance_id, sender and receiver and .
         let instance_id = AnId::new();
-        let ac = ActorChannel::new("test_sender_map");
+        let ac = ActorChannel::new("test_sender_map", &instance_id);
         sender_map_insert(&instance_id, &ac.sender);
 
         // Verify that sender receiver work

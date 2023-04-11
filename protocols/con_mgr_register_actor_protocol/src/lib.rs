@@ -31,6 +31,7 @@ msg_local_macro!(ConMgrRegisterActorReq "b0e83356-fd22-4389-9f2e-586be8ec9719" {
 
 impl ConMgrRegisterActorReq {
     pub fn new(
+        dst_id: &AnId,
         src_id: &AnId,
         name: &str,
         id: &AnId,
@@ -38,7 +39,7 @@ impl ConMgrRegisterActorReq {
         protocol_set: &ProtocolSet,
     ) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, *src_id),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_REQ_ID, *dst_id, *src_id),
             name: name.to_owned(),
             id: *id,
             instance_id: *instance_id,
@@ -61,9 +62,9 @@ msg_local_macro!(ConMgrRegisterActorRsp "db6a401d-cd0a-4585-8ac4-c13ae1ab7a39" {
 });
 
 impl ConMgrRegisterActorRsp {
-    pub fn new(src_id: &AnId, status: ConMgrRegisterActorStatus) -> Self {
+    pub fn new(dst_id: &AnId, src_id: &AnId, status: ConMgrRegisterActorStatus) -> Self {
         Self {
-            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_RSP_ID, *src_id),
+            header: MsgHeader::new(CON_MGR_REGISTER_ACTOR_RSP_ID, *dst_id, *src_id),
             status,
         }
     }
@@ -122,6 +123,7 @@ mod test {
 
     #[test]
     fn test_con_mgr_reg_actor_protocol_set() {
+        let a_dst_id = AnId::new();
         let a_src_id = AnId::new();
         let a_id = AnId::new();
         let a_instance_id = AnId::new();
@@ -133,13 +135,15 @@ mod test {
         pm.insert(erep.id.clone(), erep.clone());
         let ps = ProtocolSet::new("ps", a_protocol_set_id, pm);
 
-        let msg = ConMgrRegisterActorReq::new(&a_src_id, "cmra1", &a_id, &a_instance_id, &ps);
+        let msg =
+            ConMgrRegisterActorReq::new(&a_dst_id, &a_src_id, "cmra1", &a_id, &a_instance_id, &ps);
         println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
         let (theirs, ours) = unbounded::<BoxMsgAny>();
 
-        assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
-        assert_eq!(msg.header.src_id, a_src_id);
+        assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg.dst_id(), &a_dst_id);
+        assert_eq!(msg.src_id(), &a_src_id);
         assert_eq!(msg.name, "cmra1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);
@@ -152,8 +156,9 @@ mod test {
         println!("received");
         let msg_rcvd = msg_any.downcast::<ConMgrRegisterActorReq>().unwrap();
 
-        assert_eq!(msg_rcvd.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
-        assert_eq!(msg_rcvd.header.src_id, a_src_id);
+        assert_eq!(msg_rcvd.msg_id(), &CON_MGR_REGISTER_ACTOR_REQ_ID);
+        assert_eq!(msg_rcvd.dst_id(), &a_dst_id);
+        assert_eq!(msg_rcvd.src_id(), &a_src_id);
         assert_eq!(msg_rcvd.name, "cmra1");
         assert_eq!(msg_rcvd.id, a_id);
         assert_eq!(msg_rcvd.instance_id, a_instance_id);
@@ -178,7 +183,7 @@ mod test {
     //    );
     //    println!("test_con_mgr_reg_actor_protocol_set_none: msg={msg:#?}");
 
-    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+    //    assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_REQ_ID);
     //    assert_eq!(msg.name, "cmra1");
     //    assert_eq!(msg.id, a_id);
     //    assert_eq!(msg.instance_id, a_instance_id);
@@ -186,7 +191,7 @@ mod test {
     //    assert!(msg.protocol_set.is_none());
 
     //    let msg = ConMgrRegisterActorRsp::new(ConMgrRegisterActorStatus::Success);
-    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+    //    assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_RSP_ID);
     //    assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
     //}
 
@@ -214,9 +219,9 @@ mod test {
     //    );
     //    println!("test_con_mgr_reg_actor_protocol_set_some: msg={msg:#?}");
 
-    //    assert_eq!(msg.header.id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+    //    assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_REQ_ID);
     //    assert_eq!(msg.name, "cmra1");
-    //    assert_eq!(msg.id, a_id);
+    //    assert_eq!(msg.msg_id(), &a_id);
     //    assert_eq!(msg.instance_id, a_instance_id);
     //    assert_eq!(msg.protocol_set_id, a_protocol_set_id);
     //    assert_eq!(msg.protocol_set.is_some(), true);

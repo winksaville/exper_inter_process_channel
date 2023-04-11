@@ -143,14 +143,15 @@ impl ConMgr {
         );
         let ps = ProtocolSet::new("con_mgr_ps", CON_MGR_PROTOCOL_SET_ID, cm_pm);
 
-        let chnl = ActorChannel::new(name);
+        let con_mgr_instance_id = AnId::new();
+        let chnl = ActorChannel::new(name, &con_mgr_instance_id);
 
         println!("ConMgr::new({}):", name);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CON_MGR_ACTOR_ID,
-            instance_id: AnId::new(),
+            instance_id: con_mgr_instance_id,
             protocol_set: ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
@@ -287,7 +288,7 @@ impl ConMgr {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_REQ_ID);
+            assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_REQ_ID);
             let status = if self.add_actor(msg).is_ok() {
                 ConMgrRegisterActorStatus::Success
             } else {
@@ -296,7 +297,8 @@ impl ConMgr {
 
             println!("Sending ConMgrRegisterActorRsp");
             context
-                .send_rsp(Box::new(ConMgrRegisterActorRsp::new(
+                .send_dst(Box::new(ConMgrRegisterActorRsp::new(
+                    context.get_dst_instance_id(),
                     &self.instance_id,
                     status,
                 )))
@@ -306,23 +308,28 @@ impl ConMgr {
                 "{}:State0: msg={msg:?} TODO response is ALWAYS empty, fix!",
                 self.name
             );
-            assert_eq!(msg.header.msg_id, CON_MGR_QUERY_REQ_ID);
+            assert_eq!(msg.msg_id(), &CON_MGR_QUERY_REQ_ID);
             context
-                .send_rsp(Box::new(ConMgrQueryRsp::new(&self.instance_id, &[])))
+                .send_dst(Box::new(ConMgrQueryRsp::new(
+                    context.get_dst_instance_id(),
+                    &self.instance_id,
+                    &[],
+                )))
                 .unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             //println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
+            assert_eq!(msg.msg_id(), &ECHO_REQ_ID);
             let rsp_msg = Box::new(EchoRsp::new(
+                context.get_dst_instance_id(),
                 &self.instance_id,
                 msg.req_timestamp_ns,
                 msg.counter,
             ));
             //println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
-            context.send_rsp(rsp_msg).unwrap();
+            context.send_dst(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?} nothing to do", self.name);
-            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
+            assert_eq!(msg.msg_id(), &CMD_INIT_ID);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -347,36 +354,44 @@ mod test {
     use echo_start_complete_protocol::echo_start_complete_protocol;
     use server::Server;
     struct Context {
-        actor_executor_tx: ActorSender,
-        con_mgr_tx: ActorSender,
-        rsp_tx: ActorSender,
+        ae_sndr: ActorSender,
+        con_mgr_sndr: ActorSender,
+        dst_sndr: ActorSender,
     }
 
     impl ActorContext for Context {
-        fn actor_executor_tx(&self) -> &ActorSender {
-            &self.actor_executor_tx
+        fn actor_executor_sndr(&self) -> &ActorSender {
+            &self.ae_sndr
         }
 
         fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.con_mgr_tx.send(msg)?)
+            Ok(self.con_mgr_sndr.send(msg)?)
+        }
+
+        fn get_con_mgr_instance_id(&self) -> &AnId {
+            &self.con_mgr_sndr.dst_instance_id
         }
 
         fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
 
-        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.rsp_tx.send(msg)?)
+        fn send_dst(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.dst_sndr.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> ActorSender {
-            self.rsp_tx.clone()
+        fn get_dst_instance_id(&self) -> &AnId {
+            &self.dst_sndr.dst_instance_id
+        }
+
+        fn clone_dst_sndr(&self) -> ActorSender {
+            self.dst_sndr.clone()
         }
     }
 
     fn issue_cmd_init(context: &mut Context, actor: &mut dyn Actor, sid: &AnId) {
-        let msg = Box::new(CmdInit::new(sid));
-        context.rsp_tx = sender_map_get(sid).unwrap();
+        let msg = Box::new(CmdInit::new(context.get_dst_instance_id(), sid));
+        context.dst_sndr = sender_map_get(sid).unwrap();
         actor.process_msg_any(context, msg);
     }
 
@@ -385,13 +400,13 @@ mod test {
         println!("\ntest_con_mgr_ping:+");
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
-        let supervisor_chnl = ActorChannel::new("supervisor");
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         let mut context = Context {
-            actor_executor_tx: supervisor_chnl.sender.clone(),
-            con_mgr_tx: supervisor_chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(),
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: supervisor_chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(),
         };
 
         let mut con_mgr = ConMgr::new("con_mgr");
@@ -428,7 +443,11 @@ mod test {
             let now_ns = Utc::now().timestamp_nanos();
 
             // Create EchoReq and send it
-            let echo_req: BoxMsgAny = Box::new(EchoReq::new(&supervisor_instance_id, 1));
+            let echo_req: BoxMsgAny = Box::new(EchoReq::new(
+                &con_mgr.chnl.sender.get_dst_instance_id(),
+                &supervisor_instance_id,
+                1,
+            ));
             con_mgr.chnl.sender.send(echo_req).unwrap();
 
             // Receive EchoReq and process it in server
@@ -508,7 +527,7 @@ mod test {
         println!("\ntest_reg_client_server:+");
 
         let supervisor_instance_id = AnId::new();
-        let supervisor_chnl = ActorChannel::new("supervisor");
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Create connection manager
@@ -517,9 +536,9 @@ mod test {
 
         // The context, but we'll modify rsp_tx for each actor
         let mut context = Context {
-            actor_executor_tx: supervisor_chnl.sender.clone(),
-            con_mgr_tx: con_mgr.chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(), // Will be updated after receiving msg
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: con_mgr.chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(), // Will be updated after receiving msg
         };
 
         issue_cmd_init(&mut context, &mut con_mgr, &supervisor_instance_id);
@@ -545,7 +564,7 @@ mod test {
         );
 
         // Update context and have ConMgr process message
-        context.rsp_tx = sender_map_get(&src_id).unwrap();
+        context.dst_sndr = sender_map_get(&src_id).unwrap();
         con_mgr.process_msg_any(&context, msg_any);
 
         // Expect the ConMgr to have sent ConMgrRegisterActorRsp to client with success
@@ -559,7 +578,7 @@ mod test {
         );
 
         // Update context and have Client process message
-        context.rsp_tx = sender_map_get(&src_id).unwrap();
+        context.dst_sndr = sender_map_get(&src_id).unwrap();
         client.process_msg_any(&context, msg_any);
 
         println!("test_reg_client_server: {con_mgr:?}");
@@ -634,7 +653,7 @@ mod test {
         );
 
         // Update context and have ConMgr process message
-        context.rsp_tx = sender_map_get(&src_id).unwrap();
+        context.dst_sndr = sender_map_get(&src_id).unwrap();
         con_mgr.process_msg_any(&context, msg_any);
 
         // Expect the ConMgr to have sent ConMgrRegisterActorRsp to server with success
@@ -648,7 +667,7 @@ mod test {
         );
 
         // Update context and have Server process message
-        context.rsp_tx = sender_map_get(&src_id).unwrap();
+        context.dst_sndr = sender_map_get(&src_id).unwrap();
         server.process_msg_any(&context, msg_any);
 
         println!("test_reg_client_server: {con_mgr:?}");

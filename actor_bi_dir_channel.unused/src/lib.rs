@@ -174,7 +174,7 @@ mod test {
         let recv_msg_1_any = left.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -184,7 +184,7 @@ mod test {
         let recv_msg_1_any = right.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -194,7 +194,7 @@ mod test {
         let recv_msg_1_any = right.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -204,7 +204,7 @@ mod test {
         let recv_msg_1_any = left.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -229,7 +229,7 @@ mod test {
         let recv_msg_1_any = connection.their_bdlc_with_us.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -242,7 +242,7 @@ mod test {
         let recv_msg_1_any = connection.our_bdlc_with_them.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -252,7 +252,7 @@ mod test {
         let recv_msg_1_any = connection.our_bdlc_with_them.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);
@@ -262,7 +262,7 @@ mod test {
         let recv_msg_1_any = connection.their_bdlc_with_us.recv().unwrap();
         assert_eq!(
             MsgHeader::get_msg_id_from_boxed_msg_any(&recv_msg_1_any),
-            &msg_1.header.msg_id
+            msg_1.msg_id()
         );
         let recv_msg_1 = recv_msg_1_any.downcast_ref::<Msg1>().unwrap();
         assert_eq!(recv_msg_1.v, msg_1.v);

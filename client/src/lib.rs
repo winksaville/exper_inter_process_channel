@@ -53,8 +53,9 @@ pub struct Client {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
     pub partner_instance_id: Option<AnId>,
-    pub partner_tx: Option<ActorSender>,
-    pub controller_tx: Option<ActorSender>, // TODO: Change to instance_id and create a connection?
+    pub partner_sndr: Option<ActorSender>,
+    pub controller_instance_id: Option<AnId>,
+    pub controller_sndr: Option<ActorSender>,
     pub ping_count: u64,
 }
 
@@ -129,19 +130,21 @@ impl Client {
 
         let client_ps = ProtocolSet::new("client_ps", CLIENT_PROTOCOL_SET_ID, client_pm);
 
-        let chnl = ActorChannel::new(name);
+        let client_instance_id = AnId::new();
+        let chnl = ActorChannel::new(name, &client_instance_id);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: CLIENT_ACTOR_ID,
-            instance_id: AnId::new(),
+            instance_id: client_instance_id,
             protocol_set: client_ps,
             current_state: Self::state0,
             chnl,
             state_info_hash: StateInfoMap::<Self>::new(),
             partner_instance_id: None,
-            partner_tx: None,
-            controller_tx: None,
+            partner_sndr: None,
+            controller_instance_id: None,
+            controller_sndr: None,
             ping_count: 0,
         };
 
@@ -173,22 +176,26 @@ impl Client {
             self.ping_count * 2
         );
         if counter <= self.ping_count {
-            let req_msg = Box::new(EchoReq::new(&self.instance_id, counter));
-            if let Some(tx) = &self.partner_tx {
+            if let Some(sndr) = &self.partner_sndr {
+                let req_msg = Box::new(EchoReq::new(
+                    sndr.get_dst_instance_id(),
+                    &self.instance_id,
+                    counter,
+                ));
                 println!(
                     "{}:send_echo_req_or_complete:- to partner_tx msg={req_msg:?}",
                     self.name
                 );
-                tx.send(req_msg).unwrap();
+                sndr.send(req_msg).unwrap();
             } else {
-                println!(
-                    "{}:send_echo_req_or_complete:- no partner={req_msg:?}",
-                    self.name
-                );
+                println!("{}:send_echo_req_or_complete:- no partner_tx", self.name);
             }
-        } else if let Some(tx) = &self.controller_tx {
-            tx.send(Box::new(EchoComplete::new(&self.instance_id)))
-                .unwrap();
+        } else if let Some(tx) = &self.controller_sndr {
+            tx.send(Box::new(EchoComplete::new(
+                tx.get_dst_instance_id(),
+                &self.instance_id,
+            )))
+            .unwrap();
             println!(
                 "{}:send_echo_req_or_complete:- send Complete to controller_tx",
                 self.name
@@ -201,25 +208,26 @@ impl Client {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<EchoRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, ECHO_RSP_ID);
+            assert_eq!(msg.msg_id(), &ECHO_RSP_ID);
             self.send_echo_req_or_complete(msg.counter + 1);
         } else if let Some(msg) = msg_any.downcast_ref::<EchoReq>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, ECHO_REQ_ID);
+            assert_eq!(msg.msg_id(), &ECHO_REQ_ID);
             let rsp_msg = Box::new(EchoRsp::new(
+                context.get_dst_instance_id(),
                 &self.instance_id,
                 msg.req_timestamp_ns,
                 msg.counter,
             ));
             println!("{}:State0: sending rsp_msg={rsp_msg:?}", self.name);
-            context.send_rsp(rsp_msg).unwrap();
+            context.send_dst(rsp_msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<EchoStart>() {
             println!("{}:State0: msg={msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, ECHO_START_ID);
-            let tx = context.clone_rsp_tx();
+            assert_eq!(msg.msg_id(), &ECHO_START_ID);
             self.partner_instance_id = Some(msg.partner_instance_id);
-            self.partner_tx = sender_map_get(&self.partner_instance_id.unwrap());
-            self.controller_tx = Some(tx);
+            self.partner_sndr = sender_map_get(&self.partner_instance_id.unwrap());
+            self.controller_instance_id = Some(*msg.src_id());
+            self.controller_sndr = sender_map_get(&self.controller_instance_id.unwrap());
             self.ping_count = msg.ping_count;
             println!(
                 "{}:State0: Successfully connected to partner start echoing",
@@ -229,14 +237,15 @@ impl Client {
         } else if let Some(msg) = msg_any.downcast_ref::<Msg2>() {
             // Got a Msg2 so self send a Msg1
             println!("{}:State0: {msg:?}", self.name);
-            let msg1 = Box::new(Msg1::new(&self.instance_id, 123));
-            context.send_rsp(msg1).unwrap();
+            let msg1 = Box::new(Msg1::new(msg.src_id(), &self.instance_id, 123));
+            context.send_dst(msg1).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<CmdInit>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CMD_INIT_ID);
+            assert_eq!(msg.msg_id(), &CMD_INIT_ID);
 
             // Register ourselves with ConMgr
             let msg = Box::new(ConMgrRegisterActorReq::new(
+                msg.src_id(),
                 &self.instance_id,
                 &self.name,
                 &self.actor_id,
@@ -246,7 +255,7 @@ impl Client {
             context.send_con_mgr(msg).unwrap();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
-            assert_eq!(msg.header.msg_id, CON_MGR_REGISTER_ACTOR_RSP_ID);
+            assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_RSP_ID);
             assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
@@ -270,30 +279,38 @@ mod test {
     use msg_header::MsgHeader;
 
     struct Context {
-        actor_executor_tx: ActorSender,
-        con_mgr_tx: ActorSender,
-        rsp_tx: ActorSender,
+        ae_sndr: ActorSender,
+        con_mgr_sndr: ActorSender,
+        dst_sndr: ActorSender,
     }
 
     impl ActorContext for Context {
-        fn actor_executor_tx(&self) -> &ActorSender {
-            &self.actor_executor_tx
+        fn actor_executor_sndr(&self) -> &ActorSender {
+            &self.ae_sndr
         }
 
         fn send_con_mgr(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.con_mgr_tx.send(msg)?)
+            Ok(self.con_mgr_sndr.send(msg)?)
+        }
+
+        fn get_con_mgr_instance_id(&self) -> &AnId {
+            self.con_mgr_sndr.get_dst_instance_id()
         }
 
         fn send_self(&self, _msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
 
-        fn send_rsp(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
-            Ok(self.rsp_tx.send(msg)?)
+        fn send_dst(&self, msg: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>> {
+            Ok(self.dst_sndr.send(msg)?)
         }
 
-        fn clone_rsp_tx(&self) -> ActorSender {
-            self.rsp_tx.clone()
+        fn get_dst_instance_id(&self) -> &AnId {
+            self.dst_sndr.get_dst_instance_id()
+        }
+
+        fn clone_dst_sndr(&self) -> ActorSender {
+            self.dst_sndr.clone()
         }
     }
 
@@ -301,25 +318,26 @@ mod test {
     fn test_cmd_init() {
         println!("\ntest_cmd_init:+");
 
-        // Create a client and a supervisor bdlc's
-        let supervisor_chnl = ActorChannel::new("supervisor");
-
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Both con_mgr_tx and rsp_tx are supervisor
         let client_context = Context {
-            actor_executor_tx: supervisor_chnl.sender.clone(),
-            con_mgr_tx: supervisor_chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(),
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: supervisor_chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(),
         };
 
         // Create a client
         let mut client = Client::new("client");
 
         // First message must be CmdInit and client send
-        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
+        let msg = Box::new(CmdInit::new(
+            client.get_instance_id(),
+            &supervisor_instance_id,
+        ));
         client.process_msg_any(&client_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
@@ -328,13 +346,14 @@ mod test {
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
+            client.get_instance_id(),
             &supervisor_instance_id,
             ConMgrRegisterActorStatus::Success,
         ));
         client.process_msg_any(&client_context, msg);
 
         // Send Msg2 expect Msg1 back
-        let msg = Box::new(Msg2::new(&supervisor_instance_id));
+        let msg = Box::new(Msg2::new(client.get_instance_id(), &supervisor_instance_id));
         client.process_msg_any(&client_context, msg);
         let recv_msg = supervisor_chnl.receiver.recv().unwrap();
         assert_eq!(
@@ -350,23 +369,25 @@ mod test {
     fn test_client_ping_with_supervisor_as_server() {
         println!("\ntest_client_ping_with_supervisor_as_server:+");
 
-        let supervisor_chnl = ActorChannel::new("supervisor");
-
         // Add supervisor to sender_map
         let supervisor_instance_id = AnId::new();
+        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
         sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
 
         // Create a client with a supervisor as the actor_executor
         let mut client = Client::new("client");
 
         let supervisor_with_clnt_context = Context {
-            actor_executor_tx: supervisor_chnl.sender.clone(),
-            con_mgr_tx: supervisor_chnl.sender.clone(),
-            rsp_tx: supervisor_chnl.sender.clone(),
+            ae_sndr: supervisor_chnl.sender.clone(),
+            con_mgr_sndr: supervisor_chnl.sender.clone(),
+            dst_sndr: supervisor_chnl.sender.clone(),
         };
 
         // First message must be CmdInit and client will send a ConMsgRegisterActorReq
-        let msg = Box::new(CmdInit::new(&supervisor_instance_id));
+        let msg = Box::new(CmdInit::new(
+            client.get_instance_id(),
+            &supervisor_instance_id,
+        ));
         client.process_msg_any(&supervisor_with_clnt_context, msg);
 
         // ConMgr is sent ConMgrRegisterActorReq and responds with
@@ -375,26 +396,28 @@ mod test {
         let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&con_mgr_msg_any);
         assert_eq!(msg_id, &CON_MGR_REGISTER_ACTOR_REQ_ID);
         let msg = Box::new(ConMgrRegisterActorRsp::new(
+            client.get_instance_id(),
             &supervisor_instance_id,
             ConMgrRegisterActorStatus::Success,
         ));
         client.process_msg_any(&supervisor_with_clnt_context, msg);
 
-        // Channel srvr
-        let srvr_chnl = ActorChannel::new("server");
+        // Server channel with the supervisor as the server
         let srvr_instance_id = AnId::new();
+        let srvr_chnl = ActorChannel::new("server", &srvr_instance_id);
         sender_map_insert(&srvr_instance_id, &srvr_chnl.sender);
 
         for ping_count in [0, 1, 5] {
             let srvr_with_clnt_context = Context {
-                actor_executor_tx: supervisor_chnl.sender.clone(),
-                con_mgr_tx: supervisor_chnl.sender.clone(),
-                rsp_tx: client.chnl.sender.clone(),
+                ae_sndr: supervisor_chnl.sender.clone(),
+                con_mgr_sndr: supervisor_chnl.sender.clone(),
+                dst_sndr: client.chnl.sender.clone(),
             };
 
             // Supervisor sends EchoStart message to client
             println!("\ntest_client_ping_with_supervisor_as_server: ping_count={ping_count}");
             let start_msg = Box::new(EchoStart::new(
+                client.get_instance_id(),
                 &supervisor_instance_id,
                 &srvr_instance_id,
                 ping_count,
@@ -422,6 +445,7 @@ mod test {
 
                 // Server creates and sends rsp message
                 let rsp_msg = Box::new(EchoRsp::new(
+                    client.chnl.sender.get_dst_instance_id(),
                     &supervisor_instance_id,
                     Utc::now().timestamp_nanos(),
                     req_msg.counter,
@@ -437,7 +461,7 @@ mod test {
             let complete_msg_any = supervisor_chnl.receiver.recv().unwrap();
             let complete_msg = complete_msg_any.downcast_ref::<EchoComplete>().unwrap();
             println!("test_client_ping_with_supervisor_as_server: received complete msg={complete_msg:?}");
-            assert_eq!(complete_msg.header.msg_id, ECHO_COMPLETE_ID);
+            assert_eq!(complete_msg.msg_id(), &ECHO_COMPLETE_ID);
         }
         println!("test_client_ping_with_supervisor_as_server:-");
     }

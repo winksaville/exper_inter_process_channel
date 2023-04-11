@@ -9,20 +9,26 @@ pub type ProcessMsgFn<SM> = fn(&mut SM, context: &dyn ActorContext, BoxMsgAny);
 // entity, which by definition Actors are.
 pub trait ActorContext {
     /// Returns a reference to this actors executor tx
-    fn actor_executor_tx(&self) -> &ActorSender;
+    fn actor_executor_sndr(&self) -> &ActorSender;
 
     /// Send message to connection manager
     fn send_con_mgr(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
+
+    /// Get ConMgr instance id
+    fn get_con_mgr_instance_id(&self) -> &AnId;
 
     /// Send a message to yourself, in a test case it could be a NOP!
     fn send_self(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
 
     /// Send a response message to the entity that issued request, if there
     /// is no Sender then the message will be silently dropped????
-    fn send_rsp(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
+    fn send_dst(&self, msg_any: BoxMsgAny) -> Result<(), Box<dyn std::error::Error>>;
+
+    /// Get Rsp instance id
+    fn get_dst_instance_id(&self) -> &AnId;
 
     /// Clone rsp_tx
-    fn clone_rsp_tx(&self) -> ActorSender;
+    fn clone_dst_sndr(&self) -> ActorSender;
 }
 
 pub trait Actor: Send + Debug + Sync {

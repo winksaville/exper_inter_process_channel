@@ -11,6 +11,6 @@ mod test {
     fn test_req_protocol_set_msg() {
         let msg = ReqProtocolSet::new();
         println!("test_req_protocol_set_msg: msg={msg:?}");
-        assert_eq!(msg.header.id, REQ_PROTOCOL_SET_ID);
+        assert_eq!(msg.msg_id(), &REQ_PROTOCOL_SET_ID);
     }
 }

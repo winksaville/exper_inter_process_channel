@@ -6,9 +6,9 @@ use msg_serde_macro::{msg_serde_macro, paste};
 msg_serde_macro!(EchoComplete "d8c84131-901c-4900-b506-e4bac6665a58");
 
 impl EchoComplete {
-    pub fn new(src_id: &AnId) -> Self {
+    pub fn new(dst_id: &AnId, src_id: &AnId) -> Self {
         Self {
-            header: MsgHeader::new(ECHO_COMPLETE_ID, *src_id),
+            header: MsgHeader::new(ECHO_COMPLETE_ID, *dst_id, *src_id),
         }
     }
 }
@@ -19,11 +19,13 @@ mod test {
 
     #[test]
     fn test_cmd_done_new() {
+        let dst_id = AnId::new();
         let src_id = AnId::new();
-        let msg = EchoComplete::new(&src_id);
+        let msg = EchoComplete::new(&dst_id, &src_id);
         println!("test_cmd_done_new msg={msg:?}");
-        assert_eq!(msg.header.msg_id, ECHO_COMPLETE_ID);
-        assert_eq!(msg.header.src_id, src_id);
-        assert_eq!(msg.header.msg_id.to_string(), ECHO_COMPLETE_ID_STR);
+        assert_eq!(msg.msg_id(), &ECHO_COMPLETE_ID);
+        assert_eq!(msg.dst_id(), &dst_id);
+        assert_eq!(msg.src_id(), &src_id);
+        assert_eq!(msg.msg_id().to_string(), ECHO_COMPLETE_ID_STR);
     }
 }

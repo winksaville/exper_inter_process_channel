@@ -32,6 +32,10 @@ macro_rules! msg_serde_macro {
                 &self.header.msg_id
             }
 
+            pub fn dst_id(&self) -> &an_id::AnId {
+                &self.header.dst_id
+            }
+
             pub fn src_id(&self) -> &an_id::AnId {
                 &self.header.src_id
             }
@@ -111,6 +115,10 @@ macro_rules! msg_serde_macro {
                 &self.header.msg_id
             }
 
+            pub fn dst_id(&self) -> &an_id::AnId {
+                &self.header.dst_id
+            }
+
             pub fn src_id(&self) -> &an_id::AnId {
                 &self.header.src_id
             }
@@ -183,16 +191,17 @@ mod test {
 
     #[test]
     fn test_msg_a_to_from_serde_json_buf() {
+        let dst_id = AnId::new();
         let src_id = AnId::new();
         let msg_a = Box::new(MsgA {
-            header: MsgHeader::new(MSG_A_ID, src_id),
+            header: MsgHeader::new(MSG_A_ID, dst_id, src_id),
         });
         let msg_a_any_1: BoxMsgAny = msg_a.clone();
         let msg_a_vec = MsgA::to_serde_json_buf(msg_a_any_1).unwrap();
         let msg_a_any_2 = MsgA::from_serde_json_buf(&msg_a_vec).unwrap();
         let msg_a_deser = MsgA::from_box_msg_any(&msg_a_any_2).unwrap();
-        assert_eq!(msg_a_deser.header.msg_id, MSG_A_ID);
-        assert_eq!(msg_a_deser.header.msg_id.to_string(), MSG_A_ID_STR);
+        assert_eq!(msg_a_deser.msg_id(), &MSG_A_ID);
+        assert_eq!(msg_a_deser.msg_id().to_string(), MSG_A_ID_STR);
     }
 
     msg_serde_macro!(MsgB "5cd57392-151a-4460-8a2f-86c79ddad18a" {
@@ -201,9 +210,9 @@ mod test {
     });
 
     impl MsgB {
-        pub fn new(src_id: &AnId, num: u64, a_str: &str) -> Self {
+        pub fn new(dst_id: &AnId, src_id: &AnId, num: u64, a_str: &str) -> Self {
             Self {
-                header: MsgHeader::new(MSG_B_ID, *src_id),
+                header: MsgHeader::new(MSG_B_ID, *dst_id, *src_id),
                 a_u64: num,
                 a_string: a_str.to_string(),
             }
@@ -212,23 +221,26 @@ mod test {
 
     #[test]
     fn test_with_fields() {
+        let dst_id = AnId::new();
         let src_id = AnId::new();
-        let msg_b = Box::new(MsgB::new(&src_id, 123, "hi"));
+        let msg_b = Box::new(MsgB::new(&dst_id, &src_id, 123, "hi"));
         println!("test_with_fields msg_b={msg_b:?}");
-        assert_eq!(msg_b.header.msg_id, MSG_B_ID);
-        assert_eq!(msg_b.header.src_id, src_id);
+        assert_eq!(msg_b.msg_id(), &MSG_B_ID);
+        assert_eq!(msg_b.dst_id(), &dst_id);
+        assert_eq!(msg_b.src_id(), &src_id);
         assert_eq!(msg_b.a_u64, 123);
         assert_eq!(msg_b.a_string, "hi");
-        assert_eq!(msg_b.header.msg_id.to_string(), MSG_B_ID_STR);
+        assert_eq!(msg_b.msg_id().to_string(), MSG_B_ID_STR);
 
         let msg_b_any_1: BoxMsgAny = msg_b.clone();
         let msg_b_vec = MsgB::to_serde_json_buf(msg_b_any_1).unwrap();
         let msg_b_any_2 = MsgB::from_serde_json_buf(&msg_b_vec).unwrap();
         let msg_b_deser = MsgB::from_box_msg_any(&msg_b_any_2).unwrap();
-        assert_eq!(msg_b_deser.header.msg_id, MSG_B_ID);
-        assert_eq!(msg_b_deser.header.src_id, src_id);
+        assert_eq!(msg_b_deser.msg_id(), &MSG_B_ID);
+        assert_eq!(msg_b_deser.dst_id(), &dst_id);
+        assert_eq!(msg_b_deser.src_id(), &src_id);
         assert_eq!(msg_b_deser.a_u64, 123);
         assert_eq!(msg_b_deser.a_string, "hi");
-        assert_eq!(msg_b_deser.header.msg_id.to_string(), MSG_B_ID_STR);
+        assert_eq!(msg_b_deser.msg_id().to_string(), MSG_B_ID_STR);
     }
 }

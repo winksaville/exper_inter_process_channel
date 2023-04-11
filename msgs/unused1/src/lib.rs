@@ -60,7 +60,7 @@ mod test {
         let msg = RspProtocolSet::new("rps1", &a_id, &a_instance_id, &a_protocol_set);
         println!("test_echo_req msg={msg:#?}");
 
-        assert_eq!(msg.header.id, RSP_PROTOCOL_SET_ID);
+        assert_eq!(msg.msg_id(), &RSP_PROTOCOL_SET_ID);
         assert_eq!(msg.name, "rps1");
         assert_eq!(msg.id, a_id);
         assert_eq!(msg.instance_id, a_instance_id);

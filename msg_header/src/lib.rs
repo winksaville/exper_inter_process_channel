@@ -30,14 +30,22 @@ pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[repr(C)]
 pub struct MsgHeader {
-    pub msg_id: AnId,
-    pub src_id: AnId,
+    pub msg_id: AnId, // Message ID
+    pub dst_id: AnId, // Destination ID this is needed routing when the message
+    // is sent via a network and one network connection is
+    // multiplexing messages to multiple actors. ATM, this is
+    // not needed with local actors connected with plain channels.
+    pub src_id: AnId, // Source ID
 }
 
 impl MsgHeader {
-    pub fn new(msg_id: AnId, src_id: AnId) -> Self {
+    pub fn new(msg_id: AnId, dst_id: AnId, src_id: AnId) -> Self {
         //println!("MsgHeader::new");
-        Self { msg_id, src_id }
+        Self {
+            msg_id,
+            dst_id,
+            src_id,
+        }
     }
 
     #[rustversion::nightly]
@@ -83,8 +91,9 @@ impl MsgHeader {
 
     pub fn simple_display(&self) -> String {
         format!(
-            "mh {{ msg_id: {} src_id: {} }}",
+            "mh {{ msg_id: {} dst_id: {} src_id: {} }}",
             &self.msg_id.to_string()[0..8],
+            &self.dst_id.to_string()[0..8],
             &self.src_id.to_string()[0..8],
         )
     }
@@ -94,8 +103,9 @@ impl Debug for MsgHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
             f.debug_struct("MsgHeader")
-                .field("id", &self.msg_id)
-                .field("source_id", &self.src_id)
+                .field("msg_id", &self.msg_id)
+                .field("dst_id", &self.dst_id)
+                .field("src_id", &self.src_id)
                 .finish()
         } else {
             write!(f, "{}", self.simple_display())
@@ -118,25 +128,27 @@ mod test {
     #[test]
     fn test_size() {
         println!("\n");
-        let header = MsgHeader::new(AnId::nil(), AnId::nil());
+        let header = MsgHeader::new(AnId::nil(), AnId::nil(), AnId::nil());
         let size = std::mem::size_of_val(&header);
         println!("test_default: size_of_val(&header)={size}    {{header}}={header}");
         println!("test_default: size_of_val(&header)={size}  {{header:?}}={header:?}");
         println!("test_default: size_of_val(&header)={size} {{header:#?}}={header:#?}");
-        assert_eq!(size, 32);
+        assert_eq!(size, 48);
     }
 
     #[test]
     fn test_new() {
         println!("\n");
         let msg_id = AnId::nil();
+        let dst_id = anid!("ad376277-0f23-4f4e-bbe6-4f76708da4fe");
         let src_id = anid!("31d1ee24-0dfd-49cd-906a-857aa67e59f4");
 
-        let header = MsgHeader::new(msg_id, src_id);
+        let header = MsgHeader::new(msg_id, dst_id, src_id);
         println!("test_new:    {{header}}={header}");
         println!("test_new:  {{header:?}}={header:?}");
         println!("test_new: {{header:#?}}={header:#?}");
         assert_eq!(header.msg_id, msg_id);
+        assert_eq!(header.dst_id, dst_id);
         assert_eq!(header.src_id, src_id);
     }
 
