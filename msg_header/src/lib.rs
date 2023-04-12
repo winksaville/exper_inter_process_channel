@@ -64,6 +64,32 @@ impl MsgHeader {
     }
 
     #[rustversion::nightly]
+    pub fn get_dst_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &AnId {
+        // TODO: Consider validating that this is AnId. One way
+        // would be to have a "global" hashmap of valid values another
+        // way would be to add a "check-sum"?
+        // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+        let mh: &MsgHeader = unsafe { msg_any.downcast_ref_unchecked() };
+
+        &mh.dst_id
+    }
+
+    #[rustversion::stable]
+    pub fn get_dst_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &AnId {
+        &SOME_DEBUG_ANID
+    }
+
+    pub fn get_dst_sndr_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {
+        // TODO: Consider validating that this is AnId. One way
+        // would be to have a "global" hashmap of valid values another
+        // way would be to add a "check-sum"?
+        // See https://doc.rust-lang.org/std/any/trait.Any.html#method.downcast_ref_unchecked
+        let dst_id = MsgHeader::get_dst_id_from_boxed_msg_any(msg_any);
+
+        sender_map_get(dst_id)
+    }
+
+    #[rustversion::nightly]
     pub fn get_src_id_from_boxed_msg_any(msg_any: &BoxMsgAny) -> &AnId {
         // TODO: Consider validating that this is AnId. One way
         // would be to have a "global" hashmap of valid values another
