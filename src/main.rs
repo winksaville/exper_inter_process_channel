@@ -1,11 +1,15 @@
+use actor_channel::ActorChannel;
 use an_id::AnId;
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, unbounded, Receiver};
 use msg1::{Msg1, MSG1_ID};
+use msg2::{Msg2, MSG2_ID};
+use sender_map_by_instance_id::sender_map_insert;
 use std::{
     collections::HashMap,
     error::Error,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
+    sync::atomic::AtomicU64,
     thread,
 };
 
@@ -39,17 +43,15 @@ fn write_msg_buf_to_tcp_stream(
 pub struct IpchnlDeserializer {
     pub name: String,                                     // Name of this deserializer
     pub ip_address_port: String,                          // IP Address of this deserializer
-    pub tx: Sender<BoxMsgAny>,                            // A channel to send messages to
     pub msg_deser_map: HashMap<String, FromSerdeJsonBuf>, // Map of MsgId of each message
 }
 
 #[allow(unused)]
 impl IpchnlDeserializer {
-    pub fn new(name: &str, ip_address_port: &str, tx: Sender<BoxMsgAny>) -> Self {
+    pub fn new(name: &str, ip_address_port: &str) -> Self {
         Self {
             name: name.to_owned(),
             ip_address_port: ip_address_port.to_owned(),
-            tx,
             msg_deser_map: HashMap::<String, FromSerdeJsonBuf>::new(),
         }
     }
@@ -84,22 +86,27 @@ impl IpchnlDeserializer {
                 )
             });
 
+            let stream_id = AtomicU64::new(0);
             for stream in listener.incoming() {
                 match stream {
                     Ok(mut tcp_stream) => {
                         // TODO: Make async, but for now spin up a separate thread for each connection
-                        let tx = self.tx.clone();
                         let msg_deser_map = self.msg_deser_map.clone();
                         let self_name = self_name.clone();
+                        let inner_thread_id =
+                            stream_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                         thread::spawn(move || {
-                            println!("{}::deserializer_thread stream:+", &self_name);
+                            println!(
+                                "{}::deserializer_inner_thread:{inner_thread_id} stream:+",
+                                &self_name
+                            );
 
                             loop {
                                 // TODO: Probably need a signature and version indicator too.
                                 let mut msg_len_buf = [0u8; 2];
                                 if tcp_stream.read_exact(&mut msg_len_buf).is_err() {
                                     println!(
-                                        "{}::deserializer_thread stream: stream closed reading msg_len, stopping",
+                                        "{}::deserializer_inner_thread:{inner_thread_id} stream: stream closed reading msg_len, stopping",
                                         &self_name
                                     );
                                     break;
@@ -107,7 +114,7 @@ impl IpchnlDeserializer {
 
                                 let msg_len = buf_u8_le_to_u16(&msg_len_buf) as usize;
                                 println!(
-                                    "{}::deserializer_thread stream: msg_len={msg_len}",
+                                    "{}::deserializer_thread stream::{inner_thread_id} msg_len={msg_len}",
                                     &self_name
                                 );
 
@@ -116,7 +123,7 @@ impl IpchnlDeserializer {
                                 let mut msg_buf = vec![0; msg_len];
                                 if tcp_stream.read_exact(msg_buf.as_mut_slice()).is_err() {
                                     println!(
-                                        "{}::deserializer_thread stream: stream close reading msg_buf, stopping",
+                                        "{}::deserializer_inner_thread:{inner_thread_id}: stream close reading msg_buf, stopping",
                                         &self_name
                                     );
                                     break;
@@ -124,36 +131,43 @@ impl IpchnlDeserializer {
 
                                 let id_str = get_msg_id_str_from_buf(&msg_buf);
                                 println!(
-                                    "{}::deserializer_thread stream: id_str={id_str}",
+                                    "{}::deserializer_inner_thread:{inner_thread_id}: id_str={id_str}",
                                     &self_name
                                 );
                                 let fn_from_serde_json_buf = msg_deser_map.get(id_str).unwrap();
-                                let msg_serde_box_msg_any =
-                                    (*fn_from_serde_json_buf)(&msg_buf).unwrap();
+                                let box_msg_any = (*fn_from_serde_json_buf)(&msg_buf).unwrap();
                                 println!(
-                                    "{}::deserializer_thread stream: msg_serde_box_msg_any: {:p} {:p} {} {msg_serde_box_msg_any:?}",
+                                    "{}::deserializer_inner_thread stream::{inner_thread_id}: box_msg_any {:p} {:p} {} {box_msg_any:?}",
                                     &self_name,
-                                    msg_serde_box_msg_any,
-                                    &*msg_serde_box_msg_any,
+                                    box_msg_any,
+                                    &*box_msg_any,
                                     std::mem::size_of::<BoxMsgAny>()
                                 );
 
-                                match tx.send(msg_serde_box_msg_any) {
+                                let sndr = MsgHeader::get_dst_sndr_from_boxed_msg_any(&box_msg_any)
+                                    .unwrap();
+                                match sndr.send(box_msg_any) {
                                     Ok(_) => (),
                                     Err(why) => {
                                         println!(
-                                            "{}::deserializer_thread stream: tx.send failed: {why}",
+                                            "{}::deserializer_inner_thread:{inner_thread_id}: tx.send failed: {why}",
                                             &self_name
                                         );
                                         break;
                                     }
                                 }
                             }
-                            println!("{}::deserializer_thread stream:-", &self_name);
+                            println!(
+                                "{}::deserializer_inner_thread:{inner_thread_id}:-",
+                                &self_name
+                            );
                         });
                     }
                     Err(why) => {
-                        println!("{}::deserializer_thread ipchnl_deser stream: Error accepting connection: {why}", &self_name);
+                        println!(
+                            "{}::deserializer_thread: Error accepting connection: {why}",
+                            &self_name
+                        );
                     }
                 }
             }
@@ -259,15 +273,15 @@ impl IpchnlSerializer {
 fn main() {
     println!("main:+");
 
-    let (supervisor_tx, serializer_rx) = unbounded::<BoxMsgAny>();
-    let (deseriailzer_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+    let (serializer_tx, serializer_rx) = unbounded::<BoxMsgAny>();
+    //let (deseriailzer_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
 
     // Create deserializer
-    let mut deserializer =
-        IpchnlDeserializer::new("serializer", "127.0.0.1:12345", deseriailzer_tx.clone());
+    let mut deserializer = IpchnlDeserializer::new("serializer", "127.0.0.1:12345");
 
     // Add the message types that can be deserialized
     deserializer.add_msg_id_from_serde_json_buf(MSG1_ID, Msg1::from_serde_json_buf);
+    deserializer.add_msg_id_from_serde_json_buf(MSG2_ID, Msg2::from_serde_json_buf);
 
     // Start the deserializer
     deserializer.deserializer().unwrap();
@@ -277,33 +291,42 @@ fn main() {
 
     // Add the message types that can be serialized
     serializer.add_msg_id_to_serde_json_buf(MSG1_ID, Msg1::to_serde_json_buf);
+    serializer.add_msg_id_to_serde_json_buf(MSG2_ID, Msg2::to_serde_json_buf);
 
     // Start the serializer
     serializer.serializer().unwrap();
 
-    // Create a supervisor instance id
-    let supervisor_instance_id = AnId::new();
+    // Create two supervisor instance id's and channels to simulate multiple actors
+    let supervisor1_instance_id = AnId::new();
+    let supervisor1_chnl = ActorChannel::new("supervisor1", &supervisor1_instance_id);
+    sender_map_insert(&supervisor1_instance_id, &supervisor1_chnl.sender);
+    let supervisor2_instance_id = AnId::new();
+    let supervisor2_chnl = ActorChannel::new("supervisor2", &supervisor2_instance_id);
+    sender_map_insert(&supervisor2_instance_id, &supervisor2_chnl.sender);
 
     // Create a boxed msg1 and send it to the serialzer
-    let msg1 = Box::new(Msg1::new(
-        &supervisor_instance_id,
-        &supervisor_instance_id,
-        123,
-    ));
-    supervisor_tx.send(msg1).unwrap();
+    let msg1_src_id = AnId::new();
+    let msg1 = Msg1::new(&supervisor1_instance_id, &msg1_src_id, 123);
+    // Create a boxed msg1 and send it to the serialzer
+    let msg2_src_id = AnId::new();
+    let msg2 = Msg2::new(&supervisor2_instance_id, &msg2_src_id);
 
-    // Wait for the deserializer to receive the msg and send it back to the supervisor
-    println!("main: Waiting for msg1 to be received by the deserializer");
-    let msg_any = supervisor_rx.recv().unwrap();
+    serializer_tx.send(Box::new(msg1.clone())).unwrap();
+    serializer_tx.send(Box::new(msg2.clone())).unwrap();
 
-    // Convert msg_any to msg1
+    println!("main: Waiting for msg1 to be forwarded by the deserializer to supervisor1");
+    let msg_any = supervisor1_chnl.receiver.recv().unwrap();
     println!("main: Converting msg_any to msg1");
     let msg = Msg1::from_box_msg_any(&msg_any).unwrap();
-
-    // Veriy the msg1
     println!("main: verifying msg1");
-    assert_eq!(&supervisor_instance_id, msg.src_id());
-    assert_eq!(123, msg.v);
+    assert_eq!(&msg1, msg);
+
+    println!("main: Waiting for msg2 to be forwarded by the deserializer to supervisor2");
+    let msg_any = supervisor2_chnl.receiver.recv().unwrap();
+    println!("main: Converting msg_any to msg2");
+    let msg = Msg2::from_box_msg_any(&msg_any).unwrap();
+    println!("main: verifying msg2");
+    assert_eq!(&msg2, msg);
 
     println!("main:-");
 }
