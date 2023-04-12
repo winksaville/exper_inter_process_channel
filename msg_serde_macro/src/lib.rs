@@ -103,7 +103,7 @@ macro_rules! msg_serde_macro {
             pub const [ <$name:snake:upper _ID> ] : an_id::AnId = an_id::anid!($id_str);
         }
 
-        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
         #[repr(C)]
         pub struct $name {
             pub header: msg_header::MsgHeader,

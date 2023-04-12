@@ -104,7 +104,7 @@ macro_rules! msg_local_macro {
             pub const [ <$name:snake:upper _ID> ] : msg_header::MsgId = msg_header::MsgId(an_id::anid!($id_str));
         }
 
-        #[derive(Debug, Clone)]
+        #[derive(Debug, Clone, PartialEq, Eq)]
         #[repr(C)]
         pub struct $name {
             pub header: msg_header::MsgHeader,
