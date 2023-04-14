@@ -192,17 +192,17 @@ impl IpchnlDeserializer {
 struct IpchnlSerializer {
     pub name: String,                                  // Name of this serializer
     pub deser_ip_address_port: String,                 // IP Address of IpchnlDeserialize
-    pub rx: Receiver<BoxMsgAny>,                       // A channel to receive messages
+    pub actor_chnl: ActorChannel,                      // A channel to send/receive messages
     msg_serializer_map: HashMap<AnId, ToSerdeJsonBuf>, // Map of AnId to a ToSerdeJsonBuf function
 }
 
 #[allow(unused)]
 impl IpchnlSerializer {
-    pub fn new(name: &str, deser_ip_address_port: &str, rx: Receiver<BoxMsgAny>) -> Self {
+    pub fn new(name: &str, deser_ip_address_port: &str) -> Self {
         Self {
             name: name.to_owned(),
             deser_ip_address_port: deser_ip_address_port.to_owned(),
-            rx,
+            actor_chnl: ActorChannel::new(name, &AnId::new()),
             msg_serializer_map: HashMap::<AnId, ToSerdeJsonBuf>::new(),
         }
     }
@@ -235,7 +235,7 @@ impl IpchnlSerializer {
             let mut writer = TcpStream::connect(self.deser_ip_address_port).unwrap();
 
             println!("{}::serializer_thread: Waiting  BoxMsgAny", &self_name);
-            while let Ok(msg) = self.rx.recv() {
+            while let Ok(msg) = self.actor_chnl.receiver.recv() {
                 println!("{}::serializer_thread: Received msg", &self_name);
 
                 let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg);
@@ -274,8 +274,13 @@ impl IpchnlSerializer {
 fn test_msg_serde_proof_of_concept() {
     println!("test_msg_serde_proof_of_concept:+");
 
-    let (serializer_tx, serializer_rx) = unbounded::<BoxMsgAny>();
-    //let (deseriailzer_tx, supervisor_rx) = unbounded::<BoxMsgAny>();
+    // Create two supervisor instance id's and channels to simulate multiple actors
+    let supervisor1_instance_id = AnId::new();
+    let supervisor1_chnl = ActorChannel::new("supervisor1", &supervisor1_instance_id);
+    sender_map_insert(&supervisor1_instance_id, &supervisor1_chnl.sender);
+    let supervisor2_instance_id = AnId::new();
+    let supervisor2_chnl = ActorChannel::new("supervisor2", &supervisor2_instance_id);
+    sender_map_insert(&supervisor2_instance_id, &supervisor2_chnl.sender);
 
     // Create deserializer
     let mut deserializer = IpchnlDeserializer::new("serializer", "127.0.0.1:12345");
@@ -288,22 +293,17 @@ fn test_msg_serde_proof_of_concept() {
     deserializer.deserializer().unwrap();
 
     // Create serializer
-    let mut serializer = IpchnlSerializer::new("serializer", "127.0.0.1:12345", serializer_rx);
+    let mut serializer = IpchnlSerializer::new("serializer", "127.0.0.1:12345");
 
     // Add the message types that can be serialized
     serializer.add_msg_id_to_serde_json_buf(MSG1_ID, Msg1::to_serde_json_buf);
     serializer.add_msg_id_to_serde_json_buf(MSG2_ID, Msg2::to_serde_json_buf);
 
+    // Get a copy of the serializer sender
+    let serializer_sndr = serializer.actor_chnl.sender.clone();
+
     // Start the serializer
     serializer.serializer().unwrap();
-
-    // Create two supervisor instance id's and channels to simulate multiple actors
-    let supervisor1_instance_id = AnId::new();
-    let supervisor1_chnl = ActorChannel::new("supervisor1", &supervisor1_instance_id);
-    sender_map_insert(&supervisor1_instance_id, &supervisor1_chnl.sender);
-    let supervisor2_instance_id = AnId::new();
-    let supervisor2_chnl = ActorChannel::new("supervisor2", &supervisor2_instance_id);
-    sender_map_insert(&supervisor2_instance_id, &supervisor2_chnl.sender);
 
     // Create a boxed msg1 and send it to the serialzer
     let msg1_src_id = AnId::new();
@@ -312,8 +312,8 @@ fn test_msg_serde_proof_of_concept() {
     let msg2_src_id = AnId::new();
     let msg2 = Msg2::new(&supervisor2_instance_id, &msg2_src_id);
 
-    serializer_tx.send(Box::new(msg1.clone())).unwrap();
-    serializer_tx.send(Box::new(msg2.clone())).unwrap();
+    serializer_sndr.send(Box::new(msg1.clone())).unwrap();
+    serializer_sndr.send(Box::new(msg2.clone())).unwrap();
 
     println!("test_msg_serde_proof_of_concept: Waiting for msg1 to be forwarded by the deserializer to supervisor1");
     let msg_any = supervisor1_chnl.receiver.recv().unwrap();
