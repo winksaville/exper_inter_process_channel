@@ -4,13 +4,14 @@ use std::{
 };
 
 use actor::{Actor, ActorContext};
-use actor_channel::{ActorChannel, ActorSender, VecActorChannel};
+use actor_channel::{ActorChannel, ActorSender, VecActorChannel, ActorReceiver};
 
 use actor_executor_protocol::actor_executor_protocol;
 use an_id::{anid, paste, AnId};
 use box_msg_any::BoxMsgAny;
 use cmd_done::CmdDone;
 use cmd_init_protocol::CmdInit;
+use con_mgr::ConMgr;
 use con_mgr_query_protocol::con_mgr_query_protocol;
 use con_mgr_register_actor_protocol::con_mgr_register_actor_protocol;
 use crossbeam_channel::Select;
@@ -20,6 +21,108 @@ use protocol_set::ProtocolSet;
 use req_add_actor::ReqAddActor;
 use rsp_add_actor::RspAddActor;
 use sender_map_by_instance_id::{sender_map_get, sender_map_insert};
+
+// Helper functions for setting up a cluster local of actors for testing.
+// Someday something like this will be use in "production", but for now
+// this is for testing only!
+//
+// Here is an example of how to use this:
+//
+// // Initialize Supervisor starting a single ActorExecutor and the connection manager
+// let (
+//     supervisor_instance_id,
+//     supervisor_chnl,
+//     ae_join_handle,
+//     ae_instance_id,
+//     con_mgr_instance_id,
+// ) = initialize_supervisor_con_mgr_actor_executor_blocking();
+// let ae_sender = sender_map_get(&ae_instance_id).unwrap();
+//
+// // Start a second ActorExecutor
+// let (ae2_join_handle, ae2_instance_id) = ActorExecutor::start("ae2", &con_mgr_instance_id);
+// let ae2_sender = sender_map_get(&ae2_instance_id).unwrap();
+// println!("test_con_mgr_server: ae_sender={ae_sender:?}");
+//
+// // Add client1 to ActorExecutor
+// let c1 = Box::new(Client::new("client1"));
+// let (_c1_actor_id, c1_instance_id) = add_actor_to_actor_executor_blocking(
+//     c1,
+//     &ae_instance_id,
+//     &supervisor_instance_id,
+//     &supervisor_chnl.receiver,
+// );
+//
+// // Add server1 to ActorExecutor
+// let s1 = Box::new(Server::new("server1"));
+// let (_s1_actor_id, s1_instance_id) = add_actor_to_actor_executor_blocking(
+//     s1,
+//     &ae2_instance_id,
+//     &supervisor_instance_id,
+//     &supervisor_chnl.receiver,
+// );
+
+
+// Add an actor to the ActorExecutor blocking until the actor is added
+pub fn add_actor_to_actor_executor_blocking(
+    actor_boxed: Box<dyn Actor>,
+    ae_instance_id: &AnId,
+    supervisor_instance_id: &AnId,
+    supervisor_receiver: &ActorReceiver,
+) -> (AnId, AnId) {
+    let msg = Box::new(ReqAddActor::new(
+        ae_instance_id,
+        supervisor_instance_id,
+        actor_boxed,
+    ));
+    let ae_sender = sender_map_get(ae_instance_id).unwrap();
+    ae_sender.send(msg).unwrap();
+    let msg_any = supervisor_receiver.recv().unwrap();
+    let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
+
+    (msg.actor_id, msg.actor_instance_id)
+}
+
+// Initialize create supervisor_id, and supervisor_chnl, ConMg and ActorExecutor
+// starting ActorExecutor and adding ConMgr to it.
+//
+// Returns supervisor_instance_id, supervisor_chnl, ae_join_handle, ae_instance_id, con_mgr_instance_id
+pub fn initialize_supervisor_con_mgr_actor_executor_blocking(
+) -> (AnId, ActorChannel, JoinHandle<()>, AnId, AnId) {
+    // Add supervisor to sender_map
+    let supervisor_instance_id = AnId::new();
+    let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
+    sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
+
+    // Create connection manager
+    let con_mgr_name = "con_mgr";
+    let con_mgr = Box::new(ConMgr::new(con_mgr_name));
+    let con_mgr_instance_id = *con_mgr.get_instance_id();
+
+    // Start an ActorExecutor
+    let (ae_join_handle, ae_instance_id) = ActorExecutor::start("ae", &con_mgr_instance_id);
+    println!("test_con_mgr_server: ae_instance_id={ae_instance_id:?}");
+
+    // Add con_mgr to ActorExecutor
+    let msg = Box::new(ReqAddActor::new(
+        &ae_instance_id,
+        &supervisor_instance_id,
+        con_mgr,
+    ));
+    let ae_sender = sender_map_get(&ae_instance_id).unwrap();
+    ae_sender.send(msg).unwrap();
+    println!("test_con_mgr_server: sent {} to ae", con_mgr_name);
+    let msg_any = supervisor_chnl.receiver.recv().unwrap();
+    let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
+    println!("test_con_mgr_server: recvd rsp_add_actor={msg:?}");
+
+    (
+        supervisor_instance_id,
+        supervisor_chnl,
+        ae_join_handle,
+        ae_instance_id,
+        con_mgr_instance_id,
+    )
+}
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -236,7 +339,7 @@ impl ActorExecutor {
                         } else {
                             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
                             panic!(
-                                "AE:{}: BUG; msg_any has msg_id={msg_id} and src_id={src_id:?} but not in sender_map",
+                                "AE:{}: BUG; send_map_get returned None for src_id={src_id:?} with msg_id={msg_id:?}",
                                 ae.name);
                         };
                         let context = Context {
@@ -276,81 +379,14 @@ impl ActorExecutor {
 
 #[cfg(test)]
 mod tests {
-    use super::ActorExecutor;
-    use actor::Actor;
-    use actor_channel::{ActorChannel, ActorReceiver};
-    use actor_executor_protocol::{ReqAddActor, RspAddActor};
-    use an_id::AnId;
+    use super::*;
+
     use client::Client;
     use cmd_done::CmdDone;
-    use con_mgr::ConMgr;
     use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
-    use sender_map_by_instance_id::{sender_map_get, sender_map_insert};
+    use sender_map_by_instance_id::sender_map_get;
     use server::Server;
-    use std::thread::JoinHandle;
-
-    // Add an actor to the ActorExecutor blocking until the actor is added
-    fn add_actor_to_actor_executor_blocking(
-        actor_boxed: Box<dyn Actor>,
-        ae_instance_id: &AnId,
-        supervisor_instance_id: &AnId,
-        supervisor_receiver: &ActorReceiver,
-    ) -> (AnId, AnId) {
-        let msg = Box::new(ReqAddActor::new(
-            ae_instance_id,
-            supervisor_instance_id,
-            actor_boxed,
-        ));
-        let ae_sender = sender_map_get(ae_instance_id).unwrap();
-        ae_sender.send(msg).unwrap();
-        let msg_any = supervisor_receiver.recv().unwrap();
-        let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
-
-        (msg.actor_id, msg.actor_instance_id)
-    }
-
-    // Initialize create supervisor_id, and supervisor_chnl, ConMg and ActorExecutor
-    // starting ActorExecutor and adding ConMgr to it.
-    //
-    // Returns supervisor_instance_id, supervisor_chnl, ae_join_handle, ae_instance_id, con_mgr_instance_id
-    fn initialize_supervisor_con_mgr_actor_executor_blocking(
-    ) -> (AnId, ActorChannel, JoinHandle<()>, AnId, AnId) {
-        // Add supervisor to sender_map
-        let supervisor_instance_id = AnId::new();
-        let supervisor_chnl = ActorChannel::new("supervisor", &supervisor_instance_id);
-        sender_map_insert(&supervisor_instance_id, &supervisor_chnl.sender);
-
-        // Create connection manager
-        let con_mgr_name = "con_mgr";
-        let con_mgr = Box::new(ConMgr::new(con_mgr_name));
-        let con_mgr_instance_id = *con_mgr.get_instance_id();
-
-        // Start an ActorExecutor
-        let (ae_join_handle, ae_instance_id) = ActorExecutor::start("ae", &con_mgr_instance_id);
-        println!("test_con_mgr_server: ae_instance_id={ae_instance_id:?}");
-
-        // Add con_mgr to ActorExecutor
-        let msg = Box::new(ReqAddActor::new(
-            &ae_instance_id,
-            &supervisor_instance_id,
-            con_mgr,
-        ));
-        let ae_sender = sender_map_get(&ae_instance_id).unwrap();
-        ae_sender.send(msg).unwrap();
-        println!("test_con_mgr_server: sent {} to ae", con_mgr_name);
-        let msg_any = supervisor_chnl.receiver.recv().unwrap();
-        let msg = msg_any.downcast_ref::<RspAddActor>().unwrap();
-        println!("test_con_mgr_server: recvd rsp_add_actor={msg:?}");
-
-        (
-            supervisor_instance_id,
-            supervisor_chnl,
-            ae_join_handle,
-            ae_instance_id,
-            con_mgr_instance_id,
-        )
-    }
 
     #[test]
     fn test_con_mgr_server() {
@@ -546,7 +582,7 @@ mod tests {
         println!("test_multiple_ae: send CmdDone to ae2");
         let msg = Box::new(CmdDone::new(&ae2_instance_id, &supervisor_instance_id));
         ae2_sender.send(msg).unwrap();
-        println!("test_multiple_ae: sent a2 CmdDone");
+        println!("test_multiple_ae: sent ae2 CmdDone");
 
         println!("test_multiple_ae: join ae2");
         ae2_join_handle.join().unwrap();
