@@ -1,5 +1,5 @@
-//! Protocol implemented by entities that send requests
-//! and receive responses.
+//! Protocol implemented by entities that receives requests
+//! and sends responses.
 use an_id::{anid, paste, AnId};
 use once_cell::sync::Lazy;
 use protocol::Protocol;
