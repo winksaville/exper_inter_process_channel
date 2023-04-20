@@ -535,6 +535,7 @@ dependencies = [
  "msg1",
  "msg2",
  "msg_header",
+ "msg_router_dispatcher",
  "name_id",
  "protocol",
  "protocol_set",
@@ -743,6 +744,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "msg_deser_req"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "msg_deser_requestee_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "msg_deser_req",
+ "msg_deser_rsp",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "msg_deser_rsp"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "serde",
+ "uuid",
+]
+
+[[package]]
 name = "msg_header"
 version = "0.1.0"
 dependencies = [
@@ -768,6 +812,29 @@ dependencies = [
  "paste",
  "serde",
  "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_dispatcher"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_channel",
+ "actor_executor",
+ "an_id",
+ "box_msg_any",
+ "chrono",
+ "cmd_done",
+ "cmd_init_protocol",
+ "con_mgr_register_actor_protocol",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "msg_deser_requestee_protocol",
+ "msg_header",
+ "protocol",
+ "protocol_set",
+ "sender_map_by_instance_id",
  "uuid",
 ]
 
