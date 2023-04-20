@@ -4,7 +4,7 @@ use std::{
 };
 
 use actor::{Actor, ActorContext};
-use actor_channel::{ActorChannel, ActorSender, VecActorChannel, ActorReceiver};
+use actor_channel::{ActorChannel, ActorReceiver, ActorSender, VecActorChannel};
 
 use actor_executor_protocol::actor_executor_protocol;
 use an_id::{anid, paste, AnId};
@@ -60,7 +60,6 @@ use sender_map_by_instance_id::{sender_map_get, sender_map_insert};
 //     &supervisor_instance_id,
 //     &supervisor_chnl.receiver,
 // );
-
 
 // Add an actor to the ActorExecutor blocking until the actor is added
 pub fn add_actor_to_actor_executor_blocking(

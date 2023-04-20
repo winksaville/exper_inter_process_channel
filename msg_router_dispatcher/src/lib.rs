@@ -8,18 +8,25 @@ use con_mgr_register_actor_protocol::{
 };
 use crossbeam_channel::bounded;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
-use msg_deser_requestee_protocol::{msg_deser_requestee_protocol, MsgDeserReq, MsgDeserRsp, MsgDeserRspStatus};
+use msg_deser_requestee_protocol::{
+    msg_deser_requestee_protocol, MsgDeserReq, MsgDeserRsp, MsgDeserRspStatus,
+};
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
 use sender_map_by_instance_id::sender_map_insert;
 use std::{
+    any::Any,
+    collections::{HashMap, hash_map::Entry},
+    error::Error,
+    fmt::{self, Debug},
     io::{Read, Write},
-    collections::HashMap,
-    fmt::{self, Debug}, thread, net::{TcpListener, TcpStream}, sync::{atomic::AtomicU64, Arc, RwLock}, error::Error, any::Any,
+    net::{TcpListener, TcpStream},
+    sync::{atomic::AtomicU64, Arc, RwLock},
+    thread,
 };
 
 use box_msg_any::BoxMsgAny;
-use msg_header::{MsgHeader, FromSerdeJsonBuf, get_msg_id_str_from_buf};
+use msg_header::{get_msg_id_str_from_buf, FromSerdeJsonBuf, MsgHeader};
 
 pub fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
     let b0 = buf[0] as u16;
@@ -63,7 +70,7 @@ pub struct MsgRouterDispatcher {
     pub current_state: ProcessMsgFn<Self>,
     pub state_info_hash: StateInfoMap<Self>,
     pub chnl: ActorChannel,
-    pub addr: String,                          // IP Address of a msg-router-receiver
+    pub addr: String, // IP Address of a msg-router-receiver
     pub msg_deser_map: Arc<RwLock<HashMap<String, FromSerdeJsonBuf>>>, // Map of MsgId of each message
 }
 
@@ -132,9 +139,10 @@ impl MsgRouterDispatcher {
         pm.insert(ci_protocol.id, ci_protocol.clone());
         let erep = echo_requestee_protocol();
         pm.insert(erep.id, erep.clone());
-        let md= msg_deser_requestee_protocol();
+        let md = msg_deser_requestee_protocol();
         pm.insert(md.id, md.clone());
-        let msg_router_ps = ProtocolSet::new("msg_router_ps", MSG_ROUTER_DISPATCHER_PROTOCOL_SET_ID, pm);
+        let msg_router_ps =
+            ProtocolSet::new("msg_router_ps", MSG_ROUTER_DISPATCHER_PROTOCOL_SET_ID, pm);
 
         let msg_router_instance_id = AnId::new();
         let chnl_name = name.to_owned() + "_chnl";
@@ -179,10 +187,10 @@ impl MsgRouterDispatcher {
     ) -> bool {
         let msg_deser_map_clone = Arc::clone(&self.msg_deser_map);
         let mut wlocked_hashmap = msg_deser_map_clone.write().unwrap(); // TODO: remove unwrap
-        if !wlocked_hashmap.contains_key(&msg_id.to_string()) {
+
+        if let Entry::Vacant(e) = wlocked_hashmap.entry(msg_id.to_string()) {
             println!("add_msg_id_from_serde_json_buf: msg_id: {msg_id}");
-            let r = wlocked_hashmap.insert(msg_id.to_string(), from_serde_json_buf);
-            assert!(r.is_none());
+            e.insert(from_serde_json_buf);
 
             true
         } else {
@@ -197,7 +205,7 @@ impl MsgRouterDispatcher {
 
         // Make copies of the data we need in the thread
         let self_name = self.name.clone();
-        let deser_thread_addr = self.addr.clone(); 
+        let deser_thread_addr = self.addr.clone();
         let deser_thread_msg_deser_map = Arc::clone(&self.msg_deser_map);
         thread::spawn(move || {
             println!("{}::deserializer_thread:+", &self_name);
@@ -221,7 +229,10 @@ impl MsgRouterDispatcher {
                         // TODO: Make async, but for now spin up a separate thread for each connection
                         let inner_thread_id =
                             stream_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                        let deser_inner_thread_name = format!("{}::deserializer_inner_thread:{}", self_name, inner_thread_id);
+                        let deser_inner_thread_name = format!(
+                            "{}::deserializer_inner_thread:{}",
+                            self_name, inner_thread_id
+                        );
                         let deser_inner_thread_msg_deser_map = deser_thread_msg_deser_map.clone();
                         thread::spawn(move || {
                             //println!( "{}: stream:+", &deser_inner_thread_name);
@@ -230,7 +241,10 @@ impl MsgRouterDispatcher {
                                 // TODO: Probably need a signature and version indicator too.
                                 let mut msg_len_buf = [0u8; 2];
                                 if tcp_stream.read_exact(&mut msg_len_buf).is_err() {
-                                    println!("{}: stream closed reading msg_len, stopping", &deser_inner_thread_name);
+                                    println!(
+                                        "{}: stream closed reading msg_len, stopping",
+                                        &deser_inner_thread_name
+                                    );
                                     break;
                                 }
 
@@ -241,7 +255,10 @@ impl MsgRouterDispatcher {
                                 // TODO: Consider using [read_buf_exact](https://doc.rust-lang.org/std/io/trait.Read.html#method.read_buf_exact).
                                 let mut msg_buf = vec![0; msg_len];
                                 if tcp_stream.read_exact(msg_buf.as_mut_slice()).is_err() {
-                                    println!("{}: stream close reading msg_buf, stopping", &deser_inner_thread_name);
+                                    println!(
+                                        "{}: stream close reading msg_buf, stopping",
+                                        &deser_inner_thread_name
+                                    );
                                     break;
                                 }
 
@@ -250,7 +267,8 @@ impl MsgRouterDispatcher {
                                 if let Ok(map) = deser_inner_thread_msg_deser_map.read() {
                                     println!("{}: deser_inner_thread_msg_deser_map, GOT lock. map.len={}", &deser_inner_thread_name, map.len());
                                     if let Some(fn_from_serde_json_buf) = map.get(id_str) {
-                                        let box_msg_any = (*fn_from_serde_json_buf)(&msg_buf).unwrap();
+                                        let box_msg_any =
+                                            (*fn_from_serde_json_buf)(&msg_buf).unwrap();
                                         //println!(
                                         //    "{}: box_msg_any {:p} {} {box_msg_any:?}",
                                         //    &deser_inner_thread_name,
@@ -258,19 +276,30 @@ impl MsgRouterDispatcher {
                                         //    std::mem::size_of::<BoxMsgAny>()
                                         //);
 
-                                        let sndr = MsgHeader::get_dst_sndr_from_boxed_msg_any(&box_msg_any)
-                                            .unwrap();
+                                        let sndr = MsgHeader::get_dst_sndr_from_boxed_msg_any(
+                                            &box_msg_any,
+                                        )
+                                        .unwrap();
                                         match sndr.send(box_msg_any) {
                                             Ok(_) => (),
                                             Err(why) => {
-                                                println!("{}: tx.send failed: {why}", &deser_inner_thread_name);
+                                                println!(
+                                                    "{}: tx.send failed: {why}",
+                                                    &deser_inner_thread_name
+                                                );
                                             }
                                         }
                                     } else {
-                                        println!("{}: map.get({id_str}) NOT found", &deser_inner_thread_name);
+                                        println!(
+                                            "{}: map.get({id_str}) NOT found",
+                                            &deser_inner_thread_name
+                                        );
                                     }
                                 } else {
-                                    println!("{}: deser_inner_thread_msg_deser_map, NO lock", &deser_inner_thread_name);
+                                    println!(
+                                        "{}: deser_inner_thread_msg_deser_map, NO lock",
+                                        &deser_inner_thread_name
+                                    );
                                 }
                             }
                             //println!( "{}:-", &deser_inner_thread_name);
@@ -302,7 +331,8 @@ impl MsgRouterDispatcher {
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
         if let Some(msg) = msg_any.downcast_ref::<MsgDeserReq>() {
             let msg_id = &msg.msg_id;
-            let from_serde_json_buf: fn(&[u8]) -> Option<Box<dyn Any + Send>> = msg.from_serde_json_buf;
+            let from_serde_json_buf: fn(&[u8]) -> Option<Box<dyn Any + Send>> =
+                msg.from_serde_json_buf;
             let status = if self.add_msg_id_from_serde_json_buf(*msg_id, from_serde_json_buf) {
                 MsgDeserRspStatus::Success
             } else {
@@ -366,7 +396,9 @@ mod test {
     use std::{net::TcpStream, time::Duration}; //, io::Write};
 
     use actor_channel::ActorSender;
-    use actor_executor::{initialize_supervisor_con_mgr_actor_executor_blocking, add_actor_to_actor_executor_blocking};
+    use actor_executor::{
+        add_actor_to_actor_executor_blocking, initialize_supervisor_con_mgr_actor_executor_blocking,
+    };
     use chrono::Utc;
     use cmd_done::CmdDone;
     use echo_requestee_protocol::ECHO_RSP_ID;
@@ -453,7 +485,10 @@ mod test {
             &ECHO_REQ_ID,
             EchoReq::from_serde_json_buf,
         ));
-        sender_map_get(&mrd1_instance_id).unwrap().send(msg).unwrap();
+        sender_map_get(&mrd1_instance_id)
+            .unwrap()
+            .send(msg)
+            .unwrap();
 
         // Connect to MsgRouterDispatcher
         let mut writer = TcpStream::connect(mrd1_addr).unwrap();
@@ -461,7 +496,11 @@ mod test {
         let before_timestamp_ns = Utc::now().timestamp_nanos();
 
         // Create EchoReq message and serialize it
-        let echo_msg = Box::new(EchoReq::new(&con_mgr_instance_id, &supervisor_instance_id, 1));
+        let echo_msg = Box::new(EchoReq::new(
+            &con_mgr_instance_id,
+            &supervisor_instance_id,
+            1,
+        ));
         let buf = EchoReq::to_serde_json_buf(echo_msg).unwrap();
 
         // Send to MsgRouterDispatcher, aka. deserializer :)
@@ -469,7 +508,6 @@ mod test {
             Ok(_) => (),
             Err(why) => panic!("test_1: {why}"),
         }
-
 
         // Read EchoRsp that MsgRouterDispatcher sends to us the supervisor
         let msg_any = supervisor_chnl.receiver.recv().unwrap();
@@ -480,10 +518,22 @@ mod test {
         assert_eq!(msg.dst_id(), &supervisor_instance_id);
         assert_eq!(msg.counter, 1);
         println!("test_1: msg={msg:?}");
-        println!("after - before = {}ns", after_timestamp_ns - before_timestamp_ns);
-        println!("rsp - before = {}ns", msg.req_timestamp_ns - before_timestamp_ns);
-        println!("rsp - req = {}ns", msg.rsp_timestamp_ns - msg.req_timestamp_ns);
-        println!("after - rsp = {}ns", after_timestamp_ns - msg.rsp_timestamp_ns);
+        println!(
+            "after - before = {}ns",
+            after_timestamp_ns - before_timestamp_ns
+        );
+        println!(
+            "rsp - before = {}ns",
+            msg.req_timestamp_ns - before_timestamp_ns
+        );
+        println!(
+            "rsp - req = {}ns",
+            msg.rsp_timestamp_ns - msg.req_timestamp_ns
+        );
+        println!(
+            "after - rsp = {}ns",
+            after_timestamp_ns - msg.rsp_timestamp_ns
+        );
         assert!(before_timestamp_ns < msg.req_timestamp_ns);
         assert!(msg.req_timestamp_ns < msg.rsp_timestamp_ns);
         assert!(msg.rsp_timestamp_ns < after_timestamp_ns);
@@ -494,9 +544,10 @@ mod test {
         println!("test_1: sent CmdDone to ae");
 
         println!("test_1: ae_join_handle.join().unwrap()");
-        ae_join_handle.join().expect("Failed joining ae_join_handle");
+        ae_join_handle
+            .join()
+            .expect("Failed joining ae_join_handle");
 
         println!("test_1:-");
     }
-
 }

@@ -331,4 +331,3 @@ fn test_msg_serde_proof_of_concept() {
 
     println!("test_msg_serde_proof_of_concept:-");
 }
-
