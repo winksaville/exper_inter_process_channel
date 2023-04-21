@@ -13,7 +13,7 @@ an_id = { version = "0.1.0", path = "../an_id" }
 msg_header = { path="../msg_header" }
 protocol_set = { path="../protocol_set" }
 echo_requestee_protocol = { version = "0.1.0", path = "../protocols/echo_requestee_protocol" }
-msg_deser_requestee_protocol = { version = "0.1.0", path = "../protocols/msg_deser_requestee_protocol" }
+insert_key_msg_id_value_from_serde_json_buf_requestee_protocol = { version = "0.1.0", path = "../protocols/insert_key_msg_id_value_from_serde_json_buf_requestee_protocol" }
 actor = { path="../actor" }
 actor_channel = { path="../actor_channel" }
 chrono = "0.4.23"

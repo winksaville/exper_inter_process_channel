@@ -8,15 +8,17 @@ use con_mgr_register_actor_protocol::{
 };
 use crossbeam_channel::bounded;
 use echo_requestee_protocol::{echo_requestee_protocol, EchoReq, EchoRsp, ECHO_REQ_ID};
-use msg_deser_requestee_protocol::{
-    msg_deser_requestee_protocol, MsgDeserReq, MsgDeserRsp, MsgDeserRspStatus,
+use insert_key_msg_id_value_from_serde_json_buf_requestee_protocol::{
+    insert_key_msg_id_value_from_serde_json_buf_requestee_protocol,
+    InsertKeyMsgIdValueFromSerdeJsonBufReq, InsertKeyMsgIdValueFromSerdeJsonBufRsp,
+    InsertKeyMsgIdValueFromSerdeJsonBufRspStatus,
 };
 use protocol::Protocol;
 use protocol_set::ProtocolSet;
 use sender_map_by_instance_id::sender_map_insert;
 use std::{
     any::Any,
-    collections::{HashMap, hash_map::Entry},
+    collections::{hash_map::Entry, HashMap},
     error::Error,
     fmt::{self, Debug},
     io::{Read, Write},
@@ -71,7 +73,8 @@ pub struct MsgRouterDispatcher {
     pub state_info_hash: StateInfoMap<Self>,
     pub chnl: ActorChannel,
     pub addr: String, // IP Address of a msg-router-receiver
-    pub msg_deser_map: Arc<RwLock<HashMap<String, FromSerdeJsonBuf>>>, // Map of MsgId of each message
+    pub insert_key_msg_id_value_from_serde_json_buf_map:
+        Arc<RwLock<HashMap<String, FromSerdeJsonBuf>>>, // Map of MsgId of each message
 }
 
 // TODO: For Send implementors must guarantee maybe moved between threads. ??
@@ -139,7 +142,7 @@ impl MsgRouterDispatcher {
         pm.insert(ci_protocol.id, ci_protocol.clone());
         let erep = echo_requestee_protocol();
         pm.insert(erep.id, erep.clone());
-        let md = msg_deser_requestee_protocol();
+        let md = insert_key_msg_id_value_from_serde_json_buf_requestee_protocol();
         pm.insert(md.id, md.clone());
         let msg_router_ps =
             ProtocolSet::new("msg_router_ps", MSG_ROUTER_DISPATCHER_PROTOCOL_SET_ID, pm);
@@ -157,7 +160,11 @@ impl MsgRouterDispatcher {
             state_info_hash: StateInfoMap::<Self>::new(),
             chnl,
             addr: addr.to_owned(),
-            msg_deser_map: Arc::new(RwLock::new(HashMap::<String, FromSerdeJsonBuf>::new())),
+            insert_key_msg_id_value_from_serde_json_buf_map: Arc::new(RwLock::new(HashMap::<
+                String,
+                FromSerdeJsonBuf,
+            >::new(
+            ))),
         };
 
         // Add ourself to the sender_map
@@ -185,8 +192,11 @@ impl MsgRouterDispatcher {
         msg_id: AnId,
         from_serde_json_buf: FromSerdeJsonBuf,
     ) -> bool {
-        let msg_deser_map_clone = Arc::clone(&self.msg_deser_map);
-        let mut wlocked_hashmap = msg_deser_map_clone.write().unwrap(); // TODO: remove unwrap
+        let insert_key_msg_id_value_from_serde_json_buf_map_clone =
+            Arc::clone(&self.insert_key_msg_id_value_from_serde_json_buf_map);
+        let mut wlocked_hashmap = insert_key_msg_id_value_from_serde_json_buf_map_clone
+            .write()
+            .unwrap(); // TODO: remove unwrap
 
         if let Entry::Vacant(e) = wlocked_hashmap.entry(msg_id.to_string()) {
             println!("add_msg_id_from_serde_json_buf: msg_id: {msg_id}");
@@ -206,7 +216,8 @@ impl MsgRouterDispatcher {
         // Make copies of the data we need in the thread
         let self_name = self.name.clone();
         let deser_thread_addr = self.addr.clone();
-        let deser_thread_msg_deser_map = Arc::clone(&self.msg_deser_map);
+        let deser_thread_insert_key_msg_id_value_from_serde_json_buf_map =
+            Arc::clone(&self.insert_key_msg_id_value_from_serde_json_buf_map);
         thread::spawn(move || {
             println!("{}::deserializer_thread:+", &self_name);
 
@@ -233,7 +244,8 @@ impl MsgRouterDispatcher {
                             "{}::deserializer_inner_thread:{}",
                             self_name, inner_thread_id
                         );
-                        let deser_inner_thread_msg_deser_map = deser_thread_msg_deser_map.clone();
+                        let deser_inner_thread_insert_key_msg_id_value_from_serde_json_buf_map =
+                            deser_thread_insert_key_msg_id_value_from_serde_json_buf_map.clone();
                         thread::spawn(move || {
                             //println!( "{}: stream:+", &deser_inner_thread_name);
 
@@ -264,8 +276,8 @@ impl MsgRouterDispatcher {
 
                                 let id_str = get_msg_id_str_from_buf(&msg_buf);
                                 //println!("{}: mag.get({id_str}) lookup", &deser_inner_thread_name);
-                                if let Ok(map) = deser_inner_thread_msg_deser_map.read() {
-                                    println!("{}: deser_inner_thread_msg_deser_map, GOT lock. map.len={}", &deser_inner_thread_name, map.len());
+                                if let Ok(map) = deser_inner_thread_insert_key_msg_id_value_from_serde_json_buf_map.read() {
+                                    println!("{}: deser_inner_thread_insert_key_msg_id_value_from_serde_json_buf_map, GOT lock. map.len={}", &deser_inner_thread_name, map.len());
                                     if let Some(fn_from_serde_json_buf) = map.get(id_str) {
                                         let box_msg_any =
                                             (*fn_from_serde_json_buf)(&msg_buf).unwrap();
@@ -297,7 +309,7 @@ impl MsgRouterDispatcher {
                                     }
                                 } else {
                                     println!(
-                                        "{}: deser_inner_thread_msg_deser_map, NO lock",
+                                        "{}: deser_inner_thread_insert_key_msg_id_value_from_serde_json_buf_map, NO lock",
                                         &deser_inner_thread_name
                                     );
                                 }
@@ -329,16 +341,16 @@ impl MsgRouterDispatcher {
     }
 
     pub fn state0(&mut self, context: &dyn ActorContext, msg_any: BoxMsgAny) {
-        if let Some(msg) = msg_any.downcast_ref::<MsgDeserReq>() {
+        if let Some(msg) = msg_any.downcast_ref::<InsertKeyMsgIdValueFromSerdeJsonBufReq>() {
             let msg_id = &msg.msg_id;
             let from_serde_json_buf: fn(&[u8]) -> Option<Box<dyn Any + Send>> =
                 msg.from_serde_json_buf;
             let status = if self.add_msg_id_from_serde_json_buf(*msg_id, from_serde_json_buf) {
-                MsgDeserRspStatus::Success
+                InsertKeyMsgIdValueFromSerdeJsonBufRspStatus::Success
             } else {
-                MsgDeserRspStatus::MsgAlreadyRegistered
+                InsertKeyMsgIdValueFromSerdeJsonBufRspStatus::AlreadyInserted
             };
-            let rsp_msg = Box::new(MsgDeserRsp::new(
+            let rsp_msg = Box::new(InsertKeyMsgIdValueFromSerdeJsonBufRsp::new(
                 context.get_dst_instance_id(),
                 &self.instance_id,
                 msg_id,
@@ -402,7 +414,6 @@ mod test {
     use chrono::Utc;
     use cmd_done::CmdDone;
     use echo_requestee_protocol::ECHO_RSP_ID;
-    //use msg_deser_requestee_protocol::MSG_DESER_REQ_ID;
     use sender_map_by_instance_id::sender_map_get;
 
     use super::*;
@@ -479,7 +490,7 @@ mod test {
         thread::sleep(Duration::from_millis(1));
 
         // Add EchoReq to Deserializer msgs
-        let msg = Box::new(MsgDeserReq::new(
+        let msg = Box::new(InsertKeyMsgIdValueFromSerdeJsonBufReq::new(
             &supervisor_instance_id,
             &mrd1_instance_id,
             &ECHO_REQ_ID,

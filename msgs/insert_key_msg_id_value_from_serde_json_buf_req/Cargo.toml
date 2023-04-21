@@ -1,5 +1,5 @@
 [package]
-name = "msg_deser_req"
+name = "insert_key_msg_id_value_from_serde_json_buf_req"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true

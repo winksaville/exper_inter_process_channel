@@ -634,6 +634,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "insert_key_msg_id_value_from_serde_json_buf_req"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_from_serde_json_buf_requestee_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "insert_key_msg_id_value_from_serde_json_buf_req",
+ "insert_key_msg_id_value_from_serde_json_buf_rsp",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_from_serde_json_buf_requester_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "echo_req",
+ "echo_rsp",
+ "insert_key_msg_id_value_from_serde_json_buf_req",
+ "insert_key_msg_id_value_from_serde_json_buf_rsp",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_from_serde_json_buf_rsp"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "serde",
+ "uuid",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -744,49 +803,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "msg_deser_req"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "box_msg_any",
- "crossbeam-channel",
- "log",
- "msg_header",
- "msg_local_macro",
- "uuid",
-]
-
-[[package]]
-name = "msg_deser_requestee_protocol"
-version = "0.1.0"
-dependencies = [
- "an_id",
- "box_msg_any",
- "msg_deser_req",
- "msg_deser_rsp",
- "msg_header",
- "once_cell",
- "protocol",
- "uuid",
-]
-
-[[package]]
-name = "msg_deser_rsp"
-version = "0.1.0"
-dependencies = [
- "actor",
- "an_id",
- "box_msg_any",
- "crossbeam-channel",
- "log",
- "msg_header",
- "msg_local_macro",
- "serde",
- "uuid",
-]
-
-[[package]]
 name = "msg_header"
 version = "0.1.0"
 dependencies = [
@@ -830,7 +846,7 @@ dependencies = [
  "con_mgr_register_actor_protocol",
  "crossbeam-channel",
  "echo_requestee_protocol",
- "msg_deser_requestee_protocol",
+ "insert_key_msg_id_value_from_serde_json_buf_requestee_protocol",
  "msg_header",
  "protocol",
  "protocol_set",
