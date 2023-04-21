@@ -8,6 +8,7 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+utils = { path = "utils" }
 box_msg_any = { path = "box_msg_any" }
 actor = { path="actor" }
 actor_channel = { path="actor_channel" }
@@ -46,6 +47,7 @@ crossbeam-channel = "0.5.7"
 
 [workspace]
 members = [
+    "utils",
     "box_msg_any",
     "actor",
     "actor_executor",

@@ -545,6 +545,7 @@ dependencies = [
  "serde",
  "serde_json",
  "server",
+ "utils",
  "uuid",
 ]
 
@@ -851,6 +852,7 @@ dependencies = [
  "protocol",
  "protocol_set",
  "sender_map_by_instance_id",
+ "utils",
  "uuid",
 ]
 
@@ -1179,6 +1181,10 @@ name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
 
 [[package]]
 name = "uuid"

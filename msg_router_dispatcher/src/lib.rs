@@ -19,40 +19,16 @@ use sender_map_by_instance_id::sender_map_insert;
 use std::{
     any::Any,
     collections::{hash_map::Entry, HashMap},
-    error::Error,
     fmt::{self, Debug},
-    io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    io::Read,
+    net::TcpListener,
     sync::{atomic::AtomicU64, Arc, RwLock},
     thread,
 };
+use utils::buf_u8_le_to_u16;
 
 use box_msg_any::BoxMsgAny;
 use msg_header::{get_msg_id_str_from_buf, FromSerdeJsonBuf, MsgHeader};
-
-pub fn buf_u8_le_to_u16(buf: &[u8; 2]) -> u16 {
-    let b0 = buf[0] as u16;
-    let b1 = buf[1] as u16;
-    b0 + (b1 << 8)
-}
-
-pub fn u16_to_buf_u8_le(v: u16) -> Vec<u8> {
-    let b0 = (v & 0xff) as u8;
-    let b1 = ((v >> 8) & 0xff) as u8;
-    vec![b0, b1]
-}
-
-pub fn write_msg_buf_to_tcp_stream(
-    stream: &mut TcpStream,
-    msg_buf: &[u8],
-) -> Result<(), Box<dyn Error>> {
-    let buf_len_data = u16_to_buf_u8_le(msg_buf.len() as u16);
-
-    stream.write_all(buf_len_data.as_ref())?;
-    stream.write_all(msg_buf)?;
-
-    Ok(())
-}
 
 // State information
 #[derive(Debug)]
@@ -415,6 +391,7 @@ mod test {
     use cmd_done::CmdDone;
     use echo_requestee_protocol::ECHO_RSP_ID;
     use sender_map_by_instance_id::sender_map_get;
+    use utils::write_msg_buf_to_tcp_stream;
 
     use super::*;
 
