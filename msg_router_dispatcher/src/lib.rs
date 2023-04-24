@@ -362,13 +362,13 @@ impl MsgRouterDispatcher {
                 self.name
             );
             context.send_con_mgr(msg).unwrap();
+
+            println!("{}:State0: starting deserializer", self.name);
+            self.deserializer();
         } else if let Some(msg) = msg_any.downcast_ref::<ConMgrRegisterActorRsp>() {
             println!("{}:State0: {msg:?}", self.name);
             assert_eq!(msg.msg_id(), &CON_MGR_REGISTER_ACTOR_RSP_ID);
             assert_eq!(msg.status, ConMgrRegisterActorStatus::Success);
-
-            println!("{}:State0: starting deserializer", self.name);
-            self.deserializer();
         } else {
             let msg_id = MsgHeader::get_msg_id_from_boxed_msg_any(&msg_any);
             println!(
@@ -381,7 +381,7 @@ impl MsgRouterDispatcher {
 
 #[cfg(test)]
 mod test {
-    use std::{net::TcpStream, time::Duration}; //, io::Write};
+    use std::net::TcpStream;
 
     use actor_channel::ActorSender;
     use actor_executor::{
@@ -463,13 +463,11 @@ mod test {
             con_mgr_sndr: supervisor_chnl.sender.clone(),
             dst_sndr: supervisor_chnl.sender.clone(),
         };
-        println!("test_1: waiting 1ms to yield to mrd1 thread");
-        thread::sleep(Duration::from_millis(1));
 
         // Add EchoReq to Deserializer msgs
         let msg = Box::new(InsertKeyMsgIdValueFromSerdeJsonBufReq::new(
-            &supervisor_instance_id,
             &mrd1_instance_id,
+            &supervisor_instance_id,
             &ECHO_REQ_ID,
             EchoReq::from_serde_json_buf,
         ));
@@ -477,6 +475,11 @@ mod test {
             .unwrap()
             .send(msg)
             .unwrap();
+
+        println!("test_1: waiting for InsertKeyMsgIdValueFromSerdeJsonBufRsp");
+        let msg_any = supervisor_chnl.receiver.recv().unwrap();
+        let msg = InsertKeyMsgIdValueFromSerdeJsonBufRsp::from_box_msg_any(&msg_any).unwrap();
+        println!("test_1: msg={:?}", msg);
 
         // Connect to MsgRouterDispatcher
         let mut writer = TcpStream::connect(mrd1_addr).unwrap();
@@ -491,7 +494,9 @@ mod test {
         ));
         let buf = EchoReq::to_serde_json_buf(echo_msg).unwrap();
 
-        // Send to MsgRouterDispatcher, aka. deserializer :)
+        // Send to MsgRouterDispatcher thread which will deserialize the msg and
+        // dispatch to dst_id, con_mgr_instance_id. The ConMgr will then send the
+        // respose to the us, supervisor_instance_id!
         match write_msg_buf_to_tcp_stream(&mut writer, &buf) {
             Ok(_) => (),
             Err(why) => panic!("test_1: {why}"),
