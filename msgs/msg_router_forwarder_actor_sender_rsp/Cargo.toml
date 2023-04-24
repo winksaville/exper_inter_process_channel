@@ -1,0 +1,19 @@
+[package]
+name = "msg_router_forwarder_actor_sender_rsp"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4.17"
+box_msg_any = { version = "0.1.0", path = "../../box_msg_any" }
+an_id = { version = "0.1.0", path = "../../an_id" }
+msg_local_macro = { path = "../../msg_local_macro" }
+msg_header = { path = "../../msg_header" }
+uuid = { version = "1.3.0", features = ["serde"] }
+actor = { version = "0.1.0", path = "../../actor" }
+actor_channel = { version = "0.1.0", path = "../../actor_channel" }
+crossbeam-channel = "0.5.7"

@@ -29,6 +29,7 @@ echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
 echo_rsp = { path="msgs/echo_rsp" }
 msg_router_dispatcher = { path= "msg_router_dispatcher" }
+msg_router_forwarder = { path= "msg_router_forwarder" }
 msg_header = { path="msg_header" }
 msg1 = { path="msgs/msg1" }
 msg2 = { path="msgs/msg2" }
@@ -57,6 +58,7 @@ members = [
     "sender_map_by_instance_id",
     "msg_header",
     "msg_router_dispatcher",
+    "msg_router_forwarder",
     "msgs/msg1",
     "msgs/msg2",
     "msgs/cmd_done",
@@ -68,6 +70,10 @@ members = [
     "msgs/echo_start",
     "msgs/insert_key_msg_id_value_from_serde_json_buf_req",
     "msgs/insert_key_msg_id_value_from_serde_json_buf_rsp",
+    "msgs/insert_key_msg_id_value_to_serde_json_buf_req",
+    "msgs/insert_key_msg_id_value_to_serde_json_buf_rsp",
+    "msgs/msg_router_forwarder_actor_sender_req",
+    "msgs/msg_router_forwarder_actor_sender_rsp",
     "name_id",
     "an_id",
     "protocols/actor_executor_protocol",
@@ -79,6 +85,10 @@ members = [
     "protocols/echo_requestee_protocol",
     "protocols/insert_key_msg_id_value_from_serde_json_buf_requestee_protocol",
     "protocols/insert_key_msg_id_value_from_serde_json_buf_requester_protocol",
+    "protocols/insert_key_msg_id_value_to_serde_json_buf_requestee_protocol",
+    "protocols/insert_key_msg_id_value_to_serde_json_buf_requester_protocol",
+    "protocols/msg_router_forwarder_actor_sender_requestee_protocol",
+    "protocols/msg_router_forwarder_actor_sender_requester_protocol",
     "msg_local_macro",
     "msg_serde_macro",
     "client",

@@ -1,0 +1,18 @@
+[package]
+name = "msg_router_forwarder_actor_sender_requestee_protocol"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+box_msg_any = { version = "0.1.0", path = "../../box_msg_any" }
+an_id = { version = "0.1.0", path = "../../an_id" }
+msg_header = { version = "0.1.0", path = "../../msg_header" }
+msg_router_forwarder_actor_sender_req = { path = "../../msgs/msg_router_forwarder_actor_sender_req" }
+msg_router_forwarder_actor_sender_rsp = { path = "../../msgs/msg_router_forwarder_actor_sender_rsp" }
+once_cell = "1.17.1"
+protocol = { version = "0.1.0", path = "../../protocol" }
+uuid = "1.3.0"

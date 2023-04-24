@@ -1,6 +1,6 @@
 # MsgRouterDispatcher
 
-This will accept messages from a MsgRouterReceiver and dispatch them
+This will accept messages from a MsgRouterForwarder and dispatch them
 to actors in this cluster.
 
 

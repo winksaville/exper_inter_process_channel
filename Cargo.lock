@@ -536,6 +536,7 @@ dependencies = [
  "msg2",
  "msg_header",
  "msg_router_dispatcher",
+ "msg_router_forwarder",
  "name_id",
  "protocol",
  "protocol_set",
@@ -680,6 +681,65 @@ dependencies = [
 
 [[package]]
 name = "insert_key_msg_id_value_from_serde_json_buf_rsp"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "serde",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_to_serde_json_buf_req"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_to_serde_json_buf_requestee_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "insert_key_msg_id_value_to_serde_json_buf_req",
+ "insert_key_msg_id_value_to_serde_json_buf_rsp",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_to_serde_json_buf_requester_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "echo_req",
+ "echo_rsp",
+ "insert_key_msg_id_value_to_serde_json_buf_req",
+ "insert_key_msg_id_value_to_serde_json_buf_rsp",
+ "msg_header",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "insert_key_msg_id_value_to_serde_json_buf_rsp"
 version = "0.1.0"
 dependencies = [
  "actor",
@@ -853,6 +913,88 @@ dependencies = [
  "protocol_set",
  "sender_map_by_instance_id",
  "utils",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_forwarder"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_channel",
+ "actor_executor",
+ "an_id",
+ "box_msg_any",
+ "chrono",
+ "cmd_done",
+ "cmd_init_protocol",
+ "con_mgr_register_actor_protocol",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "insert_key_msg_id_value_to_serde_json_buf_requestee_protocol",
+ "msg_header",
+ "msg_router_forwarder_actor_sender_requestee_protocol",
+ "protocol",
+ "protocol_set",
+ "sender_map_by_instance_id",
+ "utils",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_forwarder_actor_sender_req"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_forwarder_actor_sender_requestee_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "msg_header",
+ "msg_router_forwarder_actor_sender_req",
+ "msg_router_forwarder_actor_sender_rsp",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_forwarder_actor_sender_requester_protocol"
+version = "0.1.0"
+dependencies = [
+ "an_id",
+ "box_msg_any",
+ "msg_header",
+ "msg_router_forwarder_actor_sender_req",
+ "msg_router_forwarder_actor_sender_rsp",
+ "once_cell",
+ "protocol",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_forwarder_actor_sender_rsp"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_channel",
+ "an_id",
+ "box_msg_any",
+ "crossbeam-channel",
+ "log",
+ "msg_header",
+ "msg_local_macro",
  "uuid",
 ]
 
