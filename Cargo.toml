@@ -29,6 +29,7 @@ echo_complete = { path="msgs/echo_complete" }
 echo_req = { path="msgs/echo_req" }
 echo_rsp = { path="msgs/echo_rsp" }
 msg_router_dispatcher = { path= "msg_router_dispatcher" }
+msg_router_receiver = { path= "msg_router_receiver" }
 msg_header = { path="msg_header" }
 msg1 = { path="msgs/msg1" }
 msg2 = { path="msgs/msg2" }
@@ -57,6 +58,7 @@ members = [
     "sender_map_by_instance_id",
     "msg_header",
     "msg_router_dispatcher",
+    "msg_router_receiver",
     "msgs/msg1",
     "msgs/msg2",
     "msgs/cmd_done",

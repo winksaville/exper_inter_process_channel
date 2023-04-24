@@ -536,6 +536,7 @@ dependencies = [
  "msg2",
  "msg_header",
  "msg_router_dispatcher",
+ "msg_router_receiver",
  "name_id",
  "protocol",
  "protocol_set",
@@ -834,6 +835,30 @@ dependencies = [
 
 [[package]]
 name = "msg_router_dispatcher"
+version = "0.1.0"
+dependencies = [
+ "actor",
+ "actor_channel",
+ "actor_executor",
+ "an_id",
+ "box_msg_any",
+ "chrono",
+ "cmd_done",
+ "cmd_init_protocol",
+ "con_mgr_register_actor_protocol",
+ "crossbeam-channel",
+ "echo_requestee_protocol",
+ "insert_key_msg_id_value_from_serde_json_buf_requestee_protocol",
+ "msg_header",
+ "protocol",
+ "protocol_set",
+ "sender_map_by_instance_id",
+ "utils",
+ "uuid",
+]
+
+[[package]]
+name = "msg_router_receiver"
 version = "0.1.0"
 dependencies = [
  "actor",
