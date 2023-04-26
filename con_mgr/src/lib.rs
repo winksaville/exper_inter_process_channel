@@ -3,7 +3,7 @@ use std::error::Error;
 
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_channel::{ActorChannel, ActorSender};
-use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
+use cmd_init_issuee_protocol::{cmd_init_issuee_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_query_protocol::{ConMgrQueryReq, ConMgrQueryRsp, CON_MGR_QUERY_REQ_ID};
 use con_mgr_register_actor_protocol::{
     con_mgr_register_actor_protocol, ConMgrRegisterActorReq, ConMgrRegisterActorRsp,
@@ -132,7 +132,7 @@ impl ConMgr {
         // Create the ConMgr ProtocolSet.
         println!("ConMgr::new({})", name);
         let mut cm_pm = HashMap::<AnId, Protocol>::new();
-        let ci_protocol = cmd_init_protocol();
+        let ci_protocol = cmd_init_issuee_protocol();
         cm_pm.insert(ci_protocol.id, ci_protocol.clone());
         let requestee_protocol = echo_requestee_protocol();
         cm_pm.insert(requestee_protocol.id, requestee_protocol.clone());
@@ -345,7 +345,7 @@ mod test {
     use super::*;
     use chrono::Utc;
     use client::Client;
-    use cmd_init_protocol::CmdInit;
+    use cmd_init_issuer_protocol::CmdInit;
     use con_mgr_register_actor_protocol::{
         CON_MGR_REGISTER_ACTOR_REQ_ID, CON_MGR_REGISTER_ACTOR_RSP_ID,
     };
@@ -616,7 +616,7 @@ mod test {
         assert_eq!(
             con_mgr
                 .actors_map_by_protocol_id
-                .get(&cmd_init_protocol().id)
+                .get(&cmd_init_issuee_protocol().id)
                 .unwrap(),
             &vec![0]
         );
@@ -705,7 +705,7 @@ mod test {
         assert_eq!(
             con_mgr
                 .actors_map_by_protocol_id
-                .get(&cmd_init_protocol().id)
+                .get(&cmd_init_issuee_protocol().id)
                 .unwrap(),
             &vec![0, 1]
         );

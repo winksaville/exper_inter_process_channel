@@ -9,8 +9,8 @@ use actor_channel::{ActorChannel, ActorReceiver, ActorSender, VecActorChannel};
 use actor_executor_protocol::actor_executor_protocol;
 use an_id::{anid, paste, AnId};
 use box_msg_any::BoxMsgAny;
-use cmd_done::CmdDone;
-use cmd_init_protocol::CmdInit;
+use cmd_done_issuee_protocol::{cmd_done_issuee_protocol, CmdDone};
+use cmd_init_issuer_protocol::{cmd_init_issuer_protocol, CmdInit};
 use con_mgr::ConMgr;
 use con_mgr_query_protocol::con_mgr_query_protocol;
 use con_mgr_register_actor_protocol::con_mgr_register_actor_protocol;
@@ -125,7 +125,7 @@ pub fn initialize_supervisor_con_mgr_actor_executor_blocking(
 
 #[allow(unused)]
 #[derive(Debug)]
-struct ActorExecutor {
+pub struct ActorExecutor {
     pub name: String,
     pub actor_id: AnId, // TODO: not used yet
     pub instance_id: AnId,
@@ -204,6 +204,11 @@ impl ActorExecutor {
         );
         let query_protocol = con_mgr_query_protocol();
         pm.insert(query_protocol.id, query_protocol.clone());
+        let ci_irp = cmd_init_issuer_protocol();
+        pm.insert(ci_irp.id, ci_irp.clone());
+        let cd_iep = cmd_done_issuee_protocol();
+        pm.insert(cd_iep.id, cd_iep.clone());
+
         let ps_name = name.clone() + "_ps";
         let ps = ProtocolSet::new(&ps_name, ACTOR_EXECUTOR_PROTOCOL_SET_ID, pm);
 
@@ -381,7 +386,7 @@ mod tests {
     use super::*;
 
     use client::Client;
-    use cmd_done::CmdDone;
+    use cmd_done_issuer_protocol::CmdDone;
     use echo_requestee_protocol::{EchoReq, EchoRsp};
     use echo_start_complete_protocol::{EchoComplete, EchoStart};
     use sender_map_by_instance_id::sender_map_get;

@@ -1,7 +1,7 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_channel::ActorChannel;
 use an_id::{anid, paste, AnId};
-use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
+use cmd_init_issuee_protocol::{cmd_init_issuee_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
@@ -99,10 +99,11 @@ impl Server {
         // Create the server ProtocolSet, `server_ps`.
         println!("Server::new({})", name);
         let mut server_pm = HashMap::<AnId, Protocol>::new();
-        let ci_protocol = cmd_init_protocol();
-        server_pm.insert(ci_protocol.id, ci_protocol.clone());
         let erep = echo_requestee_protocol();
         server_pm.insert(erep.id, erep.clone());
+        let ci_iep = cmd_init_issuee_protocol();
+        server_pm.insert(ci_iep.id, ci_iep.clone());
+
         let server_ps = ProtocolSet::new("server_ps", SERVER_PROTOCOL_SET_ID, server_pm);
 
         let server_instance_id = AnId::new();
@@ -187,6 +188,7 @@ impl Server {
 mod test {
     use actor_channel::ActorSender;
     use chrono::Utc;
+    use cmd_init_issuer_protocol::CmdInit;
     use con_mgr_register_actor_protocol::CON_MGR_REGISTER_ACTOR_REQ_ID;
 
     use super::*;

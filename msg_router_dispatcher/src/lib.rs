@@ -1,7 +1,7 @@
 use actor::{Actor, ActorContext, ProcessMsgFn};
 use actor_channel::ActorChannel;
 use an_id::{anid, paste, AnId};
-use cmd_init_protocol::{cmd_init_protocol, CmdInit, CMD_INIT_ID};
+use cmd_init_issuee_protocol::{cmd_init_issuee_protocol, CmdInit, CMD_INIT_ID};
 use con_mgr_register_actor_protocol::{
     ConMgrRegisterActorReq, ConMgrRegisterActorRsp, ConMgrRegisterActorStatus,
     CON_MGR_REGISTER_ACTOR_RSP_ID,
@@ -114,8 +114,8 @@ impl MsgRouterDispatcher {
         // Create the msg_router ProtocolSet, `ps`.
         println!("MsgRouterDispatcher::new({})", name);
         let mut pm = HashMap::<AnId, Protocol>::new();
-        let ci_protocol = cmd_init_protocol();
-        pm.insert(ci_protocol.id, ci_protocol.clone());
+        let ci_iep = cmd_init_issuee_protocol();
+        pm.insert(ci_iep.id, ci_iep.clone());
         let erep = echo_requestee_protocol();
         pm.insert(erep.id, erep.clone());
         let md = insert_key_msg_id_value_from_serde_json_buf_requestee_protocol();
@@ -388,7 +388,7 @@ mod test {
         add_actor_to_actor_executor_blocking, initialize_supervisor_con_mgr_actor_executor_blocking,
     };
     use chrono::Utc;
-    use cmd_done::CmdDone;
+    use cmd_done_issuer_protocol::CmdDone;
     use echo_requestee_protocol::ECHO_RSP_ID;
     use sender_map_by_instance_id::sender_map_get;
     use utils::write_msg_buf_to_tcp_stream;

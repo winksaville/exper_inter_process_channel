@@ -20,11 +20,12 @@ chrono = "0.4.23"
 protocol = { version = "0.1.0", path = "../protocol" }
 uuid = "1.3.0"
 crossbeam-channel = "0.5.7"
-cmd_init_protocol = { version = "0.1.0", path = "../protocols/cmd_init_protocol" }
-cmd_done = { path = "../msgs/cmd_done" }
+cmd_init_issuee_protocol = { version = "0.1.0", path = "../protocols/cmd_init_issuee_protocol" }
+cmd_done_issuee_protocol = { path = "../protocols/cmd_done_issuee_protocol" }
 con_mgr_register_actor_protocol = { version = "0.1.0", path = "../protocols/con_mgr_register_actor_protocol" }
 sender_map_by_instance_id = { version = "0.1.0", path = "../sender_map_by_instance_id" }
 utils = { path = "../utils" }
 
 [dev-dependencies]
 actor_executor = { path="../actor_executor" }
+cmd_done_issuer_protocol = { path = "../protocols/cmd_done_issuer_protocol" }
