@@ -119,28 +119,27 @@ impl MsgRouterForwarder {
         let mut pm = HashMap::<AnId, Protocol>::new();
         let ci_iep = cmd_init_issuee_protocol();
         pm.insert(ci_iep.id, ci_iep.clone());
-        let erep = echo_requestee_protocol();
-        pm.insert(erep.id, erep.clone());
-        let md = insert_key_msg_id_value_to_serde_json_buf_requestee_protocol();
-        pm.insert(md.id, md.clone());
-        let msg_router_ps = ProtocolSet::new(
-            "msg_router_receiver_ps",
+        let e_rep = echo_requestee_protocol();
+        pm.insert(e_rep.id, e_rep.clone());
+        let ik_rep = insert_key_msg_id_value_to_serde_json_buf_requestee_protocol();
+        pm.insert(ik_rep.id, ik_rep.clone());
+        let msg_router_forwarder_ps = ProtocolSet::new(
+            "msg_router_forwarder_ps",
             MSG_ROUTER_RECEIVER_PROTOCOL_SET_ID,
             pm,
         );
 
         let msg_router_instance_id = AnId::new();
-        let chnl_name = name.to_owned() + "_chnl";
-        let chnl = ActorChannel::new(&chnl_name, &msg_router_instance_id);
+        let chnl = ActorChannel::new(name, &msg_router_instance_id);
         let forwarder_instance_id = AnId::new();
-        let forwarder_name = chnl_name + "forwarder_chnl";
+        let forwarder_name = name.to_owned() + "_forwarder";
         let forwarder_chnl = ActorChannel::new(&forwarder_name, &forwarder_instance_id);
 
         let mut this = Self {
             name: name.to_owned(),
             actor_id: MSG_ROUTER_RECEIVER_ACTOR_ID,
             instance_id: msg_router_instance_id,
-            protocol_set: msg_router_ps,
+            protocol_set: msg_router_forwarder_ps,
             current_state: Self::state0,
             state_info_hash: StateInfoMap::<Self>::new(),
             chnl,
