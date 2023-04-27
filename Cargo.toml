@@ -48,6 +48,9 @@ serde = { version = "1.0.154", features = ["derive"] }
 serde_json = "1.0.94"
 custom_logger = { git = "https://github.com/winksaville/custom_logger", version = "0.2.0" }
 crossbeam-channel = "0.5.7"
+insert_key_msg_id_value_from_serde_json_buf_requester_protocol = { path="protocols/insert_key_msg_id_value_from_serde_json_buf_requester_protocol" }
+insert_key_msg_id_value_to_serde_json_buf_requester_protocol = { path="protocols/insert_key_msg_id_value_to_serde_json_buf_requester_protocol" }
+msg_router_forwarder_actor_sender_requester_protocol = { path="protocols/msg_router_forwarder_actor_sender_requester_protocol" }
 
 [workspace]
 members = [
