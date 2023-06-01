@@ -1,4 +1,29 @@
-#![feature(downcast_unchecked)] // Disable if stable
+//-----------------------------------------------
+#![feature(downcast_unchecked)] // This can be commented out and
+// will compile if rust-toolchain.toml is changed to `channel = stable`.
+// BUT THE RESULT WILL NOT RUN, as the stable version of
+// get_msg_id_from_boxed_msg_any and get_dst_id_from_boxed_msg_any
+// are just stubs and return the wrong values. The nightly version
+// of these functions work correctly.
+//
+// I've did this to debug the issue with Rust-Analyzer
+// reporting a false error for sender_map_insert.
+// See:
+//  https://users.rust-lang.org/t/ra-reports-errors-but-compile-succeeds/92127
+//  https://github.com/rust-lang/rust-analyzer/pull/14475
+//
+// Athough this bug appears to be fixed in the lastest version, 0.3.1533,
+// I'm leaving this here as I do want this to compile under stable someday.
+// By leaving this it is "trivial" to switch back to stable and hopefully
+// get this not only compiling but acutally running and passing `cargo test --all`.
+#[rustversion::stable]
+use an_id::anid;
+#[rustversion::stable]
+use paste::paste;
+#[rustversion::stable]
+const DEBUG_ANID: AnId = anid!("def26b5a-a462-492a-acdd-85aac7a1f2ac");
+//-----------------------------------------------
+
 use actor_channel::ActorSender;
 use an_id::AnId;
 use box_msg_any::BoxMsgAny;
@@ -8,21 +33,6 @@ use std::fmt::{Debug, Display};
 mod get_msg_id_str_from_buf;
 pub use get_msg_id_str_from_buf::{get_msg_id_str_from_buf, FromSerdeJsonBuf, ToSerdeJsonBuf};
 
-// You can use stable but the result will NOT run,
-// I've added this to debug the issue with Rust-Analyzer
-// reporting a false error for sender_map_insert.
-// See:
-//  https://users.rust-lang.org/t/ra-reports-errors-but-compile-succeeds/92127
-//  https://github.com/rust-lang/rust-analyzer/pull/14475
-#[rustversion::stable]
-use an_id::anid;
-#[rustversion::stable]
-use paste::paste;
-
-#[rustversion::stable]
-const DEBUG_ANID: AnId = anid!("def26b5a-a462-492a-acdd-85aac7a1f2ac");
-#[rustversion::stable]
-const SOME_DEBUG_ANID: Option<AnId> = anid!("c4e6ad97-8661-491e-a4fc-a986bbb1cf45");
 
 pub const MSG_ID_STR_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -76,7 +86,7 @@ impl MsgHeader {
 
     #[rustversion::stable]
     pub fn get_dst_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &AnId {
-        &SOME_DEBUG_ANID
+        &DEBUG_ANID
     }
 
     pub fn get_dst_sndr_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {
@@ -102,7 +112,7 @@ impl MsgHeader {
 
     #[rustversion::stable]
     pub fn get_src_id_from_boxed_msg_any(_msg_any: &BoxMsgAny) -> &AnId {
-        &SOME_DEBUG_ANID
+        &DEBUG_ANID
     }
 
     pub fn get_src_tx_from_boxed_msg_any(msg_any: &BoxMsgAny) -> Option<ActorSender> {

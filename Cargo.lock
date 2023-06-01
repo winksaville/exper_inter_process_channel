@@ -917,6 +917,7 @@ dependencies = [
  "actor_channel",
  "an_id",
  "box_msg_any",
+ "paste",
  "rustversion",
  "sender_map_by_instance_id",
  "serde",
